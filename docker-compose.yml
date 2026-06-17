@@ -1,0 +1,50 @@
+services:
+  backend:
+    build: ./backend
+    # Bind to localhost only — this is a local-only app, do not expose to the LAN.
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-revuser}:${POSTGRES_PASSWORD:-changeme-local-only}@db:5432/${POSTGRES_DB:-revision_db}
+      - DEBUG=${DEBUG:-false}
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - backend
+
+  parser:
+    build: ./parser
+    ports:
+      - "127.0.0.1:8002:8002"
+    volumes:
+      - ./parser:/app
+
+  db:
+    image: postgres:16-alpine
+    command:
+      - postgres
+      - -c
+      - log_min_messages=warning
+      - -c
+      - log_min_error_statement=error
+      - -c
+      - log_statement=none
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-revuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-revision_db}
+    # Bind DB to localhost only so it is never reachable from the network.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+
+volumes:
+  postgres_data:

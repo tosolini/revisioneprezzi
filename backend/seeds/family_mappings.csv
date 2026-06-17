@@ -1,0 +1,22 @@
+cpv_pattern,family,strength,mapping_note
+3241,ppi_services,strong,Telecomunicazioni → servizi B2B (ATECO 61)
+9091,ppi_services,strong,Pulizia edifici → servizi B2B pulizia (ATECO 81)
+9092,ppi_services,strong,Servizi di pulizia industriali → servizi B2B
+3983,consumer_or_supply,strong,Prodotti per pulizia → beni di consumo ECOICOP
+905,ppi_services,strong,Servizi rifiuti → servizi B2B (ATECO E)
+906,ppi_services,strong,Pulizia stradale → servizi B2B
+3019,ppi,strong,Attrezzature ufficio → produzione industriale
+302,ppi,strong,Computer e periferiche → produzione industriale
+303,ppi,strong,Macchine ufficio → produzione industriale
+501,ppi_services,strong,Riparazione veicoli → servizi B2B
+502,ppi_services,strong,Riparazione macchine agricole → servizi B2B
+503,ppi_services,medium,Riparazione computer → servizi B2B (valutare se prevalente manodopera)
+504,ppi_services,medium,Riparazione apparecchi medicali → servizi B2B
+601,ppi_services,strong,Trasporto persone → servizi B2B trasporto
+602,ppi_services,strong,Trasporto ferroviario → servizi B2B trasporto
+90,consumer_or_supply,weak,Forza lavoro prevalente? Se sì labour_index altrimenti ppi_services
+91,ppi_services,weak,Contratto a prevalenza di servizio? Se sì ppi_services
+80,ppi_services,weak,Servizi generici → valutare contesto
+70,ppi,weak,Beni strumentali → ppi manifatturiero
+55,ppi_services,weak,Ristorazione → ppi_services con attenzione a manodopera
+50,ppi_services,weak,Riparazioni e manutenzioni → verificare incidenza materiali

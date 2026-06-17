@@ -1,0 +1,192 @@
+# Configurazione dataflow ISTAT per contratti pubblici
+# Usata da scripts/sync_indices.py --sync per download automatico via SDMX API
+#
+# Riferimenti:
+# - https://www.istat.it/notizia/il-nuovo-codice-dei-contratti-pubblici-d-lgs-31-marzo-2023-n-36-art-60/
+# - https://esploradati.istat.it/SDMXWS/rest/data/{dataflow_id}
+#
+# NOTA: l'API SDMX ha un bug su endPeriod: per ottenere dati fino ad anno N,
+# usare endPeriod=N-1 (workaround). Usare lastNObservations per sicurezza.
+
+dataflows:
+
+  # ──────────────────────────────────────────────
+  # CONTRATTI DI LAVORI (TOL)
+  # Indici di costo per Tipologie Omogenee di Lavorazioni
+  # Base 2022, dati mensili
+  # ──────────────────────────────────────────────
+  - dataflow_id: "145_362_DCSC_INDICITOL_1"
+    description: "Indici di costo TOL - dati mensili (base 2022)"
+    contract_type: "works"
+    frequency: "monthly"
+    group_key: "tol"
+    # Mappatura dimensioni SDMX → campi DB
+    dimension_map:
+      series_code: "HOM_TYPE_WORK"     # codice TOL (es. AC_GAS_IRR_SEW)
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"            # formato: YYYY-MM
+    # Codici TOL con descrizioni (da Tabella A.1 Allegato II.2-bis)
+    series:
+      - code: "AC_GAS_IRR_SEW"
+        name: "Acqua, gas, irrigazione, fognature"
+      - code: "ARC_RES_HE"
+        name: "Architettura residenziale riscaldata"
+      - code: "BUIL_ART_HEPROT"
+        name: "Edifici artistici riscaldati/protetti"
+      - code: "BUIL_ART_NOHEPROT"
+        name: "Edifici artistici non riscaldati/non protetti"
+      - code: "DELIV_WASTE_FAC_DIS_REC"
+        name: "Conferimento rifiuti, impianti di smaltimento e recupero"
+      - code: "EARTDEM_ENV_NAT"
+        name: "Movimento terra, demolizioni, sistemazioni ambientali e naturali"
+      - code: "MAR_DRED_RIV_PROT"
+        name: "Opere marittime, dragaggi, opere fluviali e di protezione"
+      - code: "PAV_BITCONG"
+        name: "Pavimentazioni bituminose e conglomerati"
+      - code: "PLNT_PTD_EEL_HMV_TRPULI"
+        name: "Impianti di produzione energia elettrica, HMV, termovalorizzatori, puli"
+      - code: "PLNT_WAT_PUR_WSTTRE"
+        name: "Impianti di acquedotto, depurazione e trattamento rifiuti"
+      - code: "RAIL_INFR"
+        name: "Infrastrutture ferroviarie"
+      - code: "REINFCONC_ENGWOART"
+        name: "Cemento armato e opere di ingegneria"
+      - code: "SPEC_FOUN_GEOL_GEOTH"
+        name: "Fondazioni speciali, geologia e geotermia"
+      - code: "STSTRU_ENGWOART"
+        name: "Strutture in acciaio e opere di ingegneria"
+      - code: "SYS_EL_TEC_RA_TEL_INT"
+        name: "Impianti elettrici, tecnologici, reti e telecomunicazioni"
+      - code: "SYS_MEC_TER_AIR_WAT_SAN_CON"
+        name: "Impianti meccanici, termici, aria, acqua, sanitari"
+      - code: "SYS_SUG_TRASAF_TEL"
+        name: "Impianti di sollevamento, trasporto e affini"
+      - code: "TUN_UND_MECH"
+        name: "Gallerie e opere sotterranee meccanizzate"
+      - code: "TUN_UND_TRAD"
+        name: "Gallerie e opere sotterranee tradizionali"
+      - code: "WOSTR_ENGWOART"
+        name: "Strutture in legno e opere di ingegneria"
+
+  # ──────────────────────────────────────────────
+  # CONTRATTI DI LAVORI (edilizia)
+  # Indice del costo di costruzione - Fabbricato residenziale
+  # ──────────────────────────────────────────────
+  - dataflow_id: "145_361_DF_DCSC_FABBRESID_1_7"
+    description: "Indice costo costruzione - Fabbricato residenziale (base 2021)"
+    contract_type: "works"
+    frequency: "monthly"
+    group_key: "construction_cost_residential"
+    dimension_map:
+      series_code: "GROUP_CATEGORY_COST"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "I"
+        name: "Fabbricato residenziale"
+
+  - dataflow_id: "145_361_DF_DCSC_FABBRESID_1_8"
+    description: "Indice costo costruzione - Tronco stradale con galleria (base 2021)"
+    contract_type: "works"
+    frequency: "monthly"
+    group_key: "construction_cost_tunnel"
+    dimension_map:
+      series_code: "GROUP_CATEGORY_COST"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "I"
+        name: "Tronco stradale con tratto in galleria"
+
+  # ──────────────────────────────────────────────
+  # CONTRATTI DI SERVIZI E FORNITURE
+  # Indice dei prezzi al consumo (NIC)
+  # ──────────────────────────────────────────────
+  - dataflow_id: "167_744_DF_DCSP_NIC1B2015_1"
+    description: "Prezzi al consumo NIC (base 2015) - mensile"
+    contract_type: "services"
+    frequency: "monthly"
+    group_key: "nic"
+    dimension_map:
+      series_code: "E_COICOP_REV_ISTAT"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "00"
+        name: "NIC - Indice generale (esclusi tabacchi)"
+
+  # ──────────────────────────────────────────────
+  # NIC - tutte le basi (Ecoicop 2)
+  # Include DT=1 (base 1996-2010) e DT=39 (base 2016-2025)
+  # ──────────────────────────────────────────────
+  - dataflow_id: "167_745_DF_DCSP_NIC1B2025_6"
+    description: "Prezzi al consumo NIC - tutte le basi (Ecoicop 2)"
+    contract_type: "services"
+    frequency: "monthly"
+    group_key: "nic_ecoicop2"
+    dimension_map:
+      series_code: "ECOICOP_2"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series: []
+
+  # ──────────────────────────────────────────────
+  # Indici dei prezzi alla produzione dell'industria
+  # ──────────────────────────────────────────────
+  - dataflow_id: "145_360_DF_DCSC_PREZZPIND_1_4"
+    description: "Prezzi alla produzione industria (base 2021) - mensile"
+    contract_type: "services"
+    frequency: "monthly"
+    group_key: "ppi"
+    dimension_map:
+      series_code: "ECON_ACTIVITY_NACE_2007"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "0020"
+        name: "PPI - Totale industria (mercato interno)"
+
+  # ──────────────────────────────────────────────
+  # Indici dei prezzi alla produzione dei servizi (BtoB)
+  # ──────────────────────────────────────────────
+  - dataflow_id: "145_376_DF_DCSC_PREZPRODSERV_1_7"
+    description: "Prezzi alla produzione servizi BtoB (base 2021) - trimestrale"
+    contract_type: "services"
+    frequency: "quarterly"
+    group_key: "ps_business"
+    dimension_map:
+      series_code: "ECON_ACTIVITY_NACE_2007"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "49"
+        name: "PS BtoB - Totale servizi"
+
+  # ──────────────────────────────────────────────
+  # Indici delle retribuzioni contrattuali orarie
+  # ──────────────────────────────────────────────
+  - dataflow_id: "155_318_DF_DCSC_RETRCONTR1C_4"
+    description: "Retribuzioni contrattuali orarie (base 2021)"
+    contract_type: "services"
+    frequency: "annual"
+    group_key: "wages"
+    dimension_map:
+      series_code: "MAIN_AGREEMENT_GROUP"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "Z0010"
+        name: "Retribuzione oraria - totale economia"
+
+  - dataflow_id: "155_358_DF_DCSC_RETRATECO1_7"
+    description: "Retribuzioni orarie per settore ATECO (base 2021)"
+    contract_type: "services"
+    frequency: "annual"
+    group_key: "wages_ateco"
+    dimension_map:
+      series_code: "ECON_ACTIVITY_NACE_2007"
+      value: "OBS_VALUE"
+      period: "TIME_PERIOD"
+    series:
+      - code: "0010"
+        name: "Retribuzione oraria - totale ATECO"

@@ -1,0 +1,166 @@
+# Report di Revisione Prezzi
+
+**Pratica:** {{ case.title }}
+**Data generazione:** {{ generated_at }}
+**Stato:** {{ case.status }}
+
+---
+
+## 1. Dati della pratica
+
+| Campo | Valore |
+|---|---|
+| Titolo | {{ case.title }} |
+| ID Pratica | {{ case.id }} |
+| Creato da | {{ case.created_by or "—" }} |
+| Data creazione | {{ case.created_at.strftime('%d/%m/%Y') if case.created_at else "—" }} |
+| Note | {{ case.notes or "—" }} |
+
+---
+
+## 2. Quadro contrattuale
+
+{% if contract %}
+| Campo | Valore |
+|---|---|
+| Tipologia contratto | {{ contract.contract_type or "—" }} |
+| Contratto di durata | {{ "Sì" if contract.is_duration_contract else "No" if contract.is_duration_contract is not none else "—" }} |
+| Esecuzione istantanea | {{ "Sì" if contract.instant_execution else "No" if contract.instant_execution is not none else "—" }} |
+| Data stipula | {{ contract.stipulation_date.strftime('%d/%m/%Y') if contract.stipulation_date else "—" }} |
+| Data avvio esecuzione | {{ contract.execution_start_date.strftime('%d/%m/%Y') if contract.execution_start_date else "—" }} |
+| Durata (mesi) | {{ contract.duration_months or "—" }} |
+| Importo complessivo (€) | {{ "%.2f"|format(contract.contract_amount_total) if contract.contract_amount_total else "—" }} |
+| Importo assoggettabile (€) | {{ "%.2f"|format(contract.amount_subject_to_revision) if contract.amount_subject_to_revision else "—" }} |
+{% else %}
+*Nessun dato contrattuale inserito.*
+{% endif %}
+
+---
+
+## 3. Classificazione CPV
+
+{% if cpv_assignments %}
+| CPV | Primario | Peso % | Descrizione |
+|---|---|---|---|
+{% for cpv in cpv_assignments %}
+| {{ cpv.cpv_code }} | {{ "Sì" if cpv.is_primary else "No" }} | {{ cpv.weight_percent or "—" }} | {{ cpv.description or "—" }} |
+{% endfor %}
+{% else %}
+*Nessun CPV associato.*
+{% endif %}
+
+{% if classification %}
+### Decisione di classificazione
+
+| Campo | Valore |
+|---|---|
+| Famiglia selezionata | {{ classification.selected_family or "—" }} |
+| Candidate | {{ classification.candidate_families_json or "—" }} |
+| Serie indice selezionata | {{ classification.selected_index_series_id or "—" }} |
+| Confidenza | {{ classification.classification_confidence or "—" }} |
+| Override manuale | {{ "Sì" if classification.manual_override else "No" }} |
+| Motivazione override | {{ classification.override_reason or "—" }} |
+{% endif %}
+
+---
+
+## 4. Indice revisionale
+
+{% if index_series %}
+**Serie:** {{ index_series.name }} ({{ index_series.id }})
+**Fonte:** {{ index_series.source }}
+**Categoria normativa:** {{ index_series.normative_category or "—" }}
+**Classificazione associata:** {{ index_series.classification_ref or "—" }}
+{% endif %}
+
+{% if revision_input %}
+### Parametri temporali ed economici
+
+| Campo | Valore |
+|---|---|
+| Periodo base | {{ revision_input.base_period.strftime('%d/%m/%Y') if revision_input.base_period else "—" }} |
+| Periodo confronto | {{ revision_input.comparison_period.strftime('%d/%m/%Y') if revision_input.comparison_period else "—" }} |
+| Importo assoggettabile (€) | {{ "%.2f"|format(revision_input.amount_subject_to_revision) if revision_input.amount_subject_to_revision else "—" }} |
+| Quota esclusa (€) | {{ "%.2f"|format(revision_input.excluded_amount) if revision_input.excluded_amount else "—" }} |
+| Motivazione esclusione | {{ revision_input.exclusion_reason or "—" }} |
+{% endif %}
+
+---
+
+## 5. Calcolo revisione
+
+{% if results %}
+{% for res in results %}
+### Versione {{ res.result_version }} — {{ res.created_at.strftime('%d/%m/%Y %H:%M') if res.created_at else "" }}
+
+| Passaggio | Valore |
+|---|---|
+| Valore indice base | {{ res.base_value or "—" }} |
+| Valore indice confronto | {{ res.comparison_value or "—" }} |
+| Variazione percentuale | {{ "%.4f"|format(res.variation_percent) if res.variation_percent else "—" }}% |
+| Soglia di attivazione | {{ res.threshold_percent or "—" }}% |
+| Quota eccedente | {{ "%.4f"|format(res.excess_percent) if res.excess_percent else "—" }}% |
+| Coefficiente riconoscibile | {{ res.recognition_percent or "—" }}% |
+| **Importo revisione** | **€ {{ "%.2f"|format(res.revision_amount) if res.revision_amount else "0.00" }}** |
+
+**Dettaglio formula:**
+```
+{{ res.formula_detail or "—" }}
+```
+
+{% endfor %}
+{% else %}
+*Nessun calcolo eseguito.*
+{% endif %}
+
+---
+
+## 6. Esito finale
+
+{% set latest = results|first if results else none %}
+{% if latest and latest.revision_amount and latest.revision_amount > 0 %}
+**Spettanza revisione prezzi:** SÌ
+**Importo riconosciuto:** € {{ "%.2f"|format(latest.revision_amount) }}
+{% elif latest %}
+**Spettanza revisione prezzi:** NO — variazione entro la soglia di attivazione
+{% else %}
+*Calcolo non ancora effettuato.*
+{% endif %}
+
+---
+
+## 7. Note dell'istruttore
+
+{% if wizard_answers %}
+{% for ans in wizard_answers %}
+- **Step {{ ans.step }} — {{ ans.field_key }}:** {{ ans.field_value }}
+{% endfor %}
+{% else %}
+*Nessuna nota.*
+{% endif %}
+
+{% if override_reasons %}
+### Override e motivazioni
+
+{% for ov in override_reasons %}
+- **{{ ov.field_path }}:** {{ ov.reason }} ({{ ov.created_at.strftime('%d/%m/%Y %H:%M') if ov.created_at else "" }})
+{% endfor %}
+{% endif %}
+
+---
+
+## 8. Audit trail
+
+{% if audit_logs %}
+| Evento | Data | Utente | Dettaglio |
+|---|---|---|---|
+{% for log in audit_logs %}
+| {{ log.event_type }} | {{ log.created_at.strftime('%d/%m/%Y %H:%M') if log.created_at else "—" }} | {{ log.user_id or "—" }} | {{ log.payload_json or "—" }} |
+{% endfor %}
+{% else %}
+*Nessun evento registrato.*
+{% endif %}
+
+---
+
+*Report generato automaticamente da Sistema Revisione Prezzi - D.Lgs. 36/2023*

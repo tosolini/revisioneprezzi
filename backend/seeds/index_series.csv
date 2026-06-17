@@ -1,0 +1,51 @@
+id,name,source,normative_category,classification_ref,frequency
+ISTAT_NIC_GEN,NIC indice generale (media annua),ISTAT,consumer,ECOICOP_NIC,yearly
+ISTAT_NIC_ALIM,NIC alimentari e bevande analcoliche,ISTAT,consumer,ECOICOP_01,yearly
+ISTAT_NIC_BEV,NIC bevande alcoliche e tabacchi,ISTAT,consumer,ECOICOP_02,yearly
+ISTAT_NIC_ABBL,NIC abbigliamento e calzature,ISTAT,consumer,ECOICOP_03,yearly
+ISTAT_NIC_ABIT,NIC abitazione acqua elettricità gas,ISTAT,consumer,ECOICOP_04,yearly
+ISTAT_NIC_MOBL,NIC mobili articoli e servizi per la casa,ISTAT,consumer,ECOICOP_05,yearly
+ISTAT_NIC_SANI,NIC servizi sanitari e spese per la salute,ISTAT,consumer,ECOICOP_06,yearly
+ISTAT_NIC_TRAS,NIC trasporti,ISTAT,consumer,ECOICOP_07,yearly
+ISTAT_NIC_COM,NIC comunicazioni,ISTAT,consumer,ECOICOP_08,yearly
+ISTAT_NIC_RICR,NIC ricreazione spettacoli e cultura,ISTAT,consumer,ECOICOP_09,yearly
+ISTAT_NIC_ISTR,NIC istruzione,ISTAT,consumer,ECOICOP_10,yearly
+ISTAT_NIC_RIST,NIC servizi ricettivi e ristorazione,ISTAT,consumer,ECOICOP_11,yearly
+ISTAT_NIC_ALT,NIC altri beni e servizi,ISTAT,consumer,ECOICOP_12,yearly
+ISTAT_PPI_MAN,Prezzi alla produzione industria manifatturiera,ISTAT,ppi,ATECO_C,monthly
+ISTAT_PPI_MAN_ALIM,Prezzi alla produzione alimentari e bevande,ISTAT,ppi,ATECOC_10,monthly
+ISTAT_PPI_MAN_TESS,Prezzi alla produzione tessile e abbigliamento,ISTAT,ppi,ATECOC_13,monthly
+ISTAT_PPI_MAN_LEG,Prezzi alla produzione legno e carta,ISTAT,ppi,ATECOC_16,monthly
+ISTAT_PPI_MAN_CHIM,Prezzi alla produzione chimica,ISTAT,ppi,ATECOC_20,monthly
+ISTAT_PPI_MAN_FARM,Prezzi alla produzione farmaceutica,ISTAT,ppi,ATECOC_21,monthly
+ISTAT_PPI_MAN_CARTA,Prezzi alla produzione carta,ISTAT,ppi,ATECOC_17,monthly
+ISTAT_PPI_MAN_MET,Prezzi alla produzione metalli,ISTAT,ppi,ATECOC_24,monthly
+ISTAT_PPI_MAN_ELET,Prezzi alla produzione apparecchiature elettriche,ISTAT,ppi,ATECOC_27,monthly
+ISTAT_PPI_MAN_MAC,Prezzi alla produzione macchinari,ISTAT,ppi,ATECOC_28,monthly
+ISTAT_PPI_MAN_MEZZ,Prezzi alla produzione mezzi di trasporto,ISTAT,ppi,ATECOC_29,monthly
+ISTAT_PPI_MAN_MOB,Prezzi alla produzione mobili,ISTAT,ppi,ATECOC_31,monthly
+ISTAT_PS_BTOB_TOT,Prezzi alla produzione servizi B2B totale,ISTAT,ppi_services,ATECO_SERV,yearly
+ISTAT_PS_BTOB_TRASP,Prezzi alla produzione servizi B2B trasporto e magazzinaggio,ISTAT,ppi_services,ATECOC_H,yearly
+ISTAT_PS_BTOB_INFO,Prezzi alla produzione servizi B2B informazione e comunicazione,ISTAT,ppi_services,ATECOC_J,yearly
+ISTAT_PS_BTOB_PROF,Prezzi alla produzione servizi B2B attività professionali scientifiche e tecniche,ISTAT,ppi_services,ATECOC_M,yearly
+ISTAT_PS_BTOB_SUPP,Prezzi alla produzione servizi B2B noleggio e supporto,ISTAT,ppi_services,ATECOC_N,yearly
+ISTAT_PS_BTOB_PUL,Prezzi alla produzione servizi B2B servizi di pulizia,ISTAT,ppi_services,ATECOC_81,yearly
+ISTAT_RCO_SETT_A,Retribuzioni contrattuali orarie agricoltura,ISTAT,labour_index,ATECO_A,yearly
+ISTAT_RCO_SETT_B,Retribuzioni contrattuali orarie estrazioni minerali,ISTAT,labour_index,ATECO_B,yearly
+ISTAT_RCO_SETT_C,Retribuzioni contrattuali orarie manifatturiero,ISTAT,labour_index,ATECO_C,yearly
+ISTAT_RCO_SETT_D,Retribuzioni contrattuali orarie energia elettrica gas,ISTAT,labour_index,ATECO_D,yearly
+ISTAT_RCO_SETT_E,Retribuzioni contrattuali orarie acqua e rifiuti,ISTAT,labour_index,ATECO_E,yearly
+ISTAT_RCO_SETT_F,Retribuzioni contrattuali orarie costruzioni,ISTAT,labour_index,ATECO_F,yearly
+ISTAT_RCO_SETT_G,Retribuzioni contrattuali orarie commercio,ISTAT,labour_index,ATECO_G,yearly
+ISTAT_RCO_SETT_H,Retribuzioni contrattuali orarie trasporto e magazzinaggio,ISTAT,labour_index,ATECO_H,yearly
+ISTAT_RCO_SETT_I,Retribuzioni contrattuali orarie servizi alloggio e ristorazione,ISTAT,labour_index,ATECO_I,yearly
+ISTAT_RCO_SETT_J,Retribuzioni contrattuali orarie informazione e comunicazione,ISTAT,labour_index,ATECO_J,yearly
+ISTAT_RCO_SETT_K,Retribuzioni contrattuali orarie attività finanziarie,ISTAT,labour_index,ATECO_K,yearly
+ISTAT_RCO_SETT_L,Retribuzioni contrattuali orarie attività immobiliari,ISTAT,labour_index,ATECO_L,yearly
+ISTAT_RCO_SETT_M,Retribuzioni contrattuali orarie attività professionali,ISTAT,labour_index,ATECO_M,yearly
+ISTAT_RCO_SETT_N,Retribuzioni contrattuali orarie noleggio e supporto,ISTAT,labour_index,ATECO_N,yearly
+ISTAT_RCO_SETT_O,Retribuzioni contrattuali orarie PA e difesa,ISTAT,labour_index,ATECO_O,yearly
+ISTAT_RCO_SETT_P,Retribuzioni contrattuali orarie istruzione,ISTAT,labour_index,ATECO_P,yearly
+ISTAT_RCO_SETT_Q,Retribuzioni contrattuali orarie sanità,ISTAT,labour_index,ATECO_Q,yearly
+ISTAT_RCO_SETT_R,Retribuzioni contrattuali orarie arte e intrattenimento,ISTAT,labour_index,ATECO_R,yearly
+ISTAT_RCO_SETT_S,Retribuzioni contrattuali orarie altri servizi,ISTAT,labour_index,ATECO_S,yearly

@@ -1,0 +1,146 @@
+# Regole di classificazione CPV → Famiglia revisionale
+# Le regole vengono valutate in ordine di definizione.
+# La prima regola con match vince, salvo override manuale.
+
+families:
+  - id: consumer_or_supply
+    label: "Indice prezzi al consumo / ECOICOP"
+    description: "Forniture riconducibili a paniere di consumo ISTAT"
+
+  - id: ppi
+    label: "Prezzi alla produzione industria (PPI)"
+    description: "Forniture riconducibili a settore produttivo ATECO"
+
+  - id: ppi_services
+    label: "Prezzi alla produzione servizi B2B"
+    description: "Servizi riconducibili a prezzi alla produzione servizi"
+
+  - id: labour_index
+    label: "Retribuzioni contrattuali orarie"
+    description: "Servizi a prevalente contenuto di manodopera"
+
+rules:
+  # Regole strong: match certo CPV → famiglia
+  - id: rule_cleaning_services
+    if:
+      cpv_pattern: "9091"
+    then:
+      family: ppi_services
+      confidence: high
+      note: "Servizi di pulizia → prezzi alla produzione servizi B2B (ATECO 81)"
+
+  - id: rule_cleaning_products
+    if:
+      cpv_pattern: "3983"
+    then:
+      family: consumer_or_supply
+      confidence: high
+      note: "Prodotti per pulizia → beni di consumo ECOICOP"
+
+  - id: rule_waste_services
+    if:
+      cpv_pattern: "905"
+    then:
+      family: ppi_services
+      confidence: high
+      note: "Servizi rifiuti → prezzi alla produzione servizi B2B"
+
+  - id: rule_transport_services
+    if:
+      cpv_pattern: "601"
+    then:
+      family: ppi_services
+      confidence: high
+      note: "Servizi trasporto → prezzi alla produzione servizi B2B"
+
+  - id: rule_office_supplies
+    if:
+      cpv_pattern: "3019"
+    then:
+      family: ppi
+      confidence: high
+      note: "Attrezzature ufficio → prezzi alla produzione industria"
+
+  - id: rule_computers
+    if:
+      cpv_pattern: "302"
+    then:
+      family: ppi
+      confidence: high
+      note: "Computer e periferiche → prezzi alla produzione industria"
+
+  - id: rule_office_machinery
+    if:
+      cpv_pattern: "303"
+    then:
+      family: ppi
+      confidence: high
+      note: "Macchine ufficio → prezzi alla produzione industria"
+
+  - id: rule_vehicle_repair
+    if:
+      cpv_pattern: "501"
+    then:
+      family: ppi_services
+      confidence: high
+      note: "Riparazione veicoli → prezzi alla produzione servizi B2B"
+
+  - id: rule_railway_transport
+    if:
+      cpv_pattern: "602"
+    then:
+      family: ppi_services
+      confidence: high
+      note: "Trasporto ferroviario → prezzi alla produzione servizi B2B"
+
+  # Regole medium: match probabile ma richiedono conferma
+  - id: rule_computer_repair
+    if:
+      cpv_pattern: "503"
+    then:
+      family: ppi_services
+      confidence: medium
+      note: "Riparazione computer → verificare se contratto a prevalente manodopera"
+    follow_up_questions:
+      - "La componente prevalente del contratto è manodopera o materiali?"
+      - "Il servizio include fornitura di parti di ricambio significativa?"
+
+  - id: rule_equipment_repair
+    if:
+      cpv_pattern: "504"
+    then:
+      family: ppi_services
+      confidence: medium
+      note: "Riparazione apparecchi → verificare incidenza materiali"
+
+  # Regole weak: mapping debole, decidere con domande
+  - id: rule_labour_default
+    if:
+      contract_type: service
+      labour_intensive: true
+    then:
+      family: labour_index
+      confidence: medium
+      note: "Contratto a prevalente contenuto di manodopera → retribuzioni contrattuali orarie"
+
+  - id: rule_mixed_contract
+    if:
+      contract_type: mixed
+    then:
+      family: null
+      confidence: low
+      note: "Contratto misto → necessaria scomposizione per componenti economiche"
+    follow_up_questions:
+      - "È possibile distinguere quote economiche omogenee per tipologia?"
+      - "Quale componente prevale in valore: servizi, forniture o manodopera?"
+      - "Si intende utilizzare un indice composito pesato?"
+
+  - id: rule_instant_execution_warning
+    if:
+      instant_execution: true
+    then:
+      family: null
+      confidence: low
+      note: "Prestazione a esecuzione istantanea → possibile non applicabilità revisione prezzi"
+    follow_up_questions:
+      - "Confermare che la revisione prezzi sia comunque applicabile? (motivazione obbligatoria)"

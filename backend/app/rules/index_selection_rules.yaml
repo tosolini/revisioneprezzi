@@ -1,0 +1,74 @@
+# Regole di selezione famiglia → serie ISTAT ammissibili
+
+mappings:
+  - family: consumer_or_supply
+    primary_series: ISTAT_NIC_GEN
+    alternatives:
+      - ISTAT_NIC_ALIM
+      - ISTAT_NIC_ABBL
+      - ISTAT_NIC_MOBL
+      - ISTAT_NIC_TRAS
+    selection_rationale: "Beni di consumo → NIC generale o specifico per categoria ECOICOP"
+    ateco_mapping: false
+
+  - family: ppi
+    primary_series: ISTAT_PPI_MAN
+    alternatives:
+      - ISTAT_PPI_MAN_ALIM
+      - ISTAT_PPI_MAN_TESS
+      - ISTAT_PPI_MAN_LEG
+      - ISTAT_PPI_MAN_CHIM
+      - ISTAT_PPI_MAN_FARM
+      - ISTAT_PPI_MAN_CARTA
+      - ISTAT_PPI_MAN_MET
+      - ISTAT_PPI_MAN_ELET
+      - ISTAT_PPI_MAN_MAC
+      - ISTAT_PPI_MAN_MEZZ
+      - ISTAT_PPI_MAN_MOB
+    selection_rationale: "Produzione industriale → prezzi alla produzione industria per settore ATECO"
+    ateco_mapping: true
+    mapping_source: "ATECO division → PPI series (ISTAT)"
+
+  - family: ppi_services
+    primary_series: ISTAT_PS_BUSINESS_H_N_XK
+    alternatives:
+      - ISTAT_PS_BUSINESS_H
+      - ISTAT_PS_BUSINESS_J
+      - ISTAT_PS_BUSINESS_N
+      - ISTAT_PS_BUSINESS_81
+      - ISTAT_PS_BUSINESS_49
+      - ISTAT_PS_BUSINESS_52
+      - ISTAT_PS_BUSINESS_62
+      - ISTAT_PS_BUSINESS_69
+      - ISTAT_PS_BUSINESS_71
+      - ISTAT_PS_BUSINESS_77
+      - ISTAT_PS_BUSINESS_78
+      - ISTAT_PS_BUSINESS_80
+    selection_rationale: "Servizi → prezzi alla produzione servizi B2B totale o per settore ATECO"
+    ateco_mapping: true
+    mapping_source: "ATECO division → PPI services series (ISTAT)"
+
+  - family: labour_index
+    primary_series: ISTAT_RCO_SETT_C
+    alternatives:
+      - ISTAT_RCO_SETT_A
+      - ISTAT_RCO_SETT_B
+      - ISTAT_RCO_SETT_D
+      - ISTAT_RCO_SETT_E
+      - ISTAT_RCO_SETT_F
+      - ISTAT_RCO_SETT_G
+      - ISTAT_RCO_SETT_H
+      - ISTAT_RCO_SETT_I
+      - ISTAT_RCO_SETT_J
+      - ISTAT_RCO_SETT_K
+      - ISTAT_RCO_SETT_L
+      - ISTAT_RCO_SETT_M
+      - ISTAT_RCO_SETT_N
+      - ISTAT_RCO_SETT_O
+      - ISTAT_RCO_SETT_P
+      - ISTAT_RCO_SETT_Q
+      - ISTAT_RCO_SETT_R
+      - ISTAT_RCO_SETT_S
+    selection_rationale: "Retribuzioni contrattuali orarie per settore ATECO di riferimento"
+    ateco_mapping: true
+    mapping_source: "ATECO sector → RCO series (ISTAT)"

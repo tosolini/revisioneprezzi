@@ -1,0 +1,220 @@
+cpv_code,description
+90910000-9,servizi di pulizia
+90911000-6,servizi di pulizia alloggi
+90911200-8,servizi di pulizia edifici
+90912000-3,servizi di pulizia pozzi neri
+90913000-0,servizi di pulizia serbatoi e cisterne
+90914000-7,servizi di pulizia piste aeroportuali
+90915000-4,servizi di pulizia forni e camini
+90916000-1,servizi di pulizia apparecchi telefonici
+90917000-8,servizi di pulizia attrezzature da trasporto
+90918000-5,servizi di pulizia industriali
+90919000-2,servizi di pulizia uffici e commerciali
+90920000-2,servizi di pulizia industriali
+90921000-9,servizi di disinfezione
+90922000-6,servizi di disinfestazione
+90923000-3,servizi di derattizzazione
+90924000-0,servizi di fumigazione
+39830000-9,prodotti per pulizia
+90500000-2,servizi di smaltimento rifiuti e scorie
+90511000-2,servizi di raccolta rifiuti
+90512000-9,servizi di smaltimento rifiuti
+90513000-6,servizi di trattamento e smaltimento rifiuti non pericolosi
+90514000-3,servizi di riciclaggio
+90520000-8,servizi connessi a scorie radioattive
+90530000-1,gestione di una discarica
+90540000-4,smaltimento e trattamento rifiuti
+90550000-7,servizi di trattamento rifiuti
+90560000-0,servizi di rimozione amianto
+90600000-3,servizi di pulizia stradale e spazzamento
+90610000-6,servizi di pulizia stradale
+90620000-9,servizi di sgombero neve
+90630000-2,servizi di rimozione ghiaccio
+90700000-4,servizi ambientali
+90900000-6,servizi di pulizia e sanificazione
+30190000-7,attrezzature e forniture per ufficio
+30191000-4,attrezzature per ufficio
+30192000-1,forniture per ufficio
+30200000-1,apparecchiature e forniture informatiche
+30210000-4,macchine per elaborazione dati
+30211000-1,elaboratore mainframe
+30212000-8,minicomputer
+30213000-5,computer personali
+30214000-2,workstation
+30215000-9,hardware microcomputer
+30216000-6,stampanti e plotter
+30220000-7,apparecchiature per cartografia digitale
+30230000-0,apparecchiature informatiche
+30231000-7,schermi e console per computer
+30232000-4,apparecchiature periferiche
+30232100-5,stampanti
+30232200-6,scanner
+30233000-1,dispositivi di memorizzazione
+30234000-8,lettori CD-ROM
+30235000-5,proiettori
+30236000-2,apparecchiature informatiche varie
+30300000-8,computer
+30310000-1,macchine per ufficio
+30320000-4,apparecchiature elettroniche per ufficio
+30330000-7,noleggio computer
+50100000-6,servizi di riparazione e manutenzione veicoli a motore
+50110000-9,riparazione e manutenzione veicoli a motore
+50111000-6,riparazione e manutenzione autovetture
+50112000-3,riparazione e manutenzione furgoni
+50113000-0,riparazione e manutenzione autobus
+50114000-7,riparazione e manutenzione autocarri
+50115000-4,riparazione e manutenzione motocicli
+50116000-1,riparazione e manutenzione parti di veicoli a motore
+50117000-8,riparazione e manutenzione conversioni veicoli a motore
+50118000-5,riparazione e manutenzione veicoli di soccorso
+50118100-6,riparazione e manutenzione veicoli antincendio
+50118200-7,riparazione e manutenzione ambulanze
+50118300-8,riparazione e manutenzione veicoli di soccorso stradale
+50118400-9,riparazione e manutenzione veicoli blindati
+50118500-0,riparazione e manutenzione veicoli spazzamento stradale
+50118600-1,riparazione e manutenzione veicoli sgombero neve
+50118700-2,riparazione e manutenzione veicoli raccolta rifiuti
+50118800-3,riparazione e manutenzione attrezzature officina
+50118900-4,riparazione e manutenzione biciclette
+50200000-9,riparazione e manutenzione macchinari agricoli e forestali
+50300000-0,riparazione e manutenzione computer personali
+50310000-1,riparazione e manutenzione periferiche informatiche
+50311000-8,riparazione e manutenzione stampanti
+50312000-5,riparazione e manutenzione scanner
+50313000-2,riparazione e manutenzione fotocopiatrici
+50314000-9,riparazione e manutenzione fax
+50315000-6,riparazione e manutenzione apparecchi telefonici
+50316000-3,riparazione e manutenzione centralini telefonici
+50317000-0,riparazione e manutenzione apparecchi radio
+50318000-7,riparazione e manutenzione apparecchi televisivi
+50320000-4,riparazione e manutenzione apparecchi fotografici
+50321000-1,riparazione e manutenzione macchine fotografiche
+50322000-8,riparazione e manutenzione apparecchi cinematografici
+50323000-5,riparazione e manutenzione apparecchi video
+50324000-2,riparazione e manutenzione apparecchi medicali
+50324100-3,riparazione e manutenzione apparecchi dentali
+50324200-4,riparazione e manutenzione apparecchi chirurgici
+50325000-9,riparazione e manutenzione apparecchi di sicurezza
+50326000-6,riparazione e manutenzione parcometri elettronici
+50327000-3,riparazione e manutenzione apparecchi telecomunicazioni
+50328000-0,riparazione e manutenzione apparecchi radiotelefonici
+50329000-7,riparazione e manutenzione apparecchi videotelefonici
+50330000-5,riparazione e manutenzione apparecchi fotografici
+50331000-2,riparazione e manutenzione fotocopiatrici
+50332000-9,riparazione e manutenzione apparecchi microfilm
+50333000-6,riparazione e manutenzione apparecchi radio e tv
+50334000-3,riparazione e manutenzione apparecchi radar e navigazione
+50335000-0,riparazione e manutenzione strumenti di misura
+50336000-7,riparazione e manutenzione attrezzature di prova
+50340000-8,riparazione e manutenzione apparecchi audio
+50341000-5,riparazione e manutenzione altoparlanti
+50342000-2,riparazione e manutenzione microfoni
+50343000-9,riparazione e manutenzione cuffie
+50344000-6,riparazione e manutenzione amplificatori
+50345000-3,riparazione e manutenzione registratori
+50346000-0,riparazione e manutenzione trasmettitori radio e tv
+50347000-7,riparazione e manutenzione antenne satellitari
+50348000-4,riparazione e manutenzione videoregistratori
+50349000-1,riparazione e manutenzione giochi elettronici
+50400000-1,riparazione e manutenzione apparecchi medicali e di precisione
+50410000-4,riparazione e manutenzione apparecchi di misura e prova
+50411000-1,riparazione e manutenzione contatori elettrici
+50412000-8,riparazione e manutenzione contatori gas
+50413000-5,riparazione e manutenzione contatori acqua
+50414000-2,riparazione e manutenzione tachimetri
+50415000-9,riparazione e manutenzione tassametri
+50416000-6,riparazione e manutenzione parcometri
+50417000-3,riparazione e manutenzione bilance
+50420000-7,riparazione e manutenzione apparecchi medicali e chirurgici
+50421000-4,riparazione e manutenzione apparecchi chirurgici
+50422000-1,riparazione e manutenzione apparecchi dentali
+50423000-8,riparazione e manutenzione apparecchi ottici
+50424000-5,riparazione e manutenzione apparecchi radioterapici
+50425000-2,riparazione e manutenzione apparecchi anestesia
+50426000-9,riparazione e manutenzione apparecchi laboratorio
+50430000-0,riparazione e manutenzione apparecchi fotografici e cinematografici
+50431000-7,riparazione e manutenzione macchine fotografiche
+50432000-4,riparazione e manutenzione proiettori
+50433000-1,riparazione e manutenzione proiettori diapositive
+50434000-8,riparazione e manutenzione proiettori cinematografici
+50435000-5,riparazione e manutenzione apparecchi sonori
+50436000-2,riparazione e manutenzione apparecchi video
+50437000-9,riparazione e manutenzione apparecchi sviluppo fotografico
+50438000-6,riparazione e manutenzione apparecchi sviluppo cinematografico
+60100000-9,servizi di trasporto (escluso trasporto rifiuti)
+60110000-2,servizi di trasporto pubblico su strada
+60111000-9,servizi di trasporto passeggeri
+60112000-6,servizi di trasporto pubblico occasionale passeggeri
+60113000-3,servizi di trasporto pubblico regolare passeggeri
+60120000-5,servizi taxi
+60121000-2,servizi di trasporto passeggeri non di linea
+60122000-5,servizi di autonoleggio con conducente
+60123000-8,trasporto passeggeri con veicoli a trazione animale
+60124000-1,noleggio veicoli passeggeri con conducente
+60125000-4,noleggio veicoli passeggeri escluso autovetture
+60126000-7,servizi conducente per autobus e pullman
+60127000-0,servizi conducente per taxi
+60128000-3,servizi conducente per minibus
+60129000-6,servizi conducente per autovetture a noleggio
+60130000-8,trasporto passeggeri su strada
+60140000-1,trasporto passeggeri non di linea
+60150000-4,trasporto passeggeri con veicoli a trazione animale
+60160000-7,servizio postale su strada
+60161000-4,trasporto pacchi
+60162000-1,servizi di corriere
+60163000-8,trasporto giornali
+60164000-5,trasporto lettere e pacchi
+60165000-2,trasporto valori e depositi
+60166000-9,trasporto bagagli
+60167000-6,trasporto opere d'arte
+60168000-3,trasporto casse funebri
+60169000-0,trasporto aiuti umanitari
+60170000-0,noleggio veicoli passeggeri con conducente
+60171000-7,noleggio autovetture con conducente
+60172000-4,noleggio autobus e pullman con conducente
+60173000-1,noleggio minibus con conducente
+60174000-8,noleggio autovetture a noleggio con conducente
+60175000-5,noleggio veicoli passeggeri escluso autovetture con conducente
+60180000-3,noleggio veicoli passeggeri senza conducente
+60181000-0,noleggio autobus e pullman senza conducente
+60182000-7,noleggio minibus senza conducente
+60183000-4,noleggio autovetture a noleggio senza conducente
+60184000-1,noleggio autovetture senza conducente
+60185000-8,noleggio veicoli passeggeri escluso autovetture senza conducente
+60200000-0,servizi di trasporto ferroviario
+60210000-3,servizi di trasporto pubblico ferroviario
+60211000-0,trasporto passeggeri ferroviario
+60212000-7,servizi di trasporto ferroviario suburbano
+60213000-4,servizi di trasporto ferroviario urbano
+60214000-1,servizi di trasporto ferroviario ad alta velocità
+60215000-8,servizi di trasporto ferroviario a lunga percorrenza
+60216000-5,servizi di trasporto ferroviario regionale
+60217000-2,servizi di trasporto ferroviario internazionale
+60218000-9,servizi di trasporto ferroviario occasionale passeggeri
+60219000-6,servizi di trasporto ferroviario regolare passeggeri
+60220000-6,servizi di trasporto merci ferroviario
+60221000-3,container e carri pianali ferroviari
+60222000-0,servizi di trasporto merci alla rinfusa ferroviario
+60223000-7,servizi di trasporto pacchi e colli ferroviario
+60224000-4,servizi di trasporto autovetture ferroviario
+60225000-1,servizi di trasporto cisterne ferroviario
+60226000-8,noleggio carri ferroviari
+60227000-5,noleggio treni ferroviari
+60228000-2,servizi di manutenzione binari ferroviari
+60229000-9,servizi di segnalamento ferroviario
+60230000-9,servizi di manutenzione ferroviaria
+60231000-6,servizi di manutenzione ponti ferroviari
+60232000-3,servizi di manutenzione gallerie ferroviarie
+60233000-0,servizi di manutenzione passaggi a livello
+60234000-7,servizi di manutenzione marciapiedi ferroviari
+60235000-4,servizi di manutenzione stazioni ferroviarie
+60236000-1,servizi di manutenzione segnali ferroviari
+60237000-8,costruzione binari ferroviari
+60238000-5,costruzione ponti ferroviari
+60239000-2,costruzione gallerie ferroviarie
+60240000-1,attrezzature per trasporto ferroviario
+60241000-8,locomotive ferroviarie
+60242000-5,carrozze passeggeri ferroviarie
+60243000-2,carri merci ferroviari
+60244000-9,container ferroviari
+60245000-6,carri pianali ferroviari

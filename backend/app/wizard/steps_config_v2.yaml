@@ -1,0 +1,294 @@
+# Configurazione semplificata wizard revisione prezzi secondo D.lgs 36/2023 Allegato II.2-bis
+# Ridotto da 8 a 5 step focalizzati sul calcolo
+
+steps:
+  - step: 1
+    key: "tipo_contratto"
+    title: "Tipo di contratto"
+    description: "Seleziona il tipo di contratto per determinare le regole di revisione applicabili"
+    fields:
+      - key: contract_type
+        label: "Tipologia contratto"
+        type: select
+        options:
+          - { value: works, label: "Lavori" }
+          - { value: services, label: "Servizi" }
+          - { value: supplies, label: "Forniture" }
+        required: true
+        hint: "Lavori: soglia 3%, coeff. 90% | Servizi/Forniture: soglia 5%, coeff. 80%"
+      
+      - key: ente
+        label: "Ente / Stazione appaltante"
+        type: text
+        required: false
+      
+      - key: cig
+        label: "CIG"
+        type: text
+        required: false
+      
+      - key: operatore_economico
+        label: "Operatore economico"
+        type: text
+        required: false
+      
+      - key: notes
+        label: "Note"
+        type: textarea
+        required: false
+
+  - step: 2
+    key: "classificazione"
+    title: "Classificazione CPV o TOL"
+    description: "Classifica il contratto secondo CPV (servizi/forniture) o TOL (lavori)"
+    fields:
+      # Mostrato solo se contract_type == 'works'
+      - key: tol_codes
+        label: "Codici TOL (Tipologie Omogenee Lavorazioni)"
+        type: tol_selector
+        required_if:
+          field: contract_type
+          value: works
+        hint: "Seleziona una o più TOL dalla Tabella A.1 (20 tipologie). Se multi-TOL, inserire pesi percentuali."
+        show_if:
+          field: contract_type
+          value: works
+      
+      - key: tol_weights
+        label: "Pesi percentuali TOL (se multi-TOL)"
+        type: json
+        required: false
+        hint: "Esempio: {\"TOL.1\": 60, \"TOL.7\": 40} - totale deve essere 100%"
+        show_if:
+          field: contract_type
+          value: works
+      
+      # Mostrato solo se contract_type in ['services', 'supplies']
+      - key: cpv_primary
+        label: "CPV principale"
+        type: cpv_lookup
+        required_if:
+          field: contract_type
+          operator: in
+          value: [services, supplies]
+        validation:
+          pattern: "^\\d{8}-\\d$"
+          message: "Formato CPV non valido (es. 90910000-9)"
+        hint: "Il sistema associerà automaticamente gli indici ISTAT dalla Tabella D"
+        show_if:
+          field: contract_type
+          operator: in
+          value: [services, supplies]
+      
+      - key: object_description
+        label: "Descrizione oggetto del contratto"
+        type: textarea
+        required: false
+      
+      - key: cpv_secondary
+        label: "CPV secondari (per contratti multi-oggetto)"
+        type: cpv_multi_lookup
+        required: false
+        hint: "Solo per contratti con servizi/forniture di natura diversa"
+        show_if:
+          field: contract_type
+          operator: in
+          value: [services, supplies]
+      
+      - key: cpv_secondary_weights
+        label: "Pesi percentuali CPV secondari"
+        type: json
+        required: false
+        hint: "Esempio: {\"90910000-9\": 60, \"90911000-6\": 40}"
+        show_if:
+          field: contract_type
+          operator: in
+          value: [services, supplies]
+
+  - step: 3
+    key: "dati_contrattuali"
+    title: "Dati contrattuali ed economici"
+    description: "Inserisci importo, data aggiudicazione e periodo di riferimento"
+    fields:
+      - key: contract_amount_total
+        label: "Importo complessivo contrattuale (€)"
+        type: decimal
+        required: true
+        hint: "Importo risultante dal provvedimento di aggiudicazione"
+      
+      - key: amount_subject_to_revision
+        label: "Importo assoggettabile a revisione (€)"
+        type: decimal
+        required: true
+        hint: "Può differire dall'importo totale se parte è esclusa"
+      
+      - key: excluded_amount
+        label: "Eventuale quota esclusa (€)"
+        type: decimal
+        required: false
+      
+      - key: exclusion_reason
+        label: "Motivazione esclusione"
+        type: textarea
+        required_if:
+          field: excluded_amount
+          operator: ">"
+          value: 0
+      
+      - key: award_date
+        label: "Data aggiudicazione (MM/YYYY)"
+        type: month
+        required: true
+        hint: "Mese di riferimento per l'indice base"
+      
+      - key: comparison_date
+        label: "Data rilevazione corrente (MM/YYYY)"
+        type: month
+        required: true
+        hint: "Mese di riferimento per l'indice di confronto"
+      
+      - key: stipulation_date
+        label: "Data stipula contratto"
+        type: date
+        required: false
+      
+      - key: execution_start_date
+        label: "Data avvio esecuzione"
+        type: date
+        required: false
+
+  - step: 4
+    key: "indici_istat"
+    title: "Indici ISTAT"
+    description: "Conferma gli indici associati automaticamente o seleziona manualmente"
+    auto_evaluate: true
+    evaluation_service: "index_mapping"
+    fields:
+      # Per LAVORI: indici TOL
+      - key: tol_indices
+        label: "Indici TOL associati"
+        type: display_json
+        auto_populated: true
+        hint: "Indici recuperati automaticamente per le TOL selezionate"
+        show_if:
+          field: contract_type
+          value: works
+      
+      # Per SERVIZI/FORNITURE: indici da Tabella D
+      - key: cpv_index_mapping
+        label: "Mappatura CPV → Indici ISTAT"
+        type: display_json
+        auto_populated: true
+        hint: "Associazione automatica dalla Tabella D.1, D.2 o D.3"
+        show_if:
+          field: contract_type
+          operator: in
+          value: [services, supplies]
+      
+      - key: index_table_type
+        label: "Tipo tabella"
+        type: display
+        auto_populated: true
+        hint: "D.1 = indice singolo, D.2 = selezione, D.3 = sistema ponderato"
+        show_if:
+          field: contract_type
+          operator: in
+          value: [services, supplies]
+      
+      # Solo per Tabella D.2 e D.3: ponderazioni
+      - key: index_weights
+        label: "Ponderazione indici (se applicabile)"
+        type: json
+        required: false
+        hint: "Richiesto per Tabella D.2 (selezione) e D.3 (sistema ponderato)"
+        show_if:
+          field: index_table_type
+          operator: in
+          value: [D2, D3]
+      
+      - key: override_index
+        label: "Sovrascrivi indice automatico?"
+        type: boolean
+        required: false
+        default: false
+      
+      - key: manual_index_series_id
+        label: "Indice manuale"
+        type: select
+        options_from_service: true
+        required_if:
+          field: override_index
+          value: true
+      
+      - key: override_reason
+        label: "Motivazione scelta manuale"
+        type: textarea
+        required_if:
+          field: override_index
+          value: true
+        hint: "Richiesto dall'Art. 11 comma 5 in caso di indici diversi dalla Tabella D"
+
+  - step: 5
+    key: "calcolo_finale"
+    title: "Calcolo revisione prezzi"
+    description: "Riepilogo e calcolo automatico della revisione"
+    auto_evaluate: true
+    evaluation_service: "price_revision_calculation"
+    fields:
+      # Output di calcolo
+      - key: calculation_result
+        label: "Risultato calcolo"
+        type: display_json
+        auto_populated: true
+        readonly: true
+      
+      # - key: final_notes
+      #   label: "Note finali dell'istruttore"
+      #   type: textarea
+      #   required: false
+
+# Regole di branching semplificate
+branching_rules:
+  - if:
+      step: 1
+      field: contract_type
+      operator: "=="
+      value: works
+    then:
+      next_step_hint: "Procederai con classificazione TOL (Tabella A)"
+      applicable_threshold: "3%"
+      applicable_coefficient: "90%"
+  
+  - if:
+      step: 1
+      field: contract_type
+      operator: in
+      value: [services, supplies]
+    then:
+      next_step_hint: "Procederai con classificazione CPV (Tabella D)"
+      applicable_threshold: "5%"
+      applicable_coefficient: "80%"
+  
+  - if:
+      step: 2
+      field: cpv_secondary
+      operator: exists
+    then:
+      show_warning: "Contratto multi-oggetto: sarà necessaria la media ponderata delle variazioni (Art. 13)"
+
+# Parametri normativi
+normative_params:
+  works:
+    threshold_percent: 3.0
+    recognition_rate_percent: 90.0
+    reference_article: "Art. 3 comma 2-3, Allegato II.2-bis"
+  
+  services:
+    threshold_percent: 5.0
+    recognition_rate_percent: 80.0
+    reference_article: "Art. 3 comma 2-3, Allegato II.2-bis"
+  
+  supplies:
+    threshold_percent: 5.0
+    recognition_rate_percent: 80.0
+    reference_article: "Art. 3 comma 2-3, Allegato II.2-bis"

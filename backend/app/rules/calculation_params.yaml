@@ -1,0 +1,43 @@
+# Parametri normativi configurabili per il calcolo della revisione prezzi
+
+activation_threshold:
+  value: 5.0
+  unit: percent
+  description: "Soglia di attivazione della revisione prezzi (5% dell'importo complessivo)"
+  source: "D.Lgs. 36/2023 art. 60 e Allegato II.2-bis"
+
+recognition_rate:
+  value: 80.0
+  unit: percent
+  description: "Percentuale riconoscibile della variazione eccedente la soglia"
+  source: "D.Lgs. 36/2023 art. 60 e Allegato II.2-bis"
+
+data_policy:
+  definitive_only: true
+  description: "Devono essere usati esclusivamente dati ISTAT definitivi, non provvisori"
+  source: "ISTAT — nota tecnica applicazione art. 60"
+  on_provisional_data:
+    action: block
+    message: "La serie selezionata presenta dati provvisori per il periodo richiesto. Utilizzare solo dati definitivi."
+
+rounding:
+  decimals: 2
+  method: "half_up"
+
+calculation_steps:
+  - step: "Variazione percentuale"
+    formula: "((valore_confronto - valore_base) / valore_base) * 100"
+  - step: "Verifica soglia"
+    formula: "se variazione% <= soglia → nessuna revisione"
+  - step: "Calcolo eccedenza"
+    formula: "eccedenza = variazione% - soglia"
+  - step: "Applicazione coefficiente"
+    formula: "importo_revisione = importo_assoggettabile * (eccedenza / 100) * (coefficiente / 100)"
+
+composite_index:
+  enabled: true
+  description: "Supporto a indice composito pesato per contratti misti"
+  max_components: 5
+  weight_constraint:
+    type: "sum_to_100"
+    message: "I pesi delle componenti devono sommarsi a 100"

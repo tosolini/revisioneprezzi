@@ -1,0 +1,186 @@
+# Configurazione dei passi del wizard di revisione prezzi
+
+steps:
+  - step: 1
+    key: "apertura_pratica"
+    title: "Apertura pratica"
+    description: "Inserire i dati generali della pratica di revisione prezzi"
+    fields:
+      - key: ente
+        label: "Ente / Stazione appaltante"
+        type: text
+        required: false
+      - key: cig
+        label: "CIG"
+        type: text
+        required: false
+      - key: cup
+        label: "CUP"
+        type: text
+        required: false
+      - key: lotto
+        label: "Lotto / Contratto"
+        type: text
+        required: false
+      - key: operatore_economico
+        label: "Operatore economico"
+        type: text
+        required: false
+      - key: notes
+        label: "Note iniziali"
+        type: textarea
+        required: false
+
+  - step: 2
+    key: "inquadramento_contratto"
+    title: "Inquadramento contratto"
+    description: "Specificare la tipologia contrattuale e i parametri essenziali"
+    fields:
+      - key: contract_type
+        label: "Tipologia contratto"
+        type: select
+        options:
+          - { value: service, label: "Servizio" }
+          - { value: supply, label: "Fornitura" }
+          - { value: mixed, label: "Misto servizi-forniture" }
+        required: true
+      - key: is_duration_contract
+        label: "Contratto di durata?"
+        type: boolean
+        required: true
+      - key: instant_execution
+        label: "Prestazione a esecuzione istantanea?"
+        type: boolean
+        required: true
+        warnings:
+          - condition: true
+            message: "La revisione prezzi potrebbe non essere applicabile secondo l'Allegato II.2-bis. Confermare per proseguire con motivazione."
+      - key: stipulation_date
+        label: "Data stipula"
+        type: date
+        required: false
+      - key: execution_start_date
+        label: "Data avvio esecuzione"
+        type: date
+        required: false
+      - key: duration_months
+        label: "Durata contrattuale (mesi)"
+        type: integer
+        required: false
+      - key: contract_amount_total
+        label: "Importo complessivo contrattuale (€)"
+        type: decimal
+        required: false
+      - key: amount_subject_to_revision
+        label: "Importo assoggettabile a revisione (€)"
+        type: decimal
+        required: false
+
+  - step: 3
+    key: "classificazione_cpv"
+    title: "Classificazione CPV"
+    description: "Inserire l'importo complessivo e assegnare i codici CPV con le relative percentuali"
+    fields:
+      - key: cpv_total_amount
+        label: "Importo complessivo CPV (€)"
+        type: decimal
+        required: true
+        hint: "Precaricato dall'importo assoggettabile a revisione (step 2). Modificabile."
+      - key: cpv_primary
+        label: "CPV principale"
+        type: text
+        required: true
+        validation:
+          pattern: "^\\d{8}-\\d$"
+          message: "Formato CPV non valido (es. 90910000-9)"
+      - key: object_description
+        label: "Descrizione oggetto del contratto"
+        type: textarea
+        required: false
+      - key: cpv_secondary
+        label: "CPV secondari (separati da virgola)"
+        type: text
+        required: false
+      - key: cpv_secondary_weights
+        label: "Pesi percentuali CPV secondari (es. 30,20,50)"
+        type: text
+        required: false
+
+  - step: 4
+    key: "selezione_indice"
+    title: "Selezione indice revisionale"
+    description: "Il sistema associa automaticamente un indice ISTAT al CPV inserito. Se non trova corrispondenza, scegliere manualmente l'indice appropriato."
+    auto_evaluate: true
+    evaluation_service: "index_selection"
+    fields:
+      - key: selected_index_series_id
+        label: "Serie ISTAT"
+        type: select
+        options_from_service: true
+        required: true
+      - key: override_reason
+        label: "Motivazione scelta (se manuale)"
+        type: textarea
+        required: false
+
+  - step: 5
+    key: "parametri_temporali"
+    title: "Parametri temporali ed economici"
+    description: "Inserire il periodo base e il periodo di confronto"
+    fields:
+      - key: base_period
+        label: "Periodo base (AAAA-MM)"
+        type: month
+        required: true
+      - key: comparison_period
+        label: "Periodo di confronto (AAAA-MM)"
+        type: month
+        required: true
+      - key: amount_subject_to_revision
+        label: "Importo assoggettabile a revisione (€)"
+        type: decimal
+        required: true
+      - key: excluded_amount
+        label: "Eventuale quota esclusa (€)"
+        type: decimal
+        required: false
+      - key: exclusion_reason
+        label: "Motivazione esclusione"
+        type: textarea
+        required_if:
+          field: excluded_amount
+          operator: ">"
+          value: 0
+
+  - step: 6
+    key: "calcolo"
+    title: "Calcolo revisione"
+    description: "Riepilogo e calcolo della revisione prezzi"
+    auto_evaluate: true
+    evaluation_service: "calculation"
+    fields: []
+
+  - step: 7
+    key: "report_finale"
+    title: "Report finale"
+    description: "Riepilogo completo della pratica e generazione del report"
+    auto_evaluate: true
+    evaluation_service: "report"
+    fields: []
+
+branching_rules:
+  - if:
+      step: 2
+      field: contract_type
+      operator: "=="
+      value: mixed
+    then:
+      show_warning: "Contratto misto: potrebbe essere necessario un indice composito pesato"
+
+  - if:
+      step: 2
+      field: instant_execution
+      operator: "=="
+      value: true
+    then:
+      show_warning: "Prestazione a esecuzione istantanea: verificare l'applicabilità della revisione prezzi"
