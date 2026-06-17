@@ -6,7 +6,7 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture e lavori**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Supporta sia il wizard classico a 8 passi (V1) sia il wizard semplificato a 5 passi (V2) con supporto TOL per i lavori.
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture e lavori**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Supporta sia il wizard classico a 7 passi (V1) sia il wizard semplificato a 5 passi (V2) con supporto TOL per i lavori.
 
 ### Funzionalità principali
 
@@ -38,7 +38,7 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 
 ```bash
 # Clona il repository
-git clone <repo-url> && cd revprezzi
+git clone https://github.com/tosolini/revisioneprezzi.git && cd revprezzi
 
 # Copia e modifica le variabili d'ambiente (cambia la password!)
 cp .env.example .env
@@ -61,11 +61,11 @@ open http://localhost:3000
 
 | Comando | Descrizione |
 |---------|------------|
-| `make build` | Builda tutti i container |
+| `make build` | Costruisce tutti i container |
 | `make up` | Avvia i servizi in background |
 | `make down` | Ferma i servizi |
 | `make migrate` | Applica le migrazioni Alembic |
-| `make seed` | Seed dei cataloghi |
+| `make seed` | Popola i cataloghi |
 | `make test` | Esegue i test |
 | `make lint` | Esegue ruff linter |
 | `make logs` | Log del backend |
@@ -144,4 +144,7 @@ Endpoint principali:
 Uso interno per pubbliche amministrazioni e professionisti del settore.
 
 ## Contributi
-autore: [Walter Tosolini](https://www.tosolini.info)
+
+Segnala bug o proponi nuove funzionalità via [GitHub Issues](.github/ISSUE_TEMPLATE/).
+
+Autore: [Walter Tosolini](https://www.tosolini.info)
