@@ -34,3 +34,6 @@ htmlcov/
 *source/
 *docs/
 
+# Large CSV (not needed, data imported directly)
+backend/istat_nic_ecoicop2.csv
+
