@@ -37,3 +37,7 @@ htmlcov/
 # Large CSV (not needed, data imported directly)
 backend/istat_nic_ecoicop2.csv
 
+# Node
+node_modules/
+frontend/node_modules/
+
