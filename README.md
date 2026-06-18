@@ -34,24 +34,36 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 
 ---
 
-## Avvio rapido
+## Immagini Docker (GitHub Container Registry)
+
+Le immagini Docker sono pubblicate automaticamente su GitHub Container Registry per ogni push su `main` e per ogni tag `v*`:
+
+| Servizio | Immagine |
+|----------|----------|
+| backend | `ghcr.io/tosolini/revisioneprezzi/backend` |
+| frontend | `ghcr.io/tosolini/revisioneprezzi/frontend` |
+| parser | `ghcr.io/tosolini/revisioneprezzi/parser` |
+
+### Con immagini pre-built (consigliato)
 
 ```bash
-# Clona il repository
 git clone https://github.com/tosolini/revisioneprezzi.git && cd revprezzi
-
-# Copia e modifica le variabili d'ambiente (cambia la password!)
 cp .env.example .env
-
-# Build e avvio
-make build
-make up
-
-# Applica le migrazioni e seed dei dati
+docker compose up -d
 make migrate
 make seed
+open http://localhost:3000
+```
 
-# Apri nel browser
+### Build locale per sviluppo
+
+```bash
+git clone https://github.com/tosolini/revisioneprezzi.git && cd revprezzi
+cp .env.example .env
+docker compose -f docker-compose-build.yml build
+docker compose -f docker-compose-build.yml up -d
+make migrate
+make seed
 open http://localhost:3000
 ```
 
@@ -61,7 +73,6 @@ open http://localhost:3000
 
 | Comando | Descrizione |
 |---------|------------|
-| `make build` | Costruisce tutti i container |
 | `make up` | Avvia i servizi in background |
 | `make down` | Ferma i servizi |
 | `make migrate` | Applica le migrazioni Alembic |
@@ -69,6 +80,7 @@ open http://localhost:3000
 | `make test` | Esegue i test |
 | `make lint` | Esegue ruff linter |
 | `make logs` | Log del backend |
+| `make build` | Build locale con `docker-compose-build.yml` |
 
 ---
 

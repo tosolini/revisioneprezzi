@@ -1,8 +1,11 @@
 services:
   backend:
-    image: ghcr.io/tosolini/revisioneprezzi/backend:latest
+    build: ./backend
+    # Bind to localhost only — this is a local-only app, do not expose to the LAN.
     ports:
       - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend:/app
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-revuser}:${POSTGRES_PASSWORD:-changeme-local-only}@db:5432/${POSTGRES_DB:-revision_db}
       - DEBUG=${DEBUG:-false}
@@ -10,16 +13,18 @@ services:
       - db
 
   frontend:
-    image: ghcr.io/tosolini/revisioneprezzi/frontend:latest
+    build: ./frontend
     ports:
       - "127.0.0.1:3000:80"
     depends_on:
       - backend
 
   parser:
-    image: ghcr.io/tosolini/revisioneprezzi/parser:latest
+    build: ./parser
     ports:
       - "127.0.0.1:8002:8002"
+    volumes:
+      - ./parser:/app
 
   db:
     image: postgres:16-alpine
