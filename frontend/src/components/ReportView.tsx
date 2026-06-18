@@ -1,3 +1,5 @@
+import type { JSX } from 'react'
+
 interface CalcResult {
   series_id?: string
   base_value?: number

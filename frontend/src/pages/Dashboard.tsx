@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [totalSteps, setTotalSteps] = useState(8)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigate = useNavigate()
 
   const load = async (q?: string) => {

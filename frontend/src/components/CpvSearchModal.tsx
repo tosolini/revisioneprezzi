@@ -16,7 +16,7 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
   const [results, setResults] = useState<CpvHit[]>([])
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (open) {
