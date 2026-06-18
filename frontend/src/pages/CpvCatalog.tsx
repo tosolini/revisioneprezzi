@@ -20,7 +20,7 @@ export default function CpvCatalog() {
       params.set('offset', String(off))
       if (q && q.trim()) params.set('q', q.trim())
       fetch(`/api/v1/cpv?${params.toString()}`)
-        .then(r => r.json())
+        .then(r => r.ok ? r.json() : [])
         .then(data => {
           setResults(data.results || [])
           setHasMore(Boolean(data.has_more))
@@ -75,6 +75,11 @@ export default function CpvCatalog() {
       const form = new FormData()
       form.append('file', file)
       const resp = await fetch('/api/v1/cpv/import-zip', { method: 'POST', body: form })
+      if (!resp.ok) {
+        const text = await resp.text()
+        alert('Import fallito (' + resp.status + '): ' + text.slice(0, 300))
+        return
+      }
       const data = await resp.json()
       if (resp.ok) {
         fetchList(query, offset)
