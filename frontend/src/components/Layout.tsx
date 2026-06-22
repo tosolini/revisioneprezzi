@@ -1,8 +1,8 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import pkg from '../../package.json'
 
-const APP_VERSION = '1.0.1'
-const BUILD_DATE = '11/06/2026'
+declare const __BUILD_DATE__: string
 const AUTHOR = 'Walter Tosolini'
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -53,7 +53,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         background: '#1a1a2e', color: '#9ca3af', padding: '12px 24px',
         textAlign: 'center', fontSize: 12, borderTop: '1px solid #2d2d4e',
       }}>
-        Revisione Prezzi v{APP_VERSION} del {BUILD_DATE} &mdash; Autore: {AUTHOR}
+        Revisione Prezzi v{pkg.version} del {__BUILD_DATE__} &mdash; Autore: {AUTHOR}
       </footer>
     </div>
   )
