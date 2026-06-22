@@ -130,4 +130,23 @@ export const api = {
         body: JSON.stringify({ device_id: deviceId, preferences }),
       }),
   },
+  backup: {
+    export: () => {
+      const a = document.createElement('a')
+      a.href = '/api/v1/backup/export'
+      a.download = ''
+      a.click()
+    },
+    import: async (file: File): Promise<string> => {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/v1/backup/import', { method: 'POST', body: form })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail || res.statusText)
+      }
+      const data = await res.json()
+      return data.detail
+    },
+  },
 }
