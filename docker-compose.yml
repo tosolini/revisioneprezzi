@@ -22,7 +22,7 @@ services:
       - "127.0.0.1:8002:8002"
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16
     command:
       - postgres
       - -c
