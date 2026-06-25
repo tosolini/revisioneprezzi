@@ -36,26 +36,26 @@ export default function TolCatalog() {
   return (
     <div>
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Tipologie Omogenee Lavorazioni (TOL)</h2>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: 14 }}>
+        <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>
           Tabella A.1 — Elenco delle venti TOL e relative declaratorie (Tabella A.2) — Allegato II.2-bis D.Lgs. 36/2023
         </p>
       </div>
 
       <div style={{
-        background: '#fff', borderRadius: 12, overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', borderRadius: 12, overflow: 'hidden',
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #e5e7eb', background: '#f9fafb' }}>
-              <th style={{ textAlign: 'left', padding: '10px 14px', color: '#6b7280', fontWeight: 600, width: 90 }}>Codice</th>
-              <th style={{ textAlign: 'left', padding: '10px 14px', color: '#6b7280', fontWeight: 600 }}>Descrizione</th>
-              <th style={{ textAlign: 'center', padding: '10px 14px', color: '#6b7280', fontWeight: 600, width: 100 }}>Tipo</th>
-              <th style={{ textAlign: 'center', padding: '10px 14px', color: '#6b7280', fontWeight: 600, width: 60 }}></th>
+            <tr style={{ borderBottom: '2px solid #e5e7eb', background: 'var(--color-bg-offset)' }}>
+              <th style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--color-text-muted)', fontWeight: 600, width: 90 }}>Codice</th>
+              <th style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Descrizione</th>
+              <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--color-text-muted)', fontWeight: 600, width: 100 }}>Tipo</th>
+              <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--color-text-muted)', fontWeight: 600, width: 60 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -68,23 +68,23 @@ export default function TolCatalog() {
                     onClick={() => setExpanded(isOpen ? null : tol.code)}
                     style={{
                       borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
-                      background: isOpen ? '#f9fafb' : undefined,
+                      background: isOpen ? 'var(--color-bg-offset)' : undefined,
                     }}
                   >
-                    <td style={{ padding: '12px 14px', fontWeight: 700, fontFamily: 'monospace', color: '#1a1a2e' }}>
+                    <td style={{ padding: '12px 14px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-primary)' }}>
                       {tol.code}
                     </td>
-                    <td style={{ padding: '12px 14px', color: '#374151' }}>{tol.label}</td>
+                    <td style={{ padding: '12px 14px', color: 'var(--color-text-secondary)' }}>{tol.label}</td>
                     <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                       <span style={{
                         padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600,
-                        background: tol.isSpecialized ? '#dbeafe' : '#f3f4f6',
-                        color: tol.isSpecialized ? '#1e40af' : '#6b7280',
+                        background: tol.isSpecialized ? 'var(--color-bg-info)' : 'var(--color-border-lighter)',
+                        color: tol.isSpecialized ? 'var(--color-text-info)' : 'var(--color-text-muted)',
                       }}>
                         {tol.isSpecialized ? 'Specializzata' : 'Generale'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', color: '#9ca3af' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--color-text-light)' }}>
                       {isOpen ? '▲' : '▼'}
                     </td>
                   </tr>
@@ -92,8 +92,8 @@ export default function TolCatalog() {
                     <tr key={`${tol.code}-desc`}>
                       <td colSpan={4} style={{ padding: '0 14px 14px 14px' }}>
                         <div style={{
-                          padding: 12, background: '#f9fafb', borderRadius: 8,
-                          fontSize: 12, color: '#374151', lineHeight: 1.7,
+                          padding: 12, background: 'var(--color-bg-offset)', borderRadius: 8,
+                          fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.7,
                           borderLeft: '3px solid #1a1a2e',
                         }}>
                           {tol.description}

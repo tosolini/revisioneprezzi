@@ -119,11 +119,11 @@ export default function AtecoCatalog() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Catalogo ATECO</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {latestFetchStr && <div style={{ color: '#9ca3af', fontSize: 13 }}>Ultimo fetch: {latestFetchStr}</div>}
-          <button onClick={() => setShowSdmxModal(true)} disabled={importing} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#1a1a2e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+          {latestFetchStr && <div style={{ color: 'var(--color-text-light)', fontSize: 13 }}>Ultimo fetch: {latestFetchStr}</div>}
+          <button onClick={() => setShowSdmxModal(true)} disabled={importing} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
             {importing ? 'Import in corso…' : 'ISTAT (SDMX)'}
           </button>
-          <button onClick={() => setShowZipModal(true)} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#1a1a2e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+          <button onClick={() => setShowZipModal(true)} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
             Da file ZIP
           </button>
         </div>
@@ -140,13 +140,13 @@ export default function AtecoCatalog() {
       </div>
 
       {importMessage && (
-        <div style={{ marginBottom: 12, padding: 10, background: '#f8fafc', borderRadius: 8, color: '#374151' }}>{importMessage}</div>
+        <div style={{ marginBottom: 12, padding: 10, background: 'var(--color-bg-offset)', borderRadius: 8, color: 'var(--color-text-secondary)' }}>{importMessage}</div>
       )}
 
-      <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        {loading && <div style={{ padding: 20, color: '#6b7280' }}>Caricamento…</div>}
+      <div style={{ background: 'var(--color-bg-card)', borderRadius: 8, boxShadow: '0 6px 18px var(--color-shadow)', overflow: 'hidden' }}>
+        {loading && <div style={{ padding: 20, color: 'var(--color-text-muted)' }}>Caricamento…</div>}
         {!loading && results.length === 0 && (
-          <div style={{ padding: 20, color: '#6b7280' }}>Nessun risultato</div>
+          <div style={{ padding: 20, color: 'var(--color-text-muted)' }}>Nessun risultato</div>
         )}
 
         <div>
@@ -165,11 +165,11 @@ export default function AtecoCatalog() {
                 <div style={{ width: 160, fontWeight: level <= 1 ? 700 : 500, fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, monospace' }}>
                   {r.code}
                 </div>
-                <div style={{ color: '#6b7280', flex: 1 }}>{r.description}</div>
+                <div style={{ color: 'var(--color-text-muted)', flex: 1 }}>{r.description}</div>
                 <div style={{
                   fontSize: 11,
-                  color: level <= 1 ? '#4b5563' : '#9ca3af',
-                  background: level <= 1 ? '#f3f4f6' : 'transparent',
+                  color: level <= 1 ? 'var(--color-text-secondary)' : 'var(--color-text-light)',
+                  background: level <= 1 ? 'var(--color-border-lighter)' : 'transparent',
                   padding: level <= 1 ? '2px 6px' : 0,
                   borderRadius: 4,
                   whiteSpace: 'nowrap'
@@ -190,34 +190,34 @@ export default function AtecoCatalog() {
               Successiva
             </button>
           </div>
-          <div style={{ color: '#6b7280', fontSize: 13, alignSelf: 'center' }}>Mostrati {results.length} voci</div>
+          <div style={{ color: 'var(--color-text-muted)', fontSize: 13, alignSelf: 'center' }}>Mostrati {results.length} voci</div>
         </div>
       </div>
 
       {lastImport && (
-        <div style={{ marginTop: 16, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+        <div style={{ marginTop: 16, textAlign: 'center', color: 'var(--color-text-light)', fontSize: 13 }}>
           Ultima importazione: {lastImport}
         </div>
       )}
 
       {showSdmxModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={() => setShowSdmxModal(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} />
-          <div style={{ position: 'relative', background: '#fff', borderRadius: 12, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
+          <div onClick={() => setShowSdmxModal(false)} style={{ position: 'absolute', inset: 0, background: 'var(--color-overlay)' }} />
+          <div style={{ position: 'relative', background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
             <h3 style={{ margin: '0 0 12px' }}>Import da ISTAT (SDMX)</h3>
-            <p style={{ margin: 0, color: '#374151', lineHeight: 1.6 }}>
+            <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               L'importazione dal servizio SDMX di ISTAT potrebbe richiedere molto tempo
               o non funzionare a causa di limitazioni di rete.
             </p>
-            <p style={{ margin: '10px 0 0', color: '#374151', lineHeight: 1.6 }}>
+            <p style={{ margin: '10px 0 0', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               I dati ATECO attualmente presenti <strong>non verranno modificati</strong>
               fino al completamento con successo dell'operazione.
             </p>
             <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowSdmxModal(false)} style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
+              <button onClick={() => setShowSdmxModal(false)} style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #d1d5db', background: 'var(--color-bg-card)', cursor: 'pointer' }}>
                 Annulla
               </button>
-              <button onClick={confirmImport} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
+              <button onClick={confirmImport} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer' }}>
                 Procedi
               </button>
             </div>
@@ -263,35 +263,35 @@ function ImportZipModal({ onClose, onImported }: { onClose: () => void; onImport
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.4)',
+      background: 'var(--color-overlay)',
     }}>
       <div style={{
-        background: '#fff', borderRadius: 12, padding: 28, minWidth: 420,
-        maxWidth: 500, boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+        background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 420,
+        maxWidth: 500, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
       }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>Importa file ZIP ATECO</h3>
-        <div style={{ fontSize: 13, color: '#374151', marginBottom: 16, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
           <p style={{ marginBottom: 12 }}>
             Scarica il file ZIP{' '}
             <a
               href="https://www.istat.it/classificazione/versioni-precedenti-ateco/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: '#1a1a2e', textDecoration: 'underline' }}
+              style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}
             >
               dal Portale ISTAT
             </a>
             .
           </p>
-          <p style={{ fontSize: 12, color: '#6b7280' }}>Seleziona il file ZIP scaricato.</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Seleziona il file ZIP scaricato.</p>
         </div>
         <input type="file" accept=".zip" onChange={e => setFile(e.target.files?.[0] || null)} style={{ marginBottom: 16 }} />
-        {file && <p style={{ fontSize: 12, color: '#374151', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
-        {error && <div style={{ padding: '8px 12px', background: '#fde8e8', color: '#c0392b', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-        {result && <div style={{ padding: '8px 12px', background: '#e8fde8', color: '#2b8c2b', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{result}</div>}
+        {file && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
+        {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+        {result && <div style={{ padding: '8px 12px', background: 'var(--color-bg-success)', color: 'var(--color-text-success)', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{result}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 14 }}>Chiudi</button>
-          <button onClick={handleUpload} disabled={!file || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !file || loading ? '#9ca3af' : '#1a1a2e', color: '#fff', cursor: !file || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione...' : 'Importa ZIP'}</button>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #d1d5db', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14 }}>Chiudi</button>
+          <button onClick={handleUpload} disabled={!file || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !file || loading ? 'var(--color-text-light)' : 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: !file || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione...' : 'Importa ZIP'}</button>
         </div>
       </div>
     </div>

@@ -59,11 +59,11 @@ export default function Dashboard() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Pratiche</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Pratiche</h1>
         <button
           onClick={() => setShowCreate(true)}
           style={{
-            padding: '10px 20px', background: '#1a1a2e', color: '#fff',
+            padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-primary-text)',
             border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
             cursor: 'pointer',
           }}
@@ -73,7 +73,7 @@ export default function Dashboard() {
       </div>
 
       {error && (
-        <div style={{ padding: 12, background: '#fde8e8', color: '#c0392b', borderRadius: 8, marginBottom: 16 }}>
+        <div style={{ padding: 12, background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 16 }}>
           {error}
         </div>
       )}
@@ -83,7 +83,7 @@ export default function Dashboard() {
       }}>
         <svg style={{
           position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-          color: '#9ca3af', pointerEvents: 'none',
+          color: 'var(--color-text-light)', pointerEvents: 'none',
         }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.35-4.35" />
@@ -93,9 +93,9 @@ export default function Dashboard() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           style={{
-            width: '100%', padding: '12px 12px 12px 40px', border: '1px solid #d1d5db',
+            width: '100%', padding: '12px 12px 12px 40px', border: '1px solid var(--color-border)',
             borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box',
-            outline: 'none', background: '#fff',
+            outline: 'none', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
           }}
         />
         {searchQuery && (
@@ -103,7 +103,7 @@ export default function Dashboard() {
             onClick={() => setSearchQuery('')}
             style={{
               position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af',
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)',
               fontSize: 16, padding: '4px 8px',
             }}
           >
@@ -114,10 +114,10 @@ export default function Dashboard() {
 
       {showCreate && (
         <div style={{
-          background: '#fff', padding: 24, borderRadius: 12, marginBottom: 24,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 24,
+          boxShadow: '0 1px 3px var(--color-shadow)',
         }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 0 }}>Nuova pratica</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 0, color: 'var(--color-text-primary)' }}>Nuova pratica</h2>
           <input
             placeholder="Titolo pratica *"
             value={title} onChange={e => setTitle(e.target.value)}
@@ -139,7 +139,7 @@ export default function Dashboard() {
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              style={{ ...btnStyle, background: '#f3f4f6', color: '#374151' }}
+              style={{ ...btnStyle, background: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)' }}
             >
               Annulla
             </button>
@@ -148,11 +148,11 @@ export default function Dashboard() {
       )}
 
       {loading ? (
-        <div style={{ color: '#6b7280' }}>Caricamento...</div>
+        <div style={{ color: 'var(--color-text-muted)' }}>Caricamento...</div>
       ) : cases.length === 0 ? (
         <div style={{
-          background: '#fff', padding: 48, borderRadius: 12, textAlign: 'center',
-          color: '#9ca3af',
+          background: 'var(--color-bg-card)', padding: 48, borderRadius: 12, textAlign: 'center',
+          color: 'var(--color-text-light)',
         }}>
           Nessuna pratica. Creane una nuova per iniziare.
         </div>
@@ -163,27 +163,27 @@ export default function Dashboard() {
               key={c.id}
               onClick={() => navigate(c.current_step > 0 ? `/cases/${c.id}/wizard/${c.current_step}` : `/cases/${c.id}`)}
               style={{
-                background: '#fff', padding: '16px 20px', borderRadius: 10,
+                background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: 10,
                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                alignItems: 'center', boxShadow: '0 1px 2px var(--color-shadow)',
                 transition: 'box-shadow 0.15s',
               }}
             >
               <div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{c.title}</div>
-                <div style={{ fontSize: 13, color: '#6b7280' }}>
+                <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-text-primary)' }}>{c.title}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
                   {c.created_by && `${c.created_by} · `}{formatDate(c.created_at)}
                 </div>
               </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{
                     padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                    background: c.status === 'completed' ? '#d1fae5' : c.status === 'draft' ? '#fef3c7' : '#dbeafe',
-                    color: c.status === 'completed' ? '#065f46' : c.status === 'draft' ? '#92400e' : '#1e40af',
+                    background: c.status === 'completed' ? 'var(--color-bg-success)' : c.status === 'draft' ? 'var(--color-bg-warning)' : 'var(--color-bg-info)',
+                    color: c.status === 'completed' ? 'var(--color-text-success)' : c.status === 'draft' ? 'var(--color-text-warning)' : 'var(--color-text-info)',
                   }}>
                     {statusLabel(c.status)}
                   </span>
-                  <span style={{ fontSize: 13, color: '#9ca3af' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-light)' }}>
                     Step {c.current_step}/{totalSteps}
                   </span>
                   <button
@@ -196,11 +196,11 @@ export default function Dashboard() {
                     title="Elimina pratica"
                     style={{
                       padding: '4px 8px', border: 'none', borderRadius: 6,
-                      background: 'transparent', color: '#9ca3af', cursor: 'pointer',
+                      background: 'transparent', color: 'var(--color-text-light)', cursor: 'pointer',
                       fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#c0392b'; e.currentTarget.style.background = '#fef2f2' }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.background = 'transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-text-error)'; e.currentTarget.style.background = 'var(--color-bg-error)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-light)'; e.currentTarget.style.background = 'transparent' }}
                   >
                     Elimina
                   </button>
@@ -215,12 +215,13 @@ export default function Dashboard() {
 
 const inputStyle: React.CSSProperties = {
   display: 'block', width: '100%', padding: '10px 12px', marginBottom: 8,
-  border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14,
+  border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 14,
   fontFamily: 'inherit', boxSizing: 'border-box',
+  background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
 }
 
 const btnStyle: React.CSSProperties = {
-  padding: '10px 20px', background: '#1a1a2e', color: '#fff',
+  padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-primary-text)',
   border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
   cursor: 'pointer',
 }

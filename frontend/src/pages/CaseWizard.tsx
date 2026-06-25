@@ -345,11 +345,11 @@ export default function CaseWizard() {
   }
 
   if (loading) {
-    return <div style={{ color: '#6b7280', padding: 24 }}>Caricamento step...</div>
+    return <div style={{ color: 'var(--color-text-muted)', padding: 24 }}>Caricamento step...</div>
   }
 
   if (!stepConfig) {
-    return <div style={{ color: '#c0392b', padding: 24 }}>Configurazione step non trovata.</div>
+    return <div style={{ color: 'var(--color-text-error)', padding: 24 }}>Configurazione step non trovata.</div>
   }
 
   return (
@@ -365,8 +365,8 @@ export default function CaseWizard() {
             onClick={() => goStep(s)}
             style={{
               width: 36, height: 36, borderRadius: '50%', border: 'none',
-              background: s === step ? '#1a1a2e' : s < step ? '#d1fae5' : '#e5e7eb',
-              color: s === step ? '#fff' : s < step ? '#065f46' : '#9ca3af',
+              background: s === step ? 'var(--color-primary)' : s < step ? 'var(--color-bg-success)' : 'var(--color-border-light)',
+              color: s === step ? '#fff' : s < step ? 'var(--color-text-success)' : 'var(--color-text-light)',
               fontWeight: 700, fontSize: 14, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -378,17 +378,17 @@ export default function CaseWizard() {
 
       {/* Step title + description */}
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>{stepConfig.title}</h2>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: 14 }}>{stepConfig.description}</p>
+        <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>{stepConfig.description}</p>
       </div>
 
       {/* Warnings */}
       {warnings.map((w, i) => (
         <div key={i} style={{
-          padding: '12px 16px', background: '#fef3c7', color: '#92400e',
+          padding: '12px 16px', background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)',
           borderRadius: 8, marginBottom: 16, fontSize: 14,
         }}>
           ⚠ {w}
@@ -398,7 +398,7 @@ export default function CaseWizard() {
       {/* Error */}
       {error && (
         <div style={{
-          padding: '12px 16px', background: '#fde8e8', color: '#c0392b',
+          padding: '12px 16px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)',
           borderRadius: 8, marginBottom: 16, fontSize: 14,
         }}>
           {error}
@@ -408,7 +408,7 @@ export default function CaseWizard() {
       {/* Indices for CPV — only on step 4 */}
       {cpvIndices.length > 0 && step === 4 && (
         <div style={{
-          background: '#f0fdf4', padding: 16, borderRadius: 8, marginBottom: 16,
+          background: 'var(--color-threshold-ok-bg)', padding: 16, borderRadius: 8, marginBottom: 16,
           border: '1px solid #bbf7d0',
         }}>
           <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>
@@ -419,11 +419,11 @@ export default function CaseWizard() {
               padding: '8px 0', fontSize: 13, borderBottom: '1px solid #e5e7eb',
             }}>
               <strong>{s.name}</strong>
-              <span style={{ color: '#6b7280', marginLeft: 8 }}>({s.id})</span>
-              {s.frequency && <span style={{ color: '#9ca3af', marginLeft: 4 }}>— {s.frequency}</span>}
+              <span style={{ color: 'var(--color-text-muted)', marginLeft: 8 }}>({s.id})</span>
+              {s.frequency && <span style={{ color: 'var(--color-text-light)', marginLeft: 4 }}>— {s.frequency}</span>}
             </div>
           ))}
-          <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280' }}>
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
             Seleziona l'indice desiderato dal menu a tendina qui sotto.
           </div>
         </div>
@@ -431,11 +431,11 @@ export default function CaseWizard() {
 
       {/* Form fields */}
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
         {stepConfig.fields.length === 0 && stepConfig.auto_evaluate && (
-          <div style={{ color: '#6b7280', textAlign: 'center', padding: 24 }}>
+          <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 24 }}>
             Questo step viene elaborato automaticamente dal sistema.
           </div>
         )}
@@ -455,9 +455,9 @@ export default function CaseWizard() {
             if (field.key === 'cpv_primary') {
               return (
                 <div key={field.key} style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#374151' }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                     {field.label}
-                    {field.required && <span style={{ color: '#c0392b' }}> *</span>}
+                    {field.required && <span style={{ color: 'var(--color-text-error)' }}> *</span>}
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
@@ -475,7 +475,7 @@ export default function CaseWizard() {
                       onClick={() => setCpvModalOpen(true)}
                       style={{
                         padding: '10px 16px', borderRadius: 8, border: 'none',
-                        background: '#1a1a2e', color: '#fff', cursor: 'pointer',
+                        background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer',
                         fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
                       }}
                     >
@@ -484,8 +484,8 @@ export default function CaseWizard() {
                   </div>
                   {cpvDescription && (
                     <div style={{
-                      marginTop: 6, fontSize: 13, color: '#6b7280', fontStyle: 'italic',
-                      padding: '6px 10px', background: '#f9fafb', borderRadius: 6,
+                      marginTop: 6, fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic',
+                      padding: '6px 10px', background: 'var(--color-bg-offset)', borderRadius: 6,
                       borderLeft: '3px solid #1a1a2e',
                     }}>
                       {cpvDescription}
@@ -509,13 +509,13 @@ export default function CaseWizard() {
           <div>
             {/* Total amount */}
             <div style={{
-              padding: 16, background: '#f0fdf4', borderRadius: 8, marginBottom: 16,
+              padding: 16, background: 'var(--color-threshold-ok-bg)', borderRadius: 8, marginBottom: 16,
               border: '1px solid #bbf7d0',
             }}>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#374151' }}>
-                Importo complessivo CPV (€) <span style={{ color: '#c0392b' }}>*</span>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                Importo complessivo CPV (€) <span style={{ color: 'var(--color-text-error)' }}>*</span>
               </label>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
                 Precaricato dall'importo assoggettabile a revisione (step 2). Modificabile.
               </div>
               <input
@@ -541,10 +541,10 @@ export default function CaseWizard() {
 
               return (
                 <div style={{
-                  padding: 16, background: '#f9fafb', borderRadius: 8, marginBottom: 16,
+                  padding: 16, background: 'var(--color-bg-offset)', borderRadius: 8, marginBottom: 16,
                   border: '1px solid #e5e7eb',
                 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#374151', marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
                     Distribuzione importo per CPV
                   </div>
 
@@ -554,16 +554,16 @@ export default function CaseWizard() {
                       display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0',
                       borderBottom: secondaryCpvs.length > 0 ? '1px solid #e5e7eb' : 'none',
                     }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, fontFamily: 'monospace', color: '#1a1a2e', minWidth: 110 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, fontFamily: 'monospace', color: 'var(--color-primary)', minWidth: 110 }}>
                         {answers['cpv_primary']}
                       </span>
-                      <span style={{ flex: 1, fontSize: 13, color: '#6b7280' }}>
+                      <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text-muted)' }}>
                         {cpvDescription || 'CPV principale'}
                       </span>
                       <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace', minWidth: 50, textAlign: 'right' }}>
                         {primaryWeight.toFixed(0)}%
                       </span>
-                      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', minWidth: 110, textAlign: 'right', color: '#166534' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', minWidth: 110, textAlign: 'right', color: 'var(--color-text-success)' }}>
                         € {total > 0 ? primaryAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
                       </span>
                     </div>
@@ -577,10 +577,10 @@ export default function CaseWizard() {
                         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0',
                         borderBottom: i < secondaryCpvs.length - 1 ? '1px solid #e5e7eb' : 'none',
                       }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, fontFamily: 'monospace', color: '#1a1a2e', minWidth: 110 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, fontFamily: 'monospace', color: 'var(--color-primary)', minWidth: 110 }}>
                           {sec.code}
                         </span>
-                        <span style={{ flex: 1, fontSize: 13, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {sec.description || '—'}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 110, justifyContent: 'flex-end' }}>
@@ -599,9 +599,9 @@ export default function CaseWizard() {
                               border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'monospace',
                             }}
                           />
-                          <span style={{ fontSize: 13, color: '#6b7280' }}>%</span>
+                          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>%</span>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', minWidth: 110, textAlign: 'right', color: '#166534' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', minWidth: 110, textAlign: 'right', color: 'var(--color-text-success)' }}>
                           € {total > 0 ? secAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
                         </span>
                         <button
@@ -609,7 +609,7 @@ export default function CaseWizard() {
                           onClick={() => setSecondaryCpvs(prev => prev.filter((_, j) => j !== i))}
                           style={{
                             padding: '4px 8px', borderRadius: 4, border: 'none',
-                            background: '#fee2e2', color: '#c0392b', cursor: 'pointer', fontSize: 12,
+                            background: 'var(--color-bg-error)', color: 'var(--color-text-error)', cursor: 'pointer', fontSize: 12,
                           }}
                         >
                           ✕
@@ -625,7 +625,7 @@ export default function CaseWizard() {
                       onClick={() => setSecondaryCpvModalOpen(true)}
                       style={{
                         padding: '6px 14px', borderRadius: 6, border: '1px dashed #d1d5db',
-                        background: 'transparent', color: '#374151', cursor: 'pointer',
+                        background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer',
                         fontSize: 12, fontWeight: 600, width: '100%',
                       }}
                     >
@@ -642,7 +642,7 @@ export default function CaseWizard() {
               if (totalSec > 100) {
                 return (
                   <div style={{
-                    padding: '8px 12px', background: '#fef2f2', color: '#c0392b',
+                    padding: '8px 12px', background: 'var(--color-threshold-exceeded-bg)', color: 'var(--color-text-error)',
                     borderRadius: 8, fontSize: 13, border: '1px solid #fecaca', marginBottom: 16,
                   }}>
                     Errore: la somma dei pesi secondari ({totalSec}%) supera il 100%.
@@ -653,7 +653,7 @@ export default function CaseWizard() {
               if (secondaryCpvs.length > 0 && totalSec < 100) {
                 return (
                   <div style={{
-                    padding: '8px 12px', background: '#fefce8', color: '#854d0e',
+                    padding: '8px 12px', background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)',
                     borderRadius: 8, fontSize: 13, border: '1px solid #fef08a', marginBottom: 16,
                   }}>
                     CPV principale: {Math.max(0, 100 - totalSec).toFixed(0)}% · CPV secondari: {totalSec.toFixed(0)}% · Il restante {100 - totalSec}% sar&agrave; attribuito al CPV principale.
@@ -663,7 +663,7 @@ export default function CaseWizard() {
               if (secondaryCpvs.length > 0 && totalSec === 100) {
                 return (
                   <div style={{
-                    padding: '8px 12px', background: '#f0fdf4', color: '#166534',
+                    padding: '8px 12px', background: 'var(--color-threshold-ok-bg)', color: 'var(--color-text-success)',
                     borderRadius: 8, fontSize: 13, border: '1px solid #bbf7d0', marginBottom: 16,
                   }}>
                     Distribuzione corretta: 100% dei pesi assegnato ai CPV secondari.
@@ -679,24 +679,24 @@ export default function CaseWizard() {
         {stepConfig.evaluation_service === 'calculation' && (
           <div>
             {!calcResult && !calcError && (
-              <div style={{ color: '#6b7280', textAlign: 'center', padding: 24 }}>
+              <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 24 }}>
                 Calcolo in corso...
               </div>
             )}
             {calcError && (
               <div style={{
-                background: '#fef2f2', padding: 16, borderRadius: 8, marginBottom: 16,
+                background: 'var(--color-threshold-exceeded-bg)', padding: 16, borderRadius: 8, marginBottom: 16,
                 border: '1px solid #fecaca',
               }}>
-                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14, color: '#991b1b' }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14, color: 'var(--color-text-error)' }}>
                   Errore calcolo
                 </div>
-                <div style={{ fontSize: 13, color: '#b91c1c', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{calcError}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-error)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{calcError}</div>
               </div>
             )}
             {calcResult && (
               <div style={{
-                background: '#f0fdf4', padding: 16, borderRadius: 8, marginBottom: 16,
+                background: 'var(--color-threshold-ok-bg)', padding: 16, borderRadius: 8, marginBottom: 16,
                 border: '1px solid #bbf7d0',
               }}>
                 <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14 }}>
@@ -713,11 +713,11 @@ export default function CaseWizard() {
                     <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Passaggi:</div>
                     {calcResult.steps.map((s, i) => (
                       <div key={i} style={{
-                        padding: '6px 8px', marginBottom: 4, background: '#fff',
+                        padding: '6px 8px', marginBottom: 4, background: 'var(--color-bg-card)',
                         borderRadius: 4, fontSize: 12, border: '1px solid #e5e7eb',
                       }}>
                         <strong>{s.description}</strong>
-                        <div style={{ color: '#6b7280' }}>{s.formula} = {s.result}</div>
+                        <div style={{ color: 'var(--color-text-muted)' }}>{s.formula} = {s.result}</div>
                       </div>
                     ))}
                   </div>
@@ -735,7 +735,7 @@ export default function CaseWizard() {
             ) : reportContent ? (
               <ReportView report={reportContent} calcResult={calcResult} />
             ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
                 <p>Caricamento report...</p>
               </div>
             )}
@@ -755,13 +755,13 @@ export default function CaseWizard() {
           {step === 7 && (
             <button onClick={handlePrint} className="no-print" style={{
               padding: '10px 20px', borderRadius: 8, border: '1px solid #d1d5db',
-              background: '#f9fafb', color: '#374151', cursor: 'pointer',
+              background: 'var(--color-bg-offset)', color: 'var(--color-text-secondary)', cursor: 'pointer',
               fontSize: 14, fontWeight: 600,
             }}>
               Stampa / PDF
             </button>
           )}
-          <button onClick={goNext} style={{ ...navBtnStyle, background: '#1a1a2e', color: '#fff' }}>
+          <button onClick={goNext} style={{ ...navBtnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}>
             {saving ? 'Salvataggio...' : step >= totalSteps ? 'Completa' : 'Salva e continua →'}
           </button>
         </div>
@@ -795,6 +795,6 @@ export default function CaseWizard() {
 
 const navBtnStyle: React.CSSProperties = {
   padding: '10px 20px', borderRadius: 8, border: '1px solid #d1d5db',
-  background: '#fff', color: '#374151', cursor: 'pointer',
+  background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer',
   fontSize: 14, fontWeight: 600,
 }

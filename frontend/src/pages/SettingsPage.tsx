@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
+import { useTheme } from '../theme'
 
 function getDeviceId(): string {
   let id = localStorage.getItem('device_id')
@@ -68,28 +69,28 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.4)',
+      background: 'var(--color-overlay)',
     }}>
       <div style={{
-        background: '#fff', borderRadius: 12, padding: 28, minWidth: 460,
-        maxWidth: 540, boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+        background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 460,
+        maxWidth: 540, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
       }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>Importa CSV ISTAT</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--color-text-primary)' }}>Importa CSV ISTAT</h3>
 
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
           Seleziona un file CSV scaricato dal portale ISTAT (formato SDMX). Se il CSV contiene la colonna DATAFLOW la configurazione viene rilevata automaticamente.
         </p>
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Tipo dati</label>
-            <select value={groupKey} onChange={e => setGroupKey(e.target.value)} style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff' }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Tipo dati</label>
+            <select value={groupKey} onChange={e => setGroupKey(e.target.value)} style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}>
               {GROUP_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Frequenza</label>
-            <select value={freq} onChange={e => setFreq(e.target.value)} style={{ padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff' }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Frequenza</label>
+            <select value={freq} onChange={e => setFreq(e.target.value)} style={{ padding: '8px 10px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}>
               {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -100,13 +101,13 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           type="file"
           accept=".csv"
           onChange={e => setFile(e.target.files?.[0] || null)}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, color: 'var(--color-text-primary)' }}
         />
-        {file && <p style={{ fontSize: 12, color: '#374151', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
+        {file && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
 
         {error && (
           <div style={{
-            padding: '8px 12px', background: '#fde8e8', color: '#c0392b',
+            padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)',
             borderRadius: 8, marginBottom: 12, fontSize: 13,
             whiteSpace: 'pre-wrap',
           }}>{error}</div>
@@ -114,7 +115,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 
         {result && (
           <div style={{
-            padding: '8px 12px', background: '#e8fde8', color: '#2b8c2b',
+            padding: '8px 12px', background: 'var(--color-bg-success)', color: 'var(--color-text-success)',
             borderRadius: 8, marginBottom: 12, fontSize: 13,
             whiteSpace: 'pre-wrap',
           }}>{result}</div>
@@ -124,8 +125,9 @@ function ImportModal({ onClose }: { onClose: () => void }) {
           <button
             onClick={onClose}
             style={{
-              padding: '8px 20px', borderRadius: 8, border: '1px solid #d1d5db',
-              background: '#fff', cursor: 'pointer', fontSize: 14,
+              padding: '8px 20px', borderRadius: 8, border: '1px solid var(--color-border)',
+              background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14,
+              color: 'var(--color-text-secondary)',
             }}
           >
             Chiudi
@@ -135,7 +137,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
             disabled={!file || loading}
             style={{
               padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: !file || loading ? '#9ca3af' : '#1a1a2e',
+              background: !file || loading ? 'var(--color-text-light)' : 'var(--color-primary)',
               color: '#fff', cursor: !file || loading ? 'not-allowed' : 'pointer',
               fontSize: 14, fontWeight: 600,
             }}
@@ -149,6 +151,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function SettingsPage() {
+  const { theme, isDark, setTheme } = useTheme()
   const [prefEnte, setPrefEnte] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -209,21 +212,58 @@ export default function SettingsPage() {
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      {/* Theme Settings */}
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Impostazioni</h2>
-        <p style={{ margin: '0 0 20px', color: '#6b7280', fontSize: 14 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, color: 'var(--color-text-primary)' }}>Tema</h2>
+        <p style={{ margin: '0 0 20px', color: 'var(--color-text-muted)', fontSize: 14 }}>
+          Scegli la modalità di visualizzazione dell'applicazione
+        </p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={() => setTheme('light')}
+            style={{
+              flex: 1, padding: '16px 20px', borderRadius: 10,
+              border: theme === 'light' ? '2px solid var(--color-primary)' : '2px solid var(--color-border)',
+              background: theme === 'light' ? 'var(--color-bg-card)' : 'var(--color-bg)',
+              cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 8 }}>☀️</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)' }}>Chiaro</div>
+          </button>
+          <button
+            onClick={() => setTheme('dark')}
+            style={{
+              flex: 1, padding: '16px 20px', borderRadius: 10,
+              border: theme === 'dark' ? '2px solid var(--color-primary)' : '2px solid var(--color-border)',
+              background: theme === 'dark' ? 'var(--color-bg-card)' : 'var(--color-bg)',
+              cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🌙</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)' }}>Scuro</div>
+          </button>
+        </div>
+      </div>
+
+      <div style={{
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
+      }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, color: 'var(--color-text-primary)' }}>Impostazioni</h2>
+        <p style={{ margin: '0 0 20px', color: 'var(--color-text-muted)', fontSize: 14 }}>
           Valori predefiniti per le nuove pratiche
         </p>
 
         {loading ? (
-          <div style={{ color: '#6b7280' }}>Caricamento...</div>
+          <div style={{ color: 'var(--color-text-muted)' }}>Caricamento...</div>
         ) : (
           <>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: '#374151' }}>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                 Ente / Stazione appaltante predefinito
               </label>
               <input
@@ -233,18 +273,19 @@ export default function SettingsPage() {
                 placeholder="es. Comune di Milano"
                 style={{
                   width: '100%', padding: '10px 14px', fontSize: 14,
-                  border: '1px solid #d1d5db', borderRadius: 8, outline: 'none',
+                  border: '1px solid var(--color-border)', borderRadius: 8, outline: 'none',
                   boxSizing: 'border-box',
+                  background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
                 }}
               />
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9ca3af' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-light)' }}>
                 Verrà precompilato automaticamente nello step 1 del wizard. Modificabile in fase di compilazione.
               </p>
             </div>
 
             {error && (
               <div style={{
-                padding: '8px 12px', background: '#fde8e8', color: '#c0392b',
+                padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)',
                 borderRadius: 8, marginBottom: 16, fontSize: 13,
               }}>
                 {error}
@@ -256,7 +297,7 @@ export default function SettingsPage() {
               disabled={saving}
               style={{
                 padding: '10px 24px', borderRadius: 8, border: 'none',
-                background: '#1a1a2e', color: '#fff', cursor: 'pointer',
+                background: 'var(--color-primary)', color: 'var(--color-primary-text)', cursor: 'pointer',
                 fontSize: 14, fontWeight: 600,
               }}
             >
@@ -267,18 +308,18 @@ export default function SettingsPage() {
       </div>
 
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Dati ISTAT</h2>
-        <p style={{ margin: '0 0 20px', color: '#6b7280', fontSize: 14 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, color: 'var(--color-text-primary)' }}>Dati ISTAT</h2>
+        <p style={{ margin: '0 0 20px', color: 'var(--color-text-muted)', fontSize: 14 }}>
           Importa manualmente file CSV scaricati dal portale ISTAT
         </p>
         <button
           onClick={() => setShowImport(true)}
           style={{
             padding: '10px 24px', borderRadius: 8, border: 'none',
-            background: '#1a1a2e', color: '#fff', cursor: 'pointer',
+            background: 'var(--color-primary)', color: 'var(--color-primary-text)', cursor: 'pointer',
             fontSize: 14, fontWeight: 600,
           }}
         >
@@ -289,17 +330,17 @@ export default function SettingsPage() {
       {showImport && <ImportModal onClose={() => setShowImport(false)} />}
 
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Database Backup</h2>
-        <p style={{ margin: '0 0 20px', color: '#6b7280', fontSize: 14 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, color: 'var(--color-text-primary)' }}>Database Backup</h2>
+        <p style={{ margin: '0 0 20px', color: 'var(--color-text-muted)', fontSize: 14 }}>
           Esporta o importa l'intero database in formato pg_dump (.dump)
         </p>
 
-        <div style={{ marginBottom: 16, padding: 16, background: '#f9fafb', borderRadius: 8 }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>Esporta database</h3>
-          <p style={{ margin: '0 0 12px', color: '#6b7280', fontSize: 13 }}>
+        <div style={{ marginBottom: 16, padding: 16, background: 'var(--color-bg-offset)', borderRadius: 8 }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--color-text-primary)' }}>Esporta database</h3>
+          <p style={{ margin: '0 0 12px', color: 'var(--color-text-muted)', fontSize: 13 }}>
             Scarica un dump completo con tutti i dati (pratiche, cataloghi, impostazioni).
           </p>
           <button
@@ -307,8 +348,8 @@ export default function SettingsPage() {
             disabled={exporting}
             style={{
               padding: '10px 24px', borderRadius: 8, border: 'none',
-              background: exporting ? '#9ca3af' : '#1a1a2e',
-              color: '#fff', cursor: exporting ? 'not-allowed' : 'pointer',
+              background: exporting ? 'var(--color-text-light)' : 'var(--color-primary)',
+              color: 'var(--color-primary-text)', cursor: exporting ? 'not-allowed' : 'pointer',
               fontSize: 14, fontWeight: 600,
             }}
           >
@@ -316,25 +357,25 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <div style={{ padding: 16, background: '#f9fafb', borderRadius: 8 }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>Importa database</h3>
-          <p style={{ margin: '0 0 12px', color: '#6b7280', fontSize: 13 }}>
-            Carica un file .dump per ripristinare l'intero database. <strong style={{ color: '#c0392b' }}>I dati esistenti verranno sovrascritti.</strong>
+        <div style={{ padding: 16, background: 'var(--color-bg-offset)', borderRadius: 8 }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--color-text-primary)' }}>Importa database</h3>
+          <p style={{ margin: '0 0 12px', color: 'var(--color-text-muted)', fontSize: 13 }}>
+            Carica un file .dump per ripristinare l'intero database. <strong style={{ color: 'var(--color-text-error)' }}>I dati esistenti verranno sovrascritti.</strong>
           </p>
 
           <input
             type="file"
             accept=".dump"
             onChange={e => { setImportFile(e.target.files?.[0] || null); setImportResult(null); setImportError('') }}
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: 12, color: 'var(--color-text-primary)' }}
           />
           {importFile && (
-            <p style={{ fontSize: 12, color: '#374151', marginBottom: 12 }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
               {importFile.name} ({(importFile.size / 1024 / 1024).toFixed(1)} MB)
             </p>
           )}
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: '#c0392b', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: 'var(--color-text-error)', cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={importConfirm}
@@ -345,14 +386,14 @@ export default function SettingsPage() {
 
           {importError && (
             <div style={{
-              padding: '8px 12px', background: '#fde8e8', color: '#c0392b',
+              padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)',
               borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap',
             }}>{importError}</div>
           )}
 
           {importResult && (
             <div style={{
-              padding: '8px 12px', background: '#e8fde8', color: '#2b8c2b',
+              padding: '8px 12px', background: 'var(--color-bg-success)', color: 'var(--color-text-success)',
               borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap',
             }}>{importResult}</div>
           )}
@@ -377,7 +418,7 @@ export default function SettingsPage() {
             disabled={!importFile || !importConfirm || importing}
             style={{
               padding: '10px 24px', borderRadius: 8, border: 'none',
-              background: !importFile || !importConfirm || importing ? '#9ca3af' : '#c0392b',
+              background: !importFile || !importConfirm || importing ? 'var(--color-text-light)' : 'var(--color-text-error)',
               color: '#fff', cursor: !importFile || !importConfirm || importing ? 'not-allowed' : 'pointer',
               fontSize: 14, fontWeight: 600,
             }}

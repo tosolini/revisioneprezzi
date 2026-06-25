@@ -104,7 +104,7 @@ export default function CpvCatalog() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Catalogo CPV</h1>
         <div>
-          <button onClick={() => setShowModal(true)} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#1a1a2e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+          <button onClick={() => setShowModal(true)} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
             Importa ZIP
           </button>
         </div>
@@ -120,17 +120,17 @@ export default function CpvCatalog() {
         />
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        {loading && <div style={{ padding: 20, color: '#6b7280' }}>Caricamento…</div>}
+      <div style={{ background: 'var(--color-bg-card)', borderRadius: 8, boxShadow: '0 6px 18px var(--color-shadow)', overflow: 'hidden' }}>
+        {loading && <div style={{ padding: 20, color: 'var(--color-text-muted)' }}>Caricamento…</div>}
         {!loading && results.length === 0 && (
-          <div style={{ padding: 20, color: '#6b7280' }}>Nessun risultato</div>
+          <div style={{ padding: 20, color: 'var(--color-text-muted)' }}>Nessun risultato</div>
         )}
 
         <div>
           {results.map(r => (
             <div key={r.code} style={{ padding: '10px 14px', borderBottom: '1px solid #f3f4f6', display: 'flex', gap: 12 }}>
               <div style={{ width: 160, fontWeight: 700 }}>{r.code}</div>
-              <div style={{ color: '#6b7280', flex: 1 }}>{r.description}</div>
+              <div style={{ color: 'var(--color-text-muted)', flex: 1 }}>{r.description}</div>
             </div>
           ))}
         </div>
@@ -144,33 +144,33 @@ export default function CpvCatalog() {
               Successiva
             </button>
           </div>
-          <div style={{ color: '#6b7280', fontSize: 13, alignSelf: 'center' }}>Mostrati {results.length} voci</div>
+          <div style={{ color: 'var(--color-text-muted)', fontSize: 13, alignSelf: 'center' }}>Mostrati {results.length} voci</div>
         </div>
       </div>
 
-      <div style={{ marginTop: 16, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+      <div style={{ marginTop: 16, textAlign: 'center', color: 'var(--color-text-light)', fontSize: 13 }}>
         {lastImportStr ? `Ultimo import: ${lastImportStr}` : 'Nessun import precedente'}
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 24, minWidth: 400, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--color-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--color-bg-card)', borderRadius: 12, padding: 24, minWidth: 400, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 18 }}>Importa catalogo CPV</h2>
-            <p style={{ margin: '0 0 12px', color: '#6b7280', fontSize: 14 }}>
+            <p style={{ margin: '0 0 12px', color: 'var(--color-text-muted)', fontSize: 14 }}>
               Seleziona un file ZIP contenente il XML CPV (cpv_2008.xml)
             </p>
             <input ref={modalFileRef} type="file" accept=".zip" style={{ display: 'block', marginBottom: 16, fontSize: 13 }} />
-            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-light)', marginBottom: 16 }}>
               I codici CPV sono scaricabili da{' '}
-              <a href="https://ted.europa.eu/it/simap/cpv" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
+              <a href="https://ted.europa.eu/it/simap/cpv" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>
                 ted.europa.eu
               </a>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: '#f3f4f6', border: 'none', cursor: 'pointer' }}>
+              <button onClick={() => setShowModal(false)} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--color-bg-hover)', border: 'none', cursor: 'pointer' }}>
                 Annulla
               </button>
-              <button onClick={runImport} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}>
+              <button onClick={runImport} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-bg-card)', border: 'none', cursor: 'pointer' }}>
                 {importing ? 'Import in corso…' : 'Importa'}
               </button>
             </div>

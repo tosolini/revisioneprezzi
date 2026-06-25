@@ -154,13 +154,13 @@ export default function Dlgs36Page() {
   }, [content])
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 48, color: '#6b7280' }}>Caricamento...</div>
+    return <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-muted)' }}>Caricamento...</div>
   }
 
   return (
     <div style={{
-      background: '#fff', borderRadius: 12, padding: '24px 32px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      background: 'var(--color-bg-card)', borderRadius: 12, padding: '24px 32px',
+      boxShadow: '0 1px 3px var(--color-shadow)',
       overflowX: 'auto',
     }}>
       <style>{`
