@@ -48,21 +48,21 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.4)', display: 'flex',
+        background: 'var(--color-overlay)', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
       }}
       onClick={onClose}
     >
       <div
         style={{
-          background: '#fff', borderRadius: 12, width: 640, maxWidth: '90vw',
+          background: 'var(--color-bg-card)', borderRadius: 12, width: 640, maxWidth: '90vw',
           maxHeight: '80vh', display: 'flex', flexDirection: 'column',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+          boxShadow: '0 8px 32px var(--color-shadow-heavy)',
         }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1a1a2e' }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--color-primary)' }}>
             Cerca codice CPV
           </h2>
           <input
@@ -81,12 +81,12 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
 
         <div style={{ flex: 1, overflow: 'auto', padding: 8, minHeight: 200 }}>
           {loading && (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-light)', fontSize: 13 }}>
               Ricerca in corso…
             </div>
           )}
           {!loading && query.trim() && results.length === 0 && (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-light)', fontSize: 13 }}>
               Nessun risultato
             </div>
           )}
@@ -99,13 +99,13 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
                 border: 'none', background: 'transparent', borderRadius: 8, cursor: 'pointer',
                 fontSize: 13, fontFamily: 'inherit',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#f3f4f6')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-border-lighter)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <span style={{ fontWeight: 700, color: '#1a1a2e', fontSize: 14 }}>
+              <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 14 }}>
                 {hit.code}
               </span>
-              <span style={{ color: '#6b7280', marginLeft: 12 }}>{hit.description}</span>
+              <span style={{ color: 'var(--color-text-muted)', marginLeft: 12 }}>{hit.description}</span>
             </button>
           ))}
         </div>
@@ -115,7 +115,7 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
             onClick={onClose}
             style={{
               padding: '8px 20px', borderRadius: 6, border: '1px solid #d1d5db',
-              background: '#fff', color: '#374151', cursor: 'pointer',
+              background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer',
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
             }}
           >

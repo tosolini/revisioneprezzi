@@ -84,34 +84,34 @@ function renderMarkdown(md: string): string {
     if (/^#{1,4}\s/.test(line)) {
       const level = line.match(/^(#+)/)![1].length
       const text = line.replace(/^#+\s*/, '')
-      html.push(`<h${level} style="margin-top:1.2em;margin-bottom:0.4em;color:#1a1a2e">${inlineFormat(text)}</h${level}>`)
+      html.push(`<h${level} style="margin-top:1.2em;margin-bottom:0.4em;color:var(--color-text-primary)">${inlineFormat(text)}</h${level}>`)
       continue
     }
 
     // Horizontal rule
     if (/^---+\s*$/.test(line.trim())) {
-      html.push('<hr style="margin:1em 0;border:none;border-top:2px solid #e5e7eb">')
+      html.push('<hr style="margin:1em 0;border:none;border-top:2px solid var(--color-border-light)">')
       continue
     }
 
     // Unordered list
     if (/^\s*[-*]\s/.test(line)) {
       const text = line.replace(/^\s*[-*]\s+/, '')
-      html.push(`<li style="margin:2px 0">${inlineFormat(text)}</li>`)
+      html.push(`<li style="margin:2px 0;color:var(--color-text-secondary)">${inlineFormat(text)}</li>`)
       continue
     }
 
     // Ordered list
     if (/^\s*\d+\.\s/.test(line)) {
       const text = line.replace(/^\s*\d+\.\s+/, '')
-      html.push(`<li style="margin:2px 0">${inlineFormat(text)}</li>`)
+      html.push(`<li style="margin:2px 0;color:var(--color-text-secondary)">${inlineFormat(text)}</li>`)
       continue
     }
 
     // Blockquote
     if (line.trimStart().startsWith('> ')) {
       const text = line.replace(/^>\s*/, '')
-      html.push(`<blockquote style="margin:0.5em 0;padding:8px 14px;border-left:3px solid #1a1a2e;color:#374151;font-size:13px">${inlineFormat(text)}</blockquote>`)
+      html.push(`<blockquote style="margin:0.5em 0;padding:8px 14px;border-left:3px solid var(--color-primary);color:var(--color-text-secondary);font-size:13px">${inlineFormat(text)}</blockquote>`)
       continue
     }
 
@@ -122,7 +122,7 @@ function renderMarkdown(md: string): string {
     }
 
     // Regular paragraph
-    html.push(`<p style="margin:0.4em 0;line-height:1.8;color:#374151;font-size:13px">${inlineFormat(line)}</p>`)
+    html.push(`<p style="margin:0.4em 0;line-height:1.8;color:var(--color-text-secondary);font-size:13px">${inlineFormat(line)}</p>`)
   }
 
   if (inTable) flushTable()
@@ -130,7 +130,7 @@ function renderMarkdown(md: string): string {
   // Wrap consecutive <li> in <ul> or <ol>
   const finalHtml = html.join('\n')
   return finalHtml
-    .replace(/((?:<li[^>]*>.*?<\/li>\n?)+)/g, '<ul style="margin:0.4em 0;padding-left:24px;color:#374151;font-size:13px">$1</ul>')
+    .replace(/((?:<li[^>]*>.*?<\/li>\n?)+)/g, '<ul style="margin:0.4em 0;padding-left:24px;color:var(--color-text-secondary);font-size:13px">$1</ul>')
     .replace(/<p[^>]*>\s*<\/p>/g, '')
 }
 
@@ -154,20 +154,21 @@ export default function Dlgs36Page() {
   }, [content])
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 48, color: '#6b7280' }}>Caricamento...</div>
+    return <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-muted)' }}>Caricamento...</div>
   }
 
   return (
     <div style={{
-      background: '#fff', borderRadius: 12, padding: '24px 32px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      background: 'var(--color-bg-card)', borderRadius: 12, padding: '24px 32px',
+      boxShadow: '0 1px 3px var(--color-shadow)',
       overflowX: 'auto',
     }}>
       <style>{`
-        table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 12px; }
-        table th, table td { border: 1px solid #d1d5db; padding: 6px 10px; text-align: left; vertical-align: top; }
-        table th { background: #f3f4f6; font-weight: 600; color: #374151; }
-        table tr:nth-child(even) { background: #fafafa; }
+        table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 12px; color: var(--color-text-secondary); }
+        table th, table td { border: 1px solid var(--color-border); padding: 6px 10px; text-align: left; vertical-align: top; }
+        table th { background: var(--color-table-header-bg); font-weight: 600; color: var(--color-text-secondary); }
+        table tr:nth-child(even) { background: var(--color-table-stripe); }
+        a { color: var(--color-primary); }
       `}</style>
       <div dangerouslySetInnerHTML={{ __html: rendered }} />
     </div>

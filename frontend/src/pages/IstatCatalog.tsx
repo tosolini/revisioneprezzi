@@ -108,51 +108,51 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.4)',
+      background: 'var(--color-overlay)',
     }}>
       <div style={{
-        background: '#fff', borderRadius: 12, padding: 28, minWidth: 460,
-        maxWidth: 540, boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+        background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 460,
+        maxWidth: 540, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
       }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>Importa CSV ISTAT</h3>
-        <div style={{ fontSize: 13, color: '#374151', marginBottom: 16, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
           <p style={{ marginBottom: 12 }}>
             Scarica il file CSV{' '}
             <a
               href="https://www.istat.it/notizia/il-nuovo-codice-dei-contratti-pubblici-d-lgs-31-marzo-2023-n-36-art-60/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: '#1a1a2e', textDecoration: 'underline' }}
+              style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}
             >
               dal Portale ISTAT
             </a>
             .
           </p>
-          <p style={{ marginTop: 4, fontSize: 12, color: '#6b7280' }}>Se il CSV contiene la colonna DATAFLOW la configurazione viene rilevata automaticamente.</p>
+          <p style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>Se il CSV contiene la colonna DATAFLOW la configurazione viene rilevata automaticamente.</p>
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Tipo dati</label>
-            <select value={groupKey} onChange={e => setGroupKey(e.target.value)} style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff' }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Tipo dati</label>
+            <select value={groupKey} onChange={e => setGroupKey(e.target.value)} style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 8, background: 'var(--color-bg-card)' }}>
               {GROUP_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Frequenza</label>
-            <select value={freq} onChange={e => setFreq(e.target.value)} style={{ padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff' }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Frequenza</label>
+            <select value={freq} onChange={e => setFreq(e.target.value)} style={{ padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 8, background: 'var(--color-bg-card)' }}>
               {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>
 
         <input ref={inputRef} type="file" accept=".csv" onChange={e => setFile(e.target.files?.[0] || null)} style={{ marginBottom: 16 }} />
-        {file && <p style={{ fontSize: 12, color: '#374151', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
-        {error && <div style={{ padding: '8px 12px', background: '#fde8e8', color: '#c0392b', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{error}</div>}
-        {result && <div style={{ padding: '8px 12px', background: '#e8fde8', color: '#2b8c2b', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{result}</div>}
+        {file && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
+        {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{error}</div>}
+        {result && <div style={{ padding: '8px 12px', background: 'var(--color-bg-success)', color: 'var(--color-text-success)', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{result}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 14 }}>Chiudi</button>
-          <button onClick={handleUpload} disabled={!file || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !file || loading ? '#9ca3af' : '#1a1a2e', color: '#fff', cursor: !file || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione...' : 'Importa CSV'}</button>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #d1d5db', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14 }}>Chiudi</button>
+          <button onClick={handleUpload} disabled={!file || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !file || loading ? 'var(--color-text-light)' : 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: !file || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione...' : 'Importa CSV'}</button>
         </div>
       </div>
     </div>
@@ -199,22 +199,22 @@ export default function IstatCatalog() {
   return (
     <div>
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12, marginBottom: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Indici ISTAT</h2>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: 14 }}>Serie storiche indici ISTAT per la revisione prezzi</p>
+            <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>Serie storiche indici ISTAT per la revisione prezzi</p>
           </div>
           <button onClick={() => setShowImport(true)} style={{
             padding: '10px 20px', borderRadius: 8, border: 'none',
-            background: '#1a1a2e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+            background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
           }}>Importa CSV</button>
         </div>
 
         {loading ? (
-          <div style={{ color: '#6b7280' }}>Caricamento gruppi...</div>
+          <div style={{ color: 'var(--color-text-muted)' }}>Caricamento gruppi...</div>
         ) : (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {groups.map(g => (
@@ -223,8 +223,8 @@ export default function IstatCatalog() {
                 onClick={() => setSelectedGroup(g.key)}
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: '1px solid #d1d5db',
-                  background: selectedGroup === g.key ? '#1a1a2e' : '#fff',
-                  color: selectedGroup === g.key ? '#fff' : '#374151',
+                  background: selectedGroup === g.key ? 'var(--color-primary)' : 'var(--color-bg-card)',
+                  color: selectedGroup === g.key ? '#fff' : 'var(--color-text-secondary)',
                   cursor: 'pointer', fontSize: 13,
                   fontWeight: PINNED.includes(g.key) ? (selectedGroup === g.key ? 700 : 600) : 400,
                 }}
@@ -238,22 +238,22 @@ export default function IstatCatalog() {
       </div>
 
       <div style={{
-        background: '#fff', padding: 24, borderRadius: 12,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        background: 'var(--color-bg-card)', padding: 24, borderRadius: 12,
+        boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
         {loadingSeries ? (
-          <div style={{ color: '#6b7280' }}>Caricamento serie...</div>
+          <div style={{ color: 'var(--color-text-muted)' }}>Caricamento serie...</div>
         ) : seriesList.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Nessuna serie per questo gruppo.</div>
+          <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Nessuna serie per questo gruppo.</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                <th style={{ textAlign: 'left', padding: '8px 12px', color: '#6b7280', fontWeight: 600, width: 24 }}></th>
-                <th style={{ textAlign: 'left', padding: '8px 12px', color: '#6b7280', fontWeight: 600 }}>Serie</th>
-                <th style={{ textAlign: 'left', padding: '8px 12px', color: '#6b7280', fontWeight: 600 }}>Codice</th>
-                <th style={{ textAlign: 'left', padding: '8px 12px', color: '#6b7280', fontWeight: 600 }}>Frequenza</th>
-                <th style={{ textAlign: 'right', padding: '8px 12px', color: '#6b7280', fontWeight: 600 }}>Osservazioni</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600, width: 24 }}></th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Serie</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Codice</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Frequenza</th>
+                <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Osservazioni</th>
               </tr>
             </thead>
             <tbody>
@@ -263,30 +263,30 @@ export default function IstatCatalog() {
                     onClick={() => setExpanded(expanded === s.id ? null : s.id)}
                     style={{
                       borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
-                      background: expanded === s.id ? '#f9fafb' : undefined,
+                      background: expanded === s.id ? 'var(--color-bg-offset)' : undefined,
                     }}
                   >
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       {expanded === s.id ? '▼' : '▶'}
                     </td>
                     <td style={{ padding: '10px 12px', fontWeight: 500 }}>{s.name}</td>
-                    <td style={{ padding: '10px 12px', color: '#6b7280', fontFamily: 'monospace' }}>{s.id}</td>
-                    <td style={{ padding: '10px 12px', color: '#6b7280' }}>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{s.id}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                       {s.frequency === 'quarterly' ? 'Trimestrale' : s.frequency === 'monthly' ? 'Mensile' : s.frequency === 'annual' ? 'Annuale' : s.frequency}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right', color: '#6b7280' }}>{s.observation_count}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-text-muted)' }}>{s.observation_count}</td>
                   </tr>
                   {expanded === s.id && (
                     <tr>
                       <td colSpan={5} style={{ padding: '0 12px 12px 36px' }}>
                         {s.observations.length === 0 ? (
-                          <div style={{ color: '#9ca3af', fontStyle: 'italic', padding: 12 }}>Nessuna osservazione</div>
+                          <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>Nessuna osservazione</div>
                         ) : (
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <th style={{ textAlign: 'left', padding: '4px 8px', color: '#6b7280', fontWeight: 600 }}>Periodo</th>
-                                <th style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280', fontWeight: 600 }}>Valore</th>
+                                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Periodo</th>
+                                <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Valore</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -295,7 +295,7 @@ export default function IstatCatalog() {
                                   <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, s.frequency)}</td>
                                   <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
                                     {o.value.toFixed(2)}
-                                    {!o.is_definitive && <span style={{ color: '#f59e0b', marginLeft: 4, fontSize: 10 }}>provv.</span>}
+                                    {!o.is_definitive && <span style={{ color: 'var(--color-text-warning)', marginLeft: 4, fontSize: 10 }}>provv.</span>}
                                   </td>
                                 </tr>
                               ))}

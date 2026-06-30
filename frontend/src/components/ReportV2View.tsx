@@ -18,11 +18,11 @@ interface ReportV2ViewProps {
 }
 
 const sectionStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-bg-card)',
   borderRadius: 12,
   padding: 24,
   marginBottom: 16,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  boxShadow: '0 1px 3px var(--color-shadow)',
 };
 
 const headerRowStyle: React.CSSProperties = {
@@ -35,7 +35,7 @@ const iconStyle: React.CSSProperties = {
   width: 24,
   height: 24,
   marginRight: 8,
-  color: '#2563eb',
+  color: 'var(--color-primary)',
   flexShrink: 0,
 };
 
@@ -53,7 +53,7 @@ const gridStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   fontSize: 13,
-  color: '#6b7280',
+  color: 'var(--color-text-muted)',
   marginBottom: 4,
 };
 
@@ -63,8 +63,8 @@ const badgeStyle = (color: string): React.CSSProperties => ({
   borderRadius: 999,
   fontSize: 13,
   fontWeight: 600,
-  background: color === 'blue' ? '#dbeafe' : color === 'purple' ? '#f3e8ff' : color === 'green' ? '#d1fae5' : color === 'red' ? '#fee2e2' : '#f3f4f6',
-  color: color === 'blue' ? '#1e40af' : color === 'purple' ? '#6b21a8' : color === 'green' ? '#166534' : color === 'red' ? '#991b1b' : '#374151',
+  background: color === 'blue' ? 'var(--color-bg-info)' : color === 'purple' ? 'var(--color-bg-card)' : color === 'green' ? 'var(--color-bg-success)' : color === 'red' ? 'var(--color-bg-error)' : 'var(--color-border-lighter)',
+  color: color === 'blue' ? 'var(--color-text-info)' : color === 'purple' ? 'var(--color-text-info)' : color === 'green' ? 'var(--color-text-success)' : color === 'red' ? 'var(--color-text-error)' : 'var(--color-text-secondary)',
 });
 
 const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
@@ -144,7 +144,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           {data.notes && (
             <div style={{ gridColumn: '1 / -1' }}>
               <p style={labelStyle}>Note iniziali</p>
-              <p style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: '#6b7280' }}>{data.notes}</p>
+              <p style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--color-text-muted)' }}>{data.notes}</p>
             </div>
           )}
         </div>
@@ -176,7 +176,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb' }}>
+                  <tr style={{ background: 'var(--color-bg-offset)' }}>
                     <th style={thStyle}>Codice TOL</th>
                     <th style={thStyle}>Descrizione</th>
                     <th style={{ ...thStyle, textAlign: 'right' }}>Peso %</th>
@@ -204,14 +204,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#6b7280', marginRight: 8 }}>Peso Totale:</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Peso Totale:</span>
                 <span style={badgeStyle(data.total_weight === 100 ? 'green' : 'red')}>
                   {data.total_weight || 0}%
                 </span>
               </div>
               {data.total_amount != null && (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: '#6b7280', marginRight: 8 }}>Importo Totale:</span>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Importo Totale:</span>
                   <span style={{ ...badgeStyle('blue'), fontFamily: 'monospace' }}>
                     &euro; {Number(data.total_amount).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
@@ -224,7 +224,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb' }}>
+                  <tr style={{ background: 'var(--color-bg-offset)' }}>
                     <th style={thStyle}>Codice CPV</th>
                     <th style={thStyle}>Descrizione</th>
                     <th style={{ ...thStyle, textAlign: 'right' }}>Peso %</th>
@@ -249,14 +249,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             </div>
             <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#6b7280', marginRight: 8 }}>Peso Totale:</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Peso Totale:</span>
                 <span style={badgeStyle(data.total_weight === 100 ? 'green' : 'red')}>
                   {data.total_weight || 0}%
                 </span>
               </div>
               {data.total_amount != null && (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: '#6b7280', marginRight: 8 }}>Importo Totale:</span>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Importo Totale:</span>
                   <span style={{ ...badgeStyle('blue'), fontFamily: 'monospace' }}>
                     &euro; {Number(data.total_amount).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
@@ -288,7 +288,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
         <div style={gridStyle}>
           <div>
             <p style={labelStyle}>Importo Contratto</p>
-            <p style={{ fontSize: 24, fontWeight: 700, color: '#2563eb', margin: 0 }}>
+            <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
               {data.contract_amount 
                 ? `€ ${Number(data.contract_amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
                 : 'N/A'
@@ -298,7 +298,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
 
           <div>
             <p style={labelStyle}>Importo Assoggettabile</p>
-            <p style={{ fontSize: 24, fontWeight: 700, color: '#7c3aed', margin: 0 }}>
+            <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-info)', margin: 0 }}>
               {data.revisable_amount 
                 ? `€ ${Number(data.revisable_amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
                 : 'N/A'
@@ -349,7 +349,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div>
             <p style={labelStyle}>Indice Sintetico Base</p>
-            <p style={{ fontSize: 36, fontWeight: 700, color: '#2563eb', margin: 0 }}>
+            <p style={{ fontSize: 36, fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
               {data.synthetic_index_base 
                 ? Number(data.synthetic_index_base).toFixed(2)
                 : 'N/A'
@@ -359,7 +359,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
 
           <div>
             <p style={labelStyle}>Indice Sintetico Confronto</p>
-            <p style={{ fontSize: 36, fontWeight: 700, color: '#7c3aed', margin: 0 }}>
+            <p style={{ fontSize: 36, fontWeight: 700, color: 'var(--color-text-info)', margin: 0 }}>
               {data.synthetic_index_comparison 
                 ? Number(data.synthetic_index_comparison).toFixed(2)
                 : 'N/A'
@@ -385,14 +385,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
           <div>
             <p style={labelStyle}>Soglia di Attivazione</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#ca8a04', margin: 0 }}>
+            <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-warning)', margin: 0 }}>
               {data.threshold_percent ? `${data.threshold_percent}%` : 'N/A'}
             </p>
           </div>
 
           <div>
             <p style={labelStyle}>Coefficiente Riconoscimento</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', margin: 0 }}>
+            <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
               {data.recognition_rate_percent ? `${data.recognition_rate_percent}%` : 'N/A'}
             </p>
           </div>
@@ -423,8 +423,8 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           </div>
           <hr style={hrStyle} />
           
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: 16 }}>
-            <p style={{ color: '#1e40af', margin: 0, fontSize: 14 }}>
+          <div style={{ background: 'var(--color-bg-info)', border: '1px solid #bfdbfe', borderRadius: 8, padding: 16 }}>
+            <p style={{ color: 'var(--color-text-info)', margin: 0, fontSize: 14 }}>
               Calcolo non ancora eseguito. Completare i passaggi precedenti per visualizzare il risultato.
             </p>
           </div>
@@ -447,7 +447,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             <p style={labelStyle}>Variazione</p>
             <p style={{
               fontSize: 36, fontWeight: 700, margin: 0,
-              color: data.variation_percent >= 0 ? '#16a34a' : '#dc2626',
+              color: data.variation_percent >= 0 ? 'var(--color-text-revision-down)' : 'var(--color-text-revision-up)',
             }}>
               {data.variation_percent >= 0 ? '+' : ''}
               {Number(data.variation_percent).toFixed(2)}%
@@ -458,11 +458,11 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             <p style={{ ...labelStyle, marginBottom: 8 }}>Soglia</p>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               {data.threshold_exceeded ? (
-                <svg style={{ width: 32, height: 32, color: '#16a34a' }} fill="currentColor" viewBox="0 0 20 20">
+                <svg style={{ width: 32, height: 32, color: 'var(--color-text-revision-down)' }} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               ) : (
-                <svg style={{ width: 32, height: 32, color: '#dc2626' }} fill="currentColor" viewBox="0 0 20 20">
+                <svg style={{ width: 32, height: 32, color: 'var(--color-text-revision-up)' }} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               )}
@@ -474,7 +474,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             <p style={labelStyle}>Importo Revisionale</p>
             <p style={{
               fontSize: 40, fontWeight: 700, margin: 0,
-              color: data.revision_amount > 0 ? '#16a34a' : data.revision_amount < 0 ? '#dc2626' : '#6b7280',
+              color: data.revision_amount > 0 ? 'var(--color-text-revision-down)' : data.revision_amount < 0 ? 'var(--color-text-revision-up)' : 'var(--color-text-muted)',
             }}>
               {data.revision_amount >= 0 ? '+' : ''}
               € {Number(data.revision_amount || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
@@ -489,13 +489,13 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
 
         {data.formula_steps && data.formula_steps.length > 0 && (
           <div style={{ marginTop: 24 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
               Dettaglio Calcolo Passo-Passo
             </p>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #e5e7eb' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb' }}>
+                  <tr style={{ background: 'var(--color-bg-offset)' }}>
                     <th style={{ ...thStyle, width: 60 }}>Step</th>
                     <th style={thStyle}>Descrizione</th>
                     <th style={thStyle}>Risultato</th>
@@ -530,7 +530,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
       {renderCalculation()}
 
       <div style={{ marginTop: 24, textAlign: 'right' }}>
-        <p style={{ fontSize: 11, color: '#9ca3af' }}>
+        <p style={{ fontSize: 11, color: 'var(--color-text-light)' }}>
           Generato il: {new Date(reportData.generated_at).toLocaleString('it-IT')}
         </p>
       </div>
@@ -543,7 +543,7 @@ const thStyle: React.CSSProperties = {
   textAlign: 'left',
   fontSize: 11,
   fontWeight: 600,
-  color: '#6b7280',
+  color: 'var(--color-text-muted)',
 };
 
 const tdStyle: React.CSSProperties = {

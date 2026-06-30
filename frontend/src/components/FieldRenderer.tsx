@@ -40,14 +40,14 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
     fontSize: 14,
     fontFamily: 'inherit',
     boxSizing: 'border-box',
-    background: '#fff',
+    background: 'var(--color-bg-card)',
   }
   const labelStyle: React.CSSProperties = {
     display: 'block', marginBottom: 4, fontSize: 13,
-    fontWeight: 600, color: '#374151',
+    fontWeight: 600, color: 'var(--color-text-secondary)',
   }
   const errorStyle: React.CSSProperties = {
-    color: '#e74c3c', fontSize: 12, marginTop: 2,
+    color: 'var(--color-text-error)', fontSize: 12, marginTop: 2,
   }
 
   switch (field.type) {
@@ -100,8 +100,8 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
                 style={{
                   padding: '8px 20px',
                   borderRadius: 6, border: '1px solid #d1d5db',
-                  background: boolVal === (opt.val === 'true') ? '#1a1a2e' : '#fff',
-                  color: boolVal === (opt.val === 'true') ? '#fff' : '#374151',
+                  background: boolVal === (opt.val === 'true') ? 'var(--color-primary)' : 'var(--color-bg-card)',
+                  color: boolVal === (opt.val === 'true') ? '#fff' : 'var(--color-text-secondary)',
                   cursor: 'pointer', fontWeight: 600, fontSize: 14,
                 }}
               >
