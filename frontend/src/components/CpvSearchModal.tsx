@@ -61,7 +61,7 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)' }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--color-primary)' }}>
             Cerca codice CPV
           </h2>
@@ -73,8 +73,8 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
             onChange={e => setQuery(e.target.value)}
             style={{
               width: '100%', marginTop: 12, padding: '10px 14px', fontSize: 14,
-              border: '1px solid #d1d5db', borderRadius: 8, outline: 'none',
-              boxSizing: 'border-box',
+              border: '1px solid var(--color-border)', borderRadius: 8, outline: 'none',
+              boxSizing: 'border-box', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
             }}
           />
         </div>
@@ -110,11 +110,11 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
           ))}
         </div>
 
-        <div style={{ padding: '12px 24px', borderTop: '1px solid #e5e7eb', textAlign: 'right' }}>
+        <div style={{ padding: '12px 24px', borderTop: '1px solid var(--color-border)', textAlign: 'right' }}>
           <button
             onClick={onClose}
             style={{
-              padding: '8px 20px', borderRadius: 6, border: '1px solid #d1d5db',
+              padding: '8px 20px', borderRadius: 6, border: '1px solid var(--color-border)',
               background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer',
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
             }}

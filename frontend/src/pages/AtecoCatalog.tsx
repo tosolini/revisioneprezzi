@@ -203,8 +203,8 @@ export default function AtecoCatalog() {
       {showSdmxModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={() => setShowSdmxModal(false)} style={{ position: 'absolute', inset: 0, background: 'var(--color-overlay)' }} />
-          <div style={{ position: 'relative', background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ margin: '0 0 12px' }}>Import da ISTAT (SDMX)</h3>
+          <div style={{ position: 'relative', background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 12px 40px var(--color-shadow-heavy)' }}>
+            <h3 style={{ margin: '0 0 12px', color: 'var(--color-text-primary)' }}>Import da ISTAT (SDMX)</h3>
             <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               L'importazione dal servizio SDMX di ISTAT potrebbe richiedere molto tempo
               o non funzionare a causa di limitazioni di rete.
@@ -214,10 +214,10 @@ export default function AtecoCatalog() {
               fino al completamento con successo dell'operazione.
             </p>
             <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowSdmxModal(false)} style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #d1d5db', background: 'var(--color-bg-card)', cursor: 'pointer' }}>
+              <button onClick={() => setShowSdmxModal(false)} style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
                 Annulla
               </button>
-              <button onClick={confirmImport} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer' }}>
+              <button onClick={confirmImport} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer' }}>
                 Procedi
               </button>
             </div>
@@ -269,7 +269,7 @@ function ImportZipModal({ onClose, onImported }: { onClose: () => void; onImport
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 420,
         maxWidth: 500, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
       }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>Importa file ZIP ATECO</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--color-text-primary)' }}>Importa file ZIP ATECO</h3>
         <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
           <p style={{ marginBottom: 12 }}>
             Scarica il file ZIP{' '}
@@ -285,13 +285,13 @@ function ImportZipModal({ onClose, onImported }: { onClose: () => void; onImport
           </p>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Seleziona il file ZIP scaricato.</p>
         </div>
-        <input type="file" accept=".zip" onChange={e => setFile(e.target.files?.[0] || null)} style={{ marginBottom: 16 }} />
+        <input type="file" accept=".zip" onChange={e => setFile(e.target.files?.[0] || null)} style={{ marginBottom: 16, color: 'var(--color-text-primary)' }} />
         {file && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
         {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{error}</div>}
         {result && <div style={{ padding: '8px 12px', background: 'var(--color-bg-success)', color: 'var(--color-text-success)', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{result}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #d1d5db', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14 }}>Chiudi</button>
-          <button onClick={handleUpload} disabled={!file || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !file || loading ? 'var(--color-text-light)' : 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: !file || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione...' : 'Importa ZIP'}</button>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Chiudi</button>
+          <button onClick={handleUpload} disabled={!file || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !file || loading ? 'var(--color-text-light)' : 'var(--color-primary)', color: '#fff', cursor: !file || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione...' : 'Importa ZIP'}</button>
         </div>
       </div>
     </div>

@@ -154,12 +154,12 @@ export default function CpvCatalog() {
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'var(--color-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--color-bg-card)', borderRadius: 12, padding: 24, minWidth: 400, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 18 }}>Importa catalogo CPV</h2>
+          <div style={{ background: 'var(--color-bg-card)', borderRadius: 12, padding: 24, minWidth: 400, boxShadow: '0 12px 40px var(--color-shadow-heavy)' }}>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--color-text-primary)' }}>Importa catalogo CPV</h2>
             <p style={{ margin: '0 0 12px', color: 'var(--color-text-muted)', fontSize: 14 }}>
               Seleziona un file ZIP contenente il XML CPV (cpv_2008.xml)
             </p>
-            <input ref={modalFileRef} type="file" accept=".zip" style={{ display: 'block', marginBottom: 16, fontSize: 13 }} />
+            <input ref={modalFileRef} type="file" accept=".zip" style={{ display: 'block', marginBottom: 16, fontSize: 13, color: 'var(--color-text-primary)' }} />
             <div style={{ fontSize: 12, color: 'var(--color-text-light)', marginBottom: 16 }}>
               I codici CPV sono scaricabili da{' '}
               <a href="https://ted.europa.eu/it/simap/cpv" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>
@@ -170,7 +170,7 @@ export default function CpvCatalog() {
               <button onClick={() => setShowModal(false)} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--color-bg-hover)', border: 'none', cursor: 'pointer' }}>
                 Annulla
               </button>
-              <button onClick={runImport} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-bg-card)', border: 'none', cursor: 'pointer' }}>
+              <button onClick={runImport} disabled={importing} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}>
                 {importing ? 'Import in corso…' : 'Importa'}
               </button>
             </div>
