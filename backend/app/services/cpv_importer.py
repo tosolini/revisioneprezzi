@@ -64,8 +64,6 @@ def import_from_zip_bytes(db: Session, zip_bytes: bytes) -> Tuple[int, str]:
     import zipfile
     import io
 
-    source_name = "upload"
-
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         xml_names = [n for n in zf.namelist() if n.endswith('.xml') and 'code_cpv_suppl' not in n]
         if not xml_names:

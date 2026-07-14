@@ -239,7 +239,9 @@ def import_csv(
                     results["series_created"] += 1
                 except Exception:
                     db.rollback()
-                    series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+                    existing_series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+                    if existing_series:
+                        series = existing_series
 
             # Upsert osservazione
             existing = (

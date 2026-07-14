@@ -76,13 +76,13 @@ export default function CaseDetail() {
         </button>
         <button
           onClick={() => navigate(`/cases/${id}/report`)}
-          style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid #d1d5db' }}
+          style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
         >
           Vedi report
         </button>
         <button
           onClick={() => { if (confirm('Eliminare questa pratica?')) api.cases.delete(id!).then(() => navigate('/')) }}
-          style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-error)', border: '1px solid #f5c6cb' }}
+          style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-error)', border: '1px solid var(--color-border-error)' }}
         >
           Elimina
         </button>

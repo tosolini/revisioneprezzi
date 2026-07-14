@@ -67,7 +67,7 @@ def import_database(file: UploadFile = File(...)):
     finally:
         try:
             file.file.close()
-        except Exception:
-            pass
+        except Exception as e:
+            _LOG.warning("Error closing uploaded file: %s", e)
 
     return {"detail": msg}

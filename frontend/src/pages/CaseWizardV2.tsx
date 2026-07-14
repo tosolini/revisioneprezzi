@@ -396,30 +396,42 @@ export default function CaseWizardV2() {
 
               {/* Periodo base */}
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                   Periodo base (mese aggiudicazione)
                 </label>
                 <input
                   type="month"
                   value={data.base_period ? data.base_period.substring(0, 7) : ''}
                   onChange={(e) => updateData('base_period', `${e.target.value}-01`)}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  style={{
+                    width: '100%', padding: '8px 12px',
+                    border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 14,
+                    fontFamily: 'inherit', boxSizing: 'border-box',
+                    background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+                    colorScheme: 'dark',
+                  }}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
                   Il mese e anno di aggiudicazione del contratto (indice di riferimento)
                 </p>
               </div>
 
               {/* Periodo confronto */}
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                   Periodo confronto (mese rilevazione)
                 </label>
                 <input
                   type="month"
                   value={data.comparison_period ? data.comparison_period.substring(0, 7) : ''}
                   onChange={(e) => updateData('comparison_period', `${e.target.value}-01`)}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  style={{
+                    width: '100%', padding: '8px 12px',
+                    border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 14,
+                    fontFamily: 'inherit', boxSizing: 'border-box',
+                    background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+                    colorScheme: 'dark',
+                  }}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Il mese e anno di rilevazione corrente (indice da confrontare)

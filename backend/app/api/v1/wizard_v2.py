@@ -1,8 +1,11 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
+_LOG = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.models.case_file import CaseFile
@@ -111,7 +114,11 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
             try:
                 state.amount = float(step_answers["amount_subject_to_revision"])
             except (ValueError, TypeError):
-                pass
+                _LOG.warning(
+                    "Could not parse amount '%s' for case %s",
+                    step_answers.get("amount_subject_to_revision"),
+                    case_id,
+                )
         if step_answers.get("base_period"):
             state.base_period = step_answers["base_period"]
         if step_answers.get("comparison_period"):

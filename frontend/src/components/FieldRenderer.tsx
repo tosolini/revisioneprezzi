@@ -35,12 +35,14 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '8px 12px',
-    border: error ? '1px solid #e74c3c' : '1px solid #d1d5db',
+    border: error ? '1px solid var(--color-border-error)' : '1px solid var(--color-border)',
     borderRadius: 6,
     fontSize: 14,
     fontFamily: 'inherit',
     boxSizing: 'border-box',
-    background: 'var(--color-bg-card)',
+    background: 'var(--color-bg-input)',
+    color: 'var(--color-text-primary)',
+    colorScheme: 'dark' as any,
   }
   const labelStyle: React.CSSProperties = {
     display: 'block', marginBottom: 4, fontSize: 13,
@@ -99,7 +101,7 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
                 onClick={() => handleBoolean(opt.val)}
                 style={{
                   padding: '8px 20px',
-                  borderRadius: 6, border: '1px solid #d1d5db',
+                  borderRadius: 6, border: '1px solid var(--color-border)',
                   background: boolVal === (opt.val === 'true') ? 'var(--color-primary)' : 'var(--color-bg-card)',
                   color: boolVal === (opt.val === 'true') ? '#fff' : 'var(--color-text-secondary)',
                   cursor: 'pointer', fontWeight: 600, fontSize: 14,
