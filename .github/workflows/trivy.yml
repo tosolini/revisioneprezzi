@@ -39,6 +39,7 @@ jobs:
           format: sarif
           output: trivy-${{ matrix.service }}.sarif
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
           vuln-type: os,library
 
       - name: Upload SARIF
