@@ -114,10 +114,11 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
             try:
                 state.amount = float(step_answers["amount_subject_to_revision"])
             except (ValueError, TypeError):
+                safe_amount = str(step_answers.get("amount_subject_to_revision", "")).replace("\r\n", "").replace("\n", "").replace("\r", "")
                 _LOG.warning(
                     "Could not parse amount '%s' for case %s",
-                    step_answers.get("amount_subject_to_revision"),
-                    case_id,
+                    safe_amount,
+                    str(case_id).replace("\r\n", "").replace("\n", "").replace("\r", ""),
                 )
         if step_answers.get("base_period"):
             state.base_period = step_answers["base_period"]

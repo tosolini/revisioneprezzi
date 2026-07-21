@@ -2,7 +2,6 @@
 Servizio di calcolo revisione prezzi semplificato secondo D.lgs 36/2023 Allegato II.2-bis
 Supporta sia LAVORI (TOL) che SERVIZI/FORNITURE (CPV)
 """
-import json
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, getcontext
 from typing import Any, Literal

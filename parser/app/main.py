@@ -2,7 +2,7 @@ import os
 import tempfile
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException
 
 from app.extractors import DocxExtractor, PdfExtractor
 from app.patterns import PATTERNS

@@ -151,7 +151,6 @@ def import_csv(
                 if df_id:
                     df_config = _find_dataflow_config(df_id)
                 break
-        # Re-crea il reader dopo il peek della prima riga
         reader = csv.DictReader(io.StringIO(text), quotechar="'")
         mapping = _normalize_columns(reader)
 

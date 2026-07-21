@@ -4,7 +4,6 @@ Secondo D.lgs 36/2023 Allegato II.2-bis
 """
 from datetime import date
 from typing import Literal
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
