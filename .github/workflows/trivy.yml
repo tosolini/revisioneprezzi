@@ -32,7 +32,7 @@ jobs:
           tags: revprezzi/${{ matrix.service }}:${{ github.sha }}
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: revprezzi/${{ matrix.service }}:${{ github.sha }}
           format: sarif
