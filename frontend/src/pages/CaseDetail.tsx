@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { api, CaseDetail as CaseDetailType } from '../api/client'
 import { formatDate, statusLabel } from '../components/utils'
 

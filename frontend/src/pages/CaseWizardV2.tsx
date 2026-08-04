@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import ContractTypeSelector from '../components/ContractTypeSelector'
 import TolSelector from '../components/TolSelector'
 import RevisionResultCard from '../components/RevisionResultCard'

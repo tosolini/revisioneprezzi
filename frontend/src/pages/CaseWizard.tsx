@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { api, CalcResult, CaseDetail, IndexSeries } from '../api/client'
 import FieldRenderer from '../components/FieldRenderer'
 import CpvSearchModal from '../components/CpvSearchModal'

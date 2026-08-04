@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { api, ReportResponse } from '../api/client'
 import { formatDate } from '../components/utils'
 
