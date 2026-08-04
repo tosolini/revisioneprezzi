@@ -39,7 +39,7 @@ test-coverage:
 	docker compose exec backend python -m pytest tests/ -v --cov=app
 
 lint:
-	docker compose exec backend ruff check app/
+	docker compose exec backend ruff check app/ tests/
 
 logs:
 	docker compose logs -f backend
