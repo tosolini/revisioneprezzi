@@ -8,7 +8,13 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models import FamilyDefinition, FamilyMapping, IndexObservation, IndexSeries, NormativeParam
+from app.models import (
+    FamilyDefinition,
+    FamilyMapping,
+    IndexObservation,
+    IndexSeries,
+    NormativeParam,
+)
 
 _SEEDS_DIR = Path(__file__).resolve().parents[2] / "seeds"
 _LOG = logging.getLogger("auto_seed")

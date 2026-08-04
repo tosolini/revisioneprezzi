@@ -2,7 +2,24 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api.v1 import backup, calc, calculation_v2, cases, classify, cpv, ateco, extract, indices, report, report_v2, tol, user_settings, wizard, wizard_config, wizard_v2
+from app.api.v1 import (
+    backup,
+    calc,
+    calculation_v2,
+    cases,
+    classify,
+    cpv,
+    ateco,
+    extract,
+    indices,
+    report,
+    report_v2,
+    tol,
+    user_settings,
+    wizard,
+    wizard_config,
+    wizard_v2,
+)
 from app.core.config import settings
 from app.core.health import health_status
 from app.models import *  # noqa: F401, F403

@@ -85,7 +85,9 @@ def _sync_cpv_assignments(case_id: UUID, answers: list, db: Session) -> None:
     secondary_raw = vals.get("cpv_secondary", "").strip()
     weights_raw = vals.get("cpv_secondary_weights", "").strip()
 
-    secondary_codes = [c.strip() for c in secondary_raw.split(",") if c.strip()] if secondary_raw else []
+    secondary_codes = (
+        [c.strip() for c in secondary_raw.split(",") if c.strip()] if secondary_raw else []
+    )
     weights = [float(w.strip()) for w in weights_raw.split(",") if w.strip()] if weights_raw else []
 
     if not description:

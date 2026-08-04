@@ -38,7 +38,13 @@ def extract_document(case_id: UUID, file: UploadFile = File(...), db: Session = 
     with httpx.Client(timeout=60) as client:
         resp = client.post(
             f"{PARSER_URL}/extract",
-            files={"file": (file.filename, contents, file.content_type or "application/octet-stream")},
+            files={
+                "file": (
+                    file.filename,
+                    contents,
+                    file.content_type or "application/octet-stream",
+                )
+            },
         )
 
     if resp.status_code != 200:
@@ -67,7 +73,12 @@ def extract_document(case_id: UUID, file: UploadFile = File(...), db: Session = 
             wizard_data[wizard_key] = str(val)
 
     if wizard_data.get("contract_type"):
-        natura_map = {"servizio": "service", "fornitura": "supply", "misto": "mixed", "lavori": "works"}
+        natura_map = {
+            "servizio": "service",
+            "fornitura": "supply",
+            "misto": "mixed",
+            "lavori": "works",
+        }
         mapped = natura_map.get(wizard_data["contract_type"].lower())
         if mapped:
             wizard_data["contract_type"] = mapped

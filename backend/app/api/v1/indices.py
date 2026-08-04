@@ -12,7 +12,10 @@ from app.core.database import get_db
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
 
-CONFIG_PATH = Path(__file__).resolve().parent.parent.parent.parent / "seeds" / "istat_data_config.yaml"
+CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "seeds" / "istat_data_config.yaml"
+)
 
 _DATAFLOW_CONFIG_CACHE = None
 
@@ -80,7 +83,9 @@ def add_observation(payload: ObservationCreate, db: Session = Depends(get_db)):
 
 def _parse_period(period_str: str, freq: str) -> date:
     period_str = period_str.strip()
-    if freq == "annual" or (freq == "quarterly" and period_str[:4].isdigit() and len(period_str) == 4):
+    if freq == "annual" or (
+        freq == "quarterly" and period_str[:4].isdigit() and len(period_str) == 4
+    ):
         return date.fromisoformat(f"{period_str[:4]}-01-01")
     if freq == "quarterly":
         year, q = period_str.split("-")
@@ -102,8 +107,13 @@ def _normalize_columns(reader: csv.DictReader):
         cc = c.strip().replace("\ufeff", "")
         if cc in ("Osservazione", "OBS_VALUE", "obs_value", "Value"):
             inv["value"] = c
-        elif cc in ("ECON_ACTIVITY_NACE_2007", "HOM_TYPE_WORK", "GROUP_CATEGORY_COST", "E_COICOP_REV_ISTAT",
-                     "MAIN_AGREEMENT_GROUP"):
+        elif cc in (
+            "ECON_ACTIVITY_NACE_2007",
+            "HOM_TYPE_WORK",
+            "GROUP_CATEGORY_COST",
+            "E_COICOP_REV_ISTAT",
+            "MAIN_AGREEMENT_GROUP",
+        ):
             inv["series_code"] = c
         elif cc in ("TIME_PERIOD", "TIME", "Period"):
             inv["period"] = c
@@ -139,7 +149,7 @@ def import_csv(
     mapping = _normalize_columns(reader)
 
     if not mapping.get("value") or not mapping.get("series_code") or not mapping.get("period"):
-        raise HTTPException(400, "Formato CSV non riconosciuto. Colonne attese: ECON_ACTIVITY_NACE_2007 (o codici serie), TIME_PERIOD, Osservazione/OBS_VALUE")
+        raise HTTPException(400, "Formato CSV non riconosciuto. Colonne attese: ECON_ACTIVITY_NACE_2007 (o codici serie), TIME_PERIOD, Osservazione/OBS_VALUE")  # noqa: E501
 
     # ── Auto-rilevamento dataflow dalla colonna DATAFLOW del CSV ──────────
     df_config = None
@@ -215,7 +225,9 @@ def import_csv(
 
             # Nome descrittivo della serie
             name = series_names.get(code, f"{group_key} - {code}")
-            desc_cols = [c for c in (reader.fieldnames or []) if "Attività" in c or "economica" in c]
+            desc_cols = [
+                c for c in (reader.fieldnames or []) if "Attività" in c or "economica" in c
+            ]
             if desc_cols:
                 desc_val = row.get(desc_cols[0], "").strip()
                 if desc_val:
@@ -238,7 +250,9 @@ def import_csv(
                     results["series_created"] += 1
                 except Exception:
                     db.rollback()
-                    existing_series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+                    existing_series = (
+                        db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+                    )
                     if existing_series:
                         series = existing_series
 
@@ -270,7 +284,7 @@ def import_csv(
             db.rollback()
             results["errors"] += 1
             if results["errors"] <= 5:
-                print(f"  ERR: row {row.get(mapping.get('series_code',''),'')} period={period_str} val={val_str}: {e}")
+                print(f"  ERR: row {row.get(mapping.get('series_code',''),'')} period={period_str} val={val_str}: {e}")  # noqa: E501
 
     return {
         "message": "Importazione completata",
@@ -319,7 +333,11 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
             "normative_category": s.normative_category,
             "observation_count": len(obs),
             "observations": [
-                {"period": o.ref_period.isoformat(), "value": o.value, "is_definitive": o.is_definitive}
+                {
+                    "period": o.ref_period.isoformat(),
+                    "value": o.value,
+                    "is_definitive": o.is_definitive,
+                }
                 for o in obs
             ],
         })

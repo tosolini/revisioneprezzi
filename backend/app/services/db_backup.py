@@ -66,7 +66,11 @@ def import_dump(dump_bytes: bytes) -> str:
         tmp_path = tmp.name
 
     try:
-        args = ["pg_restore", "--clean", "--if-exists", "--no-owner", "--no-acl"] + _pg_args(db) + [tmp_path]
+        args = (
+            ["pg_restore", "--clean", "--if-exists", "--no-owner", "--no-acl"]
+            + _pg_args(db)
+            + [tmp_path]
+        )
         result = subprocess.run(
             args,
             capture_output=True,

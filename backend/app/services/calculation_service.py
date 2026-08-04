@@ -255,7 +255,9 @@ def save_result(db: Session, case_id, result: dict[str, Any], version: int = 1) 
         excess_percent=result.get("excess_percent"),
         recognition_percent=result.get("recognition_percent"),
         revision_amount=result.get("revision_amount", 0.0),
-        formula_detail=json.dumps(steps, ensure_ascii=False) if steps else result.get("formula_detail"),
+        formula_detail=(
+            json.dumps(steps, ensure_ascii=False) if steps else result.get("formula_detail")
+        ),
         result_version=version,
     )
     db.add(record)

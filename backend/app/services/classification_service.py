@@ -91,13 +91,15 @@ def classify(cpv_primary: str, db: Session, contract_type: str | None = None,
     seen = {}
     for c in candidates:
         fam = c["family"]
-        if fam not in seen or _confidence_rank(c["confidence"]) > _confidence_rank(seen[fam]["confidence"]):
+        if fam not in seen or _confidence_rank(c["confidence"]) > _confidence_rank(
+            seen[fam]["confidence"]
+        ):
             seen[fam] = c
     candidates = list(seen.values())
 
     # 5. Se non ci sono candidati, mostra tutte le famiglie per scelta manuale
     if not candidates:
-        warnings.append("Nessuna famiglia automatica trovata per il CPV specificato. Selezionare manualmente la famiglia revisionale appropriata tra quelle elencate.")
+        warnings.append("Nessuna famiglia automatica trovata per il CPV specificato. Selezionare manualmente la famiglia revisionale appropriata tra quelle elencate.")  # noqa: E501
         for f in RULES.get("families", []):
             candidates.append({
                 "family": f["id"],

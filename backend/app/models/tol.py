@@ -21,7 +21,8 @@ class TolMaster(Base):
     sequence: Mapped[int] = mapped_column(Integer)  # 1-20
     short_description: Mapped[str] = mapped_column(String(255), nullable=False)
     full_description: Mapped[str] = mapped_column(Text, nullable=False)  # Declaratoria completa
-    is_specialized: Mapped[bool] = mapped_column(default=False)  # TOL specializzate hanno precedenza
+    # Le TOL specializzate hanno precedenza
+    is_specialized: Mapped[bool] = mapped_column(default=False)
     notes: Mapped[str | None] = mapped_column(Text)
     
     # Relazioni

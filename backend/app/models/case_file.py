@@ -38,7 +38,10 @@ class CaseFile(Base):
         "TolAssignment", back_populates="case_file", cascade="all, delete-orphan"
     )
     classification_decision = relationship(
-        "ClassificationDecision", back_populates="case_file", uselist=False, cascade="all, delete-orphan"
+        "ClassificationDecision",
+        back_populates="case_file",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     revision_input = relationship(
         "RevisionInput", back_populates="case_file", uselist=False, cascade="all, delete-orphan"

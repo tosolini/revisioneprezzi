@@ -173,7 +173,7 @@ def calculate_price_revision(
                 missing_parts.append(f" Periodo di confronto: {comparison_period}")
             return {
                 "error": (
-                    "La serie ISTAT selezionata non contiene dati definitivi per i periodi richiesti.\n"
+                    "La serie ISTAT selezionata non contiene dati definitivi per i periodi richiesti.\n"  # noqa: E501
                     "\n"
                     "Dati mancanti:"
                     f"{''.join(missing_parts)}"
@@ -240,7 +240,7 @@ def calculate_price_revision(
     steps.append({
         "step": 2,
         "description": "Calcolo variazione percentuale",
-        "formula": f"((I_confronto - I_base) / I_base) × 100",
+        "formula": "((I_confronto - I_base) / I_base) × 100",
         "calculation": f"(({comp_value} - {base_value}) / {base_value}) × 100",
         "result": f"{variation}%"
     })
@@ -251,7 +251,7 @@ def calculate_price_revision(
     steps.append({
         "step": 3,
         "description": "Verifica soglia di attivazione",
-        "formula": f"|Variazione%| > Soglia%",
+        "formula": "|Variazione%| > Soglia%",
         "calculation": f"|{variation}%| > {threshold}%",
         "result": "SOGLIA SUPERATA" if is_threshold_exceeded else "SOGLIA NON SUPERATA"
     })
@@ -307,7 +307,11 @@ def calculate_price_revision(
     })
     
     # 7. Determina tipologia (aumento/diminuzione)
-    revision_type = "aumento" if revision_amount > 0 else "diminuzione" if revision_amount < 0 else "nulla"
+    revision_type = (
+        "aumento" if revision_amount > 0
+        else "diminuzione" if revision_amount < 0
+        else "nulla"
+    )
     
     return {
         "contract_type": contract_type,
@@ -373,7 +377,10 @@ def calculate_multi_component_revision(
         
         if "error" in result:
             return {
-                "error": f"Errore componente {i+1} ({comp.get('description', 'N/D')}): {result['error']}"
+                "error": (
+                    f"Errore componente {i + 1} ({comp.get('description', 'N/D')}): "
+                    f"{result['error']}"
+                ),
             }
         
         component_results.append({

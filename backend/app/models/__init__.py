@@ -18,6 +18,7 @@ from app.models.tol import TolAssignment, TolIndexSeries, TolMaster
 from app.models.wizard_answer import WizardAnswer
 
 __all__ = [
+    "AtecoCatalog",
     "AuditLog",
     "CaseFile",
     "UserSettings",

@@ -127,7 +127,9 @@ def generate_report_v2(
     if contract and contract.contract_amount_total:
         total_amount = float(contract.contract_amount_total)
     if not total_amount:
-        total_amount = step3_answers.get("cpv_total_amount") or step2_answers.get("contract_amount_total")
+        total_amount = step3_answers.get("cpv_total_amount") or step2_answers.get(
+            "contract_amount_total"
+        )
     if total_amount:
         try:
             total_amount = float(total_amount)
@@ -154,7 +156,9 @@ def generate_report_v2(
                 TolIndexSeries.tol_code == ta.tol_code
             ).first()
             
-            amount = (float(ta.weight_percent) / 100.0 * total_amount) if total_amount and ta.weight_percent else None
+            amount = (
+                float(ta.weight_percent) / 100.0 * total_amount
+            ) if total_amount and ta.weight_percent else None
             
             tol_details.append({
                 "code": ta.tol_code,
@@ -190,7 +194,8 @@ def generate_report_v2(
             
             amount = (wt / 100.0 * total_amount) if total_amount else None
             
-            # Usa descrizione dal catalogo CPV, non quella salvata (che può essere object_description)
+            # Usa descrizione dal catalogo CPV, non quella salvata
+            # (che può essere object_description)
             cat = db.query(CpvCatalog).filter(CpvCatalog.cpv_code == cpv.cpv_code).first()
             desc = cat.description if cat else (cpv.description or cpv.cpv_code)
             
@@ -240,10 +245,17 @@ def generate_report_v2(
     if series_id:
         base_period_str = step5_answers.get("base_period")
         comp_period_str = step5_answers.get("comparison_period")
-        for period_str, key in [(base_period_str, "synthetic_index_base"), (comp_period_str, "synthetic_index_comparison")]:
+        for period_str, key in [
+            (base_period_str, "synthetic_index_base"),
+            (comp_period_str, "synthetic_index_comparison"),
+        ]:
             if period_str:
                 try:
-                    period_date = date.fromisoformat(period_str if "-" in period_str and len(period_str) == 10 else f"{period_str}-01")
+                    period_date = date.fromisoformat(
+                        period_str
+                        if "-" in period_str and len(period_str) == 10
+                        else f"{period_str}-01"
+                    )
                     from app.services.revision_calculation_v2 import _get_index_value
                     val = _get_index_value(db, series_id, period_date)
                     if val is not None:
@@ -260,7 +272,14 @@ def generate_report_v2(
     # Sezione 5: Parametri Normativi
     raw_ct = step2_answers.get("contract_type") or (contract.contract_type if contract else None)
     # Normalize: wizard stores "service"/"supply" but NORMATIVE_PARAMS uses "services"/"supplies"
-    CT_NORMALIZE = {"service": "services", "supply": "supplies", "works": "works", "services": "services", "supplies": "supplies", "mixed": "mixed"}
+    CT_NORMALIZE = {
+        "service": "services",
+        "supply": "supplies",
+        "works": "works",
+        "services": "services",
+        "supplies": "supplies",
+        "mixed": "mixed",
+    }
     contract_type = CT_NORMALIZE.get(raw_ct) if raw_ct else None
     normative_params = {}
     if contract_type:

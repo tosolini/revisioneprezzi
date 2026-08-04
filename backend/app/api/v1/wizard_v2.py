@@ -5,8 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-_LOG = logging.getLogger(__name__)
-
 from app.core.database import get_db
 from app.models.case_file import CaseFile
 from app.models.contract_context import ContractContext
@@ -15,6 +13,8 @@ from app.models.cpv_catalog import CpvCatalog
 from app.models.revision_result import RevisionResult
 from app.models.tol import TolAssignment
 from app.models.wizard_answer import WizardAnswer
+
+_LOG = logging.getLogger(__name__)
 
 
 class TolSelectionSchema(BaseModel):
@@ -114,7 +114,12 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
             try:
                 state.amount = float(step_answers["amount_subject_to_revision"])
             except (ValueError, TypeError):
-                safe_amount = str(step_answers.get("amount_subject_to_revision", "")).replace("\r\n", "").replace("\n", "").replace("\r", "")
+                safe_amount = (
+                    str(step_answers.get("amount_subject_to_revision", ""))
+                    .replace("\r\n", "")
+                    .replace("\n", "")
+                    .replace("\r", "")
+                )
                 _LOG.warning(
                     "Could not parse amount '%s' for case %s",
                     safe_amount,

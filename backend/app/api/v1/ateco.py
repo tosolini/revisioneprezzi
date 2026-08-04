@@ -11,15 +11,25 @@ router = APIRouter(prefix="/ateco", tags=["ateco"])
 
 @router.get("")
 @router.get("/")
-def list_ateco(q: str | None = Query(None), limit: int = Query(50, ge=1, le=1000), offset: int = Query(0, ge=0), db: Session = Depends(get_db)):
-    """List ATECO entries. If `q` is provided, performs a case-insensitive search on code or description.
-    Returns results and a simple has_more flag for pagination.
+def list_ateco(
+    q: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """List ATECO entries. If `q` is provided, performs a case-insensitive search
+    on code or description. Returns results and a simple has_more flag for pagination.
     """
     if q and q.strip():
         search = f"%{q}%"
         results = (
             db.query(AtecoCatalog)
-            .filter(or_(AtecoCatalog.ateco_code.ilike(search), AtecoCatalog.description.ilike(search)))
+            .filter(
+                or_(
+                    AtecoCatalog.ateco_code.ilike(search),
+                    AtecoCatalog.description.ilike(search),
+                )
+            )
             .order_by(AtecoCatalog.ateco_code)
             .limit(limit)
             .offset(offset)
@@ -62,8 +72,16 @@ def search_ateco(q: str = Query("", min_length=1), db: Session = Depends(get_db)
 
 
 @router.post("/import")
-def import_ateco(agency: str = "IT1", artifact_id: str | None = None, version: str = "1.0", force: bool = False, ttl_hours: int = 24, db: Session = Depends(get_db)):
-    """Importa codelist ATECO da SDMX ISTAT. Restituisce conteggio elementi importati e lista di id provati.
+def import_ateco(
+    agency: str = "IT1",
+    artifact_id: str | None = None,
+    version: str = "1.0",
+    force: bool = False,
+    ttl_hours: int = 24,
+    db: Session = Depends(get_db),
+):
+    """Importa codelist ATECO da SDMX ISTAT. Restituisce conteggio elementi
+    importati e lista di id provati.
 
     - force: se True ignora la cache locale e forza il fetch remoto
     - ttl_hours: validità cache in ore
@@ -73,9 +91,16 @@ def import_ateco(agency: str = "IT1", artifact_id: str | None = None, version: s
     use_cache = not force
     ttl_seconds = int(ttl_hours) * 3600
     try:
-        imported, tried = import_from_sdmx(db, agency=agency, artifact_id=artifact_id, version=version, use_cache=use_cache, ttl_seconds=ttl_seconds)
+        imported, tried = import_from_sdmx(
+            db,
+            agency=agency,
+            artifact_id=artifact_id,
+            version=version,
+            use_cache=use_cache,
+            ttl_seconds=ttl_seconds,
+        )
     except ProgrammingError as e:
-        raise HTTPException(status_code=500, detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}")
+        raise HTTPException(status_code=500, detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}")  # noqa: E501
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore durante import: {e}")
     return {"imported": imported, "tried": tried}
@@ -96,7 +121,7 @@ def import_ateco_zip(file: UploadFile = File(...), db: Session = Depends(get_db)
         contents = read_upload_limited(file)
         imported = import_from_zip(db, contents)
     except ProgrammingError as e:
-        raise HTTPException(status_code=500, detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}")
+        raise HTTPException(status_code=500, detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}")  # noqa: E501
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -113,7 +138,14 @@ def cache_status(agency: str = 'IT1', version: str = '1.0'):
     import json
     from pathlib import Path
 
-    candidates = ["ATECO2025", "ATECO", "ATECO2022", "CL_ACT", "CL_ATECO", "ACT"]  # primary first, then fallbacks
+    candidates = [
+        "ATECO2025",
+        "ATECO",
+        "ATECO2022",
+        "CL_ACT",
+        "CL_ATECO",
+        "ACT",
+    ]  # primary first, then fallbacks
     cache_dir = Path(__file__).resolve().parents[1] / 'data' / 'sdmx_cache'
     out = []
     for cand in candidates:

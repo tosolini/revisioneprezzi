@@ -158,7 +158,7 @@ def get_normative_parameters(contract_type: str) -> dict:
     if contract_type not in NORMATIVE_PARAMS:
         raise HTTPException(
             status_code=400,
-            detail=f"Tipo contratto non valido. Valori ammessi: works, services, supplies"
+            detail="Tipo contratto non valido. Valori ammessi: works, services, supplies"
         )
     
     return NORMATIVE_PARAMS[contract_type]

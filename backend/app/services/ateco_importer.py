@@ -117,7 +117,14 @@ def _write_cache(agency: str, cand: str, version: str, payload: Any) -> None:
         pass
 
 
-def _fetch_payload(agency: str, cand: str, version: str, headers: dict, use_cache: bool, ttl_seconds: int) -> Any | None:
+def _fetch_payload(
+    agency: str,
+    cand: str,
+    version: str,
+    headers: dict,
+    use_cache: bool,
+    ttl_seconds: int,
+) -> Any | None:
     """Try to get payload from cache or fetch from SDMX. Returns None on failure."""
     if use_cache:
         payload = _read_cache(agency, cand, version, ttl_seconds)
@@ -166,7 +173,14 @@ def _upsert_codes(db: Session, codes: List[Dict[str, str]]) -> int:
     return imported
 
 
-def import_from_sdmx(db: Session, agency: str = "IT1", artifact_id: str = None, version: str = "1.0", use_cache: bool = True, ttl_seconds: int = 24 * 3600) -> Tuple[int, List[str]]:
+def import_from_sdmx(
+    db: Session,
+    agency: str = "IT1",
+    artifact_id: str = None,
+    version: str = "1.0",
+    use_cache: bool = True,
+    ttl_seconds: int = 24 * 3600,
+) -> Tuple[int, List[str]]:
     """
     Import ATECO codelist from ISTAT SDMX.
 

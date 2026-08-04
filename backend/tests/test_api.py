@@ -78,8 +78,12 @@ def test_calculate_endpoint(client):
     db = SessionLocal()
     sid = f"TST_API_{uuid.uuid4().hex[:6]}"
     db.add(IndexSeries(id=sid, name="API Test", source="TEST"))
-    db.add(IndexObservation(series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True))
-    db.add(IndexObservation(series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True))
+    db.add(IndexObservation(
+        series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
+    ))
+    db.add(IndexObservation(
+        series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
+    ))
     db.commit()
     db.close()
 
@@ -97,8 +101,12 @@ def test_report_generation(client):
     db = SessionLocal()
     sid = f"TST_RPT_{uuid.uuid4().hex[:6]}"
     db.add(IndexSeries(id=sid, name="Report Test", source="TEST"))
-    db.add(IndexObservation(series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True))
-    db.add(IndexObservation(series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True))
+    db.add(IndexObservation(
+        series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
+    ))
+    db.add(IndexObservation(
+        series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
+    ))
     db.commit()
     db.close()
 

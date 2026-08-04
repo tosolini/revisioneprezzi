@@ -10,7 +10,12 @@ router = APIRouter(prefix="/cpv", tags=["cpv"])
 
 @router.get("")
 @router.get("/")
-def list_cpv(q: str | None = Query(None), limit: int = Query(50, ge=1, le=1000), offset: int = Query(0, ge=0), db: Session = Depends(get_db)):
+def list_cpv(
+    q: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
     if q and q.strip():
         search = f"%{q}%"
         results = (
@@ -29,7 +34,14 @@ def list_cpv(q: str | None = Query(None), limit: int = Query(50, ge=1, le=1000),
             .offset(offset)
             .all()
         )
-    return {"results": [{"code": r.cpv_code, "description": r.description} for r in results], "has_more": len(results) == limit, "limit": limit, "offset": offset}
+    return {
+        "results": [
+            {"code": r.cpv_code, "description": r.description} for r in results
+        ],
+        "has_more": len(results) == limit,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.get("/search")
