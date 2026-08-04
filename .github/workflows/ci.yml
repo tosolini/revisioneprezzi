@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (backend)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: revuser
+          POSTGRES_PASSWORD: changeme-ci
+          POSTGRES_DB: revision_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U revuser"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        working-directory: backend
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://revuser:changeme-ci@localhost:5432/revision_db
+        run: alembic upgrade head
+        working-directory: backend
+
+      - name: Seed reference data
+        env:
+          DATABASE_URL: postgresql://revuser:changeme-ci@localhost:5432/revision_db
+        run: python -c "from app.services.auto_seed import auto_seed; auto_seed()"
+        working-directory: backend
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://revuser:changeme-ci@localhost:5432/revision_db
+        run: python -m pytest tests/ -v
+        working-directory: backend
+
+  lint:
+    name: Lint (backend)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install ruff
+        run: pip install ruff==0.16.1
+
+      - name: Run ruff
+        run: ruff check backend/app backend/tests
