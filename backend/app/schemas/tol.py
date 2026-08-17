@@ -4,7 +4,7 @@ Pydantic schemas per TOL (Tipologie Omogenee Lavorazioni)
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # TOL Master Schemas
@@ -19,8 +19,7 @@ class TolMasterBase(BaseModel):
 class TolMasterResponse(TolMasterBase):
     sequence: int = Field(..., description="Numero sequenziale 1-20")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TolListResponse(BaseModel):
@@ -59,8 +58,7 @@ class TolAssignmentResponse(BaseModel):
     created_at: datetime
     tol_master: TolMasterBase | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TolAssignmentBulkCreate(BaseModel):
@@ -94,8 +92,7 @@ class TolIndexSeriesResponse(TolIndexSeriesBase):
     valid_to: datetime | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Utility Schemas
