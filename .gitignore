@@ -36,6 +36,7 @@ htmlcov/
 
 # Large CSV (not needed, data imported directly)
 backend/istat_nic_ecoicop2.csv
+backend/seeds/.sdmx_rate_limit.json
 
 # Node
 node_modules/
