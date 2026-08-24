@@ -6,6 +6,7 @@ from math import ceil
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -35,6 +36,34 @@ class SdmxNoRecordsError(Exception):
 @router.get("")
 def list_indices(db: Session = Depends(get_db)):
     series = db.query(IndexSeries).order_by(IndexSeries.name).all()
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "source": s.source,
+            "normative_category": s.normative_category,
+            "classification_ref": s.classification_ref,
+            "frequency": s.frequency,
+        }
+        for s in series
+    ]
+
+
+@router.get("/search")
+def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
+    query = db.query(IndexSeries)
+    if q:
+        search_term = f"%{q}%"
+        query = query.filter(
+            or_(
+                IndexSeries.id.ilike(search_term),
+                IndexSeries.name.ilike(search_term),
+                IndexSeries.normative_category.ilike(search_term),
+            )
+        )
+    if group:
+        query = query.filter(IndexSeries.classification_ref == group)
+    series = query.order_by(IndexSeries.name).limit(100).all()
     return [
         {
             "id": s.id,

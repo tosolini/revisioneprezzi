@@ -21,6 +21,15 @@ interface Series {
   observations: Observation[]
 }
 
+interface SearchHit {
+  id: string
+  name: string
+  source: string
+  normative_category: string | null
+  classification_ref: string | null
+  frequency: string
+}
+
 const GROUP_LABELS: Record<string, string> = {
   ps_business: 'Prezzi produzione servizi (BtoB)',
   tol: 'Tipologie Omogenee Lavorazioni (TOL)',
@@ -436,6 +445,12 @@ export default function IstatCatalog() {
   const [showSdmx, setShowSdmx] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const [clearTarget, setClearTarget] = useState<Series | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchHit[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchGroupCache, setSearchGroupCache] = useState<Record<string, Series[]>>({})
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchActive = searchQuery.trim().length > 0
 
   useEffect(() => {
     setLoading(true)
@@ -468,6 +483,36 @@ export default function IstatCatalog() {
       .finally(() => setLoadingSeries(false))
   }, [selectedGroup, reloadKey])
 
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!searchActive) {
+      setSearchResults([])
+      setSearching(false)
+      setExpanded(null)
+      return
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearching(true)
+      fetch(`/api/v1/indices/search?q=${encodeURIComponent(searchQuery.trim())}`)
+        .then(r => r.json())
+        .then(data => setSearchResults(data))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false))
+    }, 250)
+  }, [searchQuery, searchActive])
+
+  useEffect(() => {
+    if (!searchActive || !expanded) return
+    const hit = searchResults.find(r => r.id === expanded)
+    const groupRef = hit?.classification_ref ?? ''
+    if (!groupRef) return
+    if (searchGroupCache[groupRef]) return
+    fetch(`/api/v1/indices/by-group/${encodeURIComponent(groupRef)}`)
+      .then(r => r.json())
+      .then(data => setSearchGroupCache(c => ({ ...c, [groupRef]: data })))
+      .catch(() => setSearchGroupCache(c => ({ ...c, [groupRef]: [] })))
+  }, [expanded, searchActive, searchResults, searchGroupCache])
+
   return (
     <div>
       <div style={{
@@ -491,7 +536,23 @@ export default function IstatCatalog() {
           </div>
         </div>
 
-        {loading ? (
+        <input
+          type="text"
+          placeholder="Cerca indice per nome o codice…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '10px 14px', fontSize: 14,
+            border: '1px solid var(--color-border)', borderRadius: 8, outline: 'none',
+            background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', marginBottom: 16,
+          }}
+        />
+
+        {searchActive ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
+            Ricerca attiva — risultati sopra. Cancella la ricerca per tornare ai gruppi.
+          </div>
+        ) : loading ? (
           <div style={{ color: 'var(--color-text-muted)' }}>Caricamento gruppi...</div>
         ) : (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -519,7 +580,108 @@ export default function IstatCatalog() {
         background: 'var(--color-bg-card)', padding: 24, borderRadius: 12,
         boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
-        {loadingSeries ? (
+        {searchActive ? (
+          searching ? (
+            <div style={{ color: 'var(--color-text-muted)' }}>Ricerca in corso...</div>
+          ) : searchResults.length === 0 ? (
+            <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+              Nessun risultato per "{searchQuery.trim()}".
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600, width: 24 }}></th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Serie</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Codice</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Frequenza</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Gruppo</th>
+                  <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Osservazioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchResults.map(hit => {
+                  const groupSeries = hit.classification_ref ? searchGroupCache[hit.classification_ref] : undefined
+                  const full = groupSeries?.find(s => s.id === hit.id)
+                  const expandedSeries = expanded === hit.id ? full : undefined
+                  return (
+                    <React.Fragment key={hit.id}>
+                      <tr
+                        onClick={() => setExpanded(expanded === hit.id ? null : hit.id)}
+                        style={{
+                          borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
+                          background: expanded === hit.id ? 'var(--color-bg-offset)' : undefined,
+                        }}
+                      >
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          {expanded === hit.id ? '▼' : '▶'}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 500 }}>{hit.name}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{hit.id}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
+                          {hit.frequency === 'quarterly' ? 'Trimestrale' : hit.frequency === 'monthly' ? 'Mensile' : hit.frequency === 'annual' ? 'Annuale' : hit.frequency}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
+                          {hit.classification_ref ? (GROUP_LABELS[hit.classification_ref] || hit.classification_ref) : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-text-muted)' }}>
+                          {full ? full.observation_count : '—'}
+                        </td>
+                      </tr>
+                      {expanded === hit.id && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '0 12px 12px 36px' }}>
+                            {!expandedSeries ? (
+                              <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>
+                                Caricamento osservazioni...
+                              </div>
+                            ) : expandedSeries.observations.length === 0 ? (
+                              <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>Nessuna osservazione</div>
+                            ) : (
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Periodo</th>
+                                    <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Valore</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {expandedSeries.observations.map(o => (
+                                    <tr key={o.period} style={{ borderBottom: '1px solid #f9fafb' }}>
+                                      <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, expandedSeries.frequency)}</td>
+                                      <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
+                                        {o.value.toFixed(2)}
+                                        {!o.is_definitive && <span style={{ color: 'var(--color-text-warning)', marginLeft: 4, fontSize: 10 }}>provv.</span>}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                            {expandedSeries && (
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                <button
+                                  onClick={() => setClearTarget(expandedSeries)}
+                                  style={{
+                                    padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                    border: '1px solid var(--color-text-error)', background: 'var(--color-bg-card)',
+                                    color: 'var(--color-text-error)', cursor: 'pointer',
+                                  }}
+                                >
+                                  Svuota indice
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          )
+        ) : loadingSeries ? (
           <div style={{ color: 'var(--color-text-muted)' }}>Caricamento serie...</div>
         ) : seriesList.length === 0 ? (
           <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Nessuna serie per questo gruppo.</div>
