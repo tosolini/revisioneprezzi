@@ -24,22 +24,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.core.database import SessionLocal
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
+from app.services.sdmx_rate_limit import wait_for_slot
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "seeds" / "istat_data_config.yaml"
 SYNC_STATE_PATH = Path(__file__).resolve().parent.parent / "seeds" / ".istat_sync_state.json"
 SDMX_BASE = "https://esploradati.istat.it/SDMXWS/rest/data"
-
-_last_request_time = 0.0
-
-
-def _wait_rate_limit():
-    global _last_request_time
-    now = time.time()
-    if now - _last_request_time < 12:
-        sleep = 12 - (now - _last_request_time) + random.uniform(0.5, 2)
-        print(f"  Rate limit: attesa {sleep:.1f}s...")
-        time.sleep(sleep)
-    _last_request_time = time.time()
 
 
 def _download(url: str, params: dict) -> str | None:
@@ -220,7 +209,9 @@ def sync_from_sdmx(db, dataflow_filter: str | None = None) -> dict[str, int]:
             dt = datetime.fromisoformat(last_sync)
             params_base["updatedAfter"] = dt.strftime("%Y-%m-%dT%H:%M:%S")
             print(f"  Incrementale da: {last_sync}")
-            _wait_rate_limit()
+            waited = wait_for_slot()
+            if waited > 0:
+                print(f"  Rate limit: attesa {waited:.1f}s...")
             url = f"{SDMX_BASE}/{df_id}"
             content = _download(url, params_base)
             if content is None:
@@ -236,7 +227,9 @@ def sync_from_sdmx(db, dataflow_filter: str | None = None) -> dict[str, int]:
             contents = []
             for year in range(2022, current_year + 1):
                 params = dict(params_base, startPeriod=str(year), endPeriod=str(year))
-                _wait_rate_limit()
+                waited = wait_for_slot()
+                if waited > 0:
+                    print(f"  Rate limit: attesa {waited:.1f}s...")
                 print(f"  Scarico anno {year}...")
                 url = f"{SDMX_BASE}/{df_id}"
                 content = _download(url, params)

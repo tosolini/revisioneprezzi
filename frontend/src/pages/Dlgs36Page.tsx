@@ -4,7 +4,52 @@ function escapeHtml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function renderMarkdown(md: string): string {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function highlightHtmlText(html: string, query: string) {
+  const trimmed = query.trim()
+  if (!trimmed) return html
+
+  const regex = new RegExp(escapeRegExp(trimmed), 'ig')
+
+  return html
+    .split(/(<[^>]+>)/g)
+    .map((segment) => {
+      if (segment.startsWith('<') && segment.endsWith('>')) {
+        return segment
+      }
+
+      return segment.replace(regex, '<mark>$&</mark>')
+    })
+    .join('')
+}
+
+function getSearchMatches(md: string, query: string) {
+  const trimmed = query.trim()
+  if (!trimmed || !md) return []
+
+  const regex = new RegExp(escapeRegExp(trimmed), 'gi')
+  const snippets: string[] = []
+  let match
+
+  while ((match = regex.exec(md)) !== null) {
+    const start = Math.max(0, match.index - 80)
+    const end = Math.min(md.length, match.index + trimmed.length + 160)
+    const snippet = md.slice(start, end).replace(/\s+/g, ' ').trim()
+
+    if (snippet && !snippets.includes(snippet)) {
+      snippets.push(snippet)
+    }
+
+    if (snippets.length >= 6) break
+  }
+
+  return snippets
+}
+
+function renderMarkdown(md: string, query = ''): string {
   const lines = md.split('\n')
   const html: string[] = []
   let inTable = false
@@ -39,11 +84,8 @@ function renderMarkdown(md: string): string {
 
   function inlineFormat(text: string): string {
     let t = escapeHtml(text)
-    // Bold
     t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     t = t.replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Links
     t = t.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     return t
   }
@@ -51,19 +93,16 @@ function renderMarkdown(md: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
-    // Empty line
     if (line.trim() === '') {
       if (inTable) { inTable = false; flushTable() }
       continue
     }
 
-    // Table separator row
     if (/^\|[\s:-]+\|$/.test(line.trim()) && inTable) {
       tableAligns = line.split('|').filter((s, idx, arr) => idx > 0 && idx < arr.length - 1).map(s => s.trim())
       continue
     }
 
-    // Table row
     if (line.trimStart().startsWith('|') && line.trimEnd().endsWith('|')) {
       if (!inTable) {
         inTable = true
@@ -75,59 +114,54 @@ function renderMarkdown(md: string): string {
     }
 
     if (inTable) {
-      // If we were in a table and line doesn't look like table, flush and process normally
       inTable = false
       flushTable()
     }
 
-    // Headers
     if (/^#{1,4}\s/.test(line)) {
       const level = line.match(/^(#+)/)![1].length
       const text = line.replace(/^#+\s*/, '')
-      html.push(`<h${level} style="margin-top:1.2em;margin-bottom:0.4em;color:var(--color-text-primary)">${inlineFormat(text)}</h${level}>`)
+      const renderedText = query.trim() ? highlightHtmlText(inlineFormat(text), query) : inlineFormat(text)
+      html.push(`<h${level} style="margin-top:1.2em;margin-bottom:0.4em;color:var(--color-text-primary)">${renderedText}</h${level}>`)
       continue
     }
 
-    // Horizontal rule
     if (/^---+\s*$/.test(line.trim())) {
       html.push('<hr style="margin:1em 0;border:none;border-top:2px solid var(--color-border-light)">')
       continue
     }
 
-    // Unordered list
     if (/^\s*[-*]\s/.test(line)) {
       const text = line.replace(/^\s*[-*]\s+/, '')
-      html.push(`<li style="margin:2px 0;color:var(--color-text-secondary)">${inlineFormat(text)}</li>`)
+      const renderedText = query.trim() ? highlightHtmlText(inlineFormat(text), query) : inlineFormat(text)
+      html.push(`<li style="margin:2px 0;color:var(--color-text-secondary)">${renderedText}</li>`)
       continue
     }
 
-    // Ordered list
     if (/^\s*\d+\.\s/.test(line)) {
       const text = line.replace(/^\s*\d+\.\s+/, '')
-      html.push(`<li style="margin:2px 0;color:var(--color-text-secondary)">${inlineFormat(text)}</li>`)
+      const renderedText = query.trim() ? highlightHtmlText(inlineFormat(text), query) : inlineFormat(text)
+      html.push(`<li style="margin:2px 0;color:var(--color-text-secondary)">${renderedText}</li>`)
       continue
     }
 
-    // Blockquote
     if (line.trimStart().startsWith('> ')) {
       const text = line.replace(/^>\s*/, '')
-      html.push(`<blockquote style="margin:0.5em 0;padding:8px 14px;border-left:3px solid var(--color-primary);color:var(--color-text-secondary);font-size:13px">${inlineFormat(text)}</blockquote>`)
+      const renderedText = query.trim() ? highlightHtmlText(inlineFormat(text), query) : inlineFormat(text)
+      html.push(`<blockquote style="margin:0.5em 0;padding:8px 14px;border-left:3px solid var(--color-primary);color:var(--color-text-secondary);font-size:13px">${renderedText}</blockquote>`)
       continue
     }
 
-    // Code block markers
     if (line.trim().startsWith('```')) {
-      // skip code block markers
       continue
     }
 
-    // Regular paragraph
-    html.push(`<p style="margin:0.4em 0;line-height:1.8;color:var(--color-text-secondary);font-size:13px">${inlineFormat(line)}</p>`)
+    const renderedText = query.trim() ? highlightHtmlText(inlineFormat(line), query) : inlineFormat(line)
+    html.push(`<p style="margin:0.4em 0;line-height:1.8;color:var(--color-text-secondary);font-size:13px">${renderedText}</p>`)
   }
 
   if (inTable) flushTable()
 
-  // Wrap consecutive <li> in <ul> or <ol>
   const finalHtml = html.join('\n')
   return finalHtml
     .replace(/((?:<li[^>]*>.*?<\/li>\n?)+)/g, '<ul style="margin:0.4em 0;padding-left:24px;color:var(--color-text-secondary);font-size:13px">$1</ul>')
@@ -137,6 +171,7 @@ function renderMarkdown(md: string): string {
 export default function Dlgs36Page() {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     fetch('/dlgs36-2023.md')
@@ -148,10 +183,16 @@ export default function Dlgs36Page() {
       .catch(() => setLoading(false))
   }, [])
 
+  const normalizedQuery = query.trim()
+
   const rendered = useMemo(() => {
     if (!content) return ''
-    return renderMarkdown(content)
-  }, [content])
+    return renderMarkdown(content, normalizedQuery)
+  }, [content, normalizedQuery])
+
+  const searchMatches = useMemo(() => {
+    return getSearchMatches(content, normalizedQuery)
+  }, [content, normalizedQuery])
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-muted)' }}>Caricamento...</div>
@@ -169,7 +210,50 @@ export default function Dlgs36Page() {
         table th { background: var(--color-table-header-bg); font-weight: 600; color: var(--color-text-secondary); }
         table tr:nth-child(even) { background: var(--color-table-stripe); }
         a { color: var(--color-primary); }
+        mark { background: rgba(255, 204, 0, 0.45); color: inherit; padding: 0 2px; border-radius: 3px; }
+        .search-shell { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+        .search-input { flex: 1; border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 12px; background: var(--color-bg-page); color: var(--color-text-primary); font-size: 14px; }
+        .search-button { border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+        .search-summary { margin-bottom: 14px; color: var(--color-text-secondary); font-size: 13px; }
+        .search-snippets { display: grid; gap: 10px; margin-bottom: 20px; }
+        .search-snippet { background: var(--color-bg-page); border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; }
       `}</style>
+
+      <div className="search-shell">
+        <input
+          className="search-input"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Cerca nel testo della legge..."
+          aria-label="Cerca nel testo della legge"
+        />
+        {query && (
+          <button className="search-button" type="button" onClick={() => setQuery('')}>
+            Cancella
+          </button>
+        )}
+      </div>
+
+      {normalizedQuery && (
+        <div className="search-summary">
+          {searchMatches.length > 0
+            ? `${searchMatches.length} risultato${searchMatches.length === 1 ? '' : 'i'} trovato${searchMatches.length === 1 ? '' : 'i'} per “${normalizedQuery}”`
+            : `Nessun risultato trovato per “${normalizedQuery}”`}
+        </div>
+      )}
+
+      {normalizedQuery && searchMatches.length > 0 && (
+        <div className="search-snippets">
+          {searchMatches.map((snippet, index) => (
+            <div className="search-snippet" key={`${snippet}-${index}`}>
+              <strong style={{ color: 'var(--color-text-primary)' }}>Risultato {index + 1}</strong><br />
+              {snippet}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div dangerouslySetInnerHTML={{ __html: rendered }} />
     </div>
   )

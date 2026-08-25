@@ -21,6 +21,15 @@ interface Series {
   observations: Observation[]
 }
 
+interface SearchHit {
+  id: string
+  name: string
+  source: string
+  normative_category: string | null
+  classification_ref: string | null
+  frequency: string
+}
+
 const GROUP_LABELS: Record<string, string> = {
   ps_business: 'Prezzi produzione servizi (BtoB)',
   tol: 'Tipologie Omogenee Lavorazioni (TOL)',
@@ -33,6 +42,25 @@ const GROUP_LABELS: Record<string, string> = {
 }
 
 const PINNED = ['tol', 'ps_business']
+interface ImportDetails {
+  added: number
+  updated: number
+  skipped: number
+  errors: number
+  series_created: number
+  dataflow_id?: string
+  dataflow_matched?: boolean
+  group_key?: string
+  frequency?: string
+  frequency_adjusted?: string
+}
+
+interface ImportJob {
+  id: string
+  status: 'ready' | 'running' | 'done' | 'error'
+  result?: { details: ImportDetails } | null
+  error?: string | null
+}
 
 function formatPeriod(period: string, freq: string): string {
   if (freq === 'monthly') {
@@ -68,7 +96,7 @@ const FREQ_OPTIONS = [
   { value: 'annual', label: 'Annuale' },
 ]
 
-function ImportModal({ onClose }: { onClose: () => void }) {
+function ImportModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -97,6 +125,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
       const data = await res.json()
       const d = data.details
       setResult(`✓ Importato: ${d.added} aggiunte, ${d.updated} aggiornate, ${d.skipped} saltate, ${d.errors} errori. ${d.series_created} nuove serie create.`)
+      onImported()
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -159,6 +188,252 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+  const [url, setUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<string | null>(null)
+
+  const FREQ_LABELS: Record<string, string> = {
+    monthly: 'mensile',
+    quarterly: 'trimestrale',
+    annual: 'annuale',
+  }
+
+  const delay = (ms: number) => {
+    const { promise, resolve } = Promise.withResolvers<void>()
+    setTimeout(resolve, ms)
+    return promise
+  }
+
+  const parseErrorDetail = async (res: Response): Promise<string> => {
+    let detail = await res.text()
+    try {
+      const j: unknown = JSON.parse(detail)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        const raw = j.detail
+        if (typeof raw === 'string' && raw) detail = raw
+      }
+    } catch { /* body non JSON: usa il testo grezzo */ }
+    return detail || 'Errore importazione'
+  }
+
+  const showResult = (job: ImportJob) => {
+    const d = job.result?.details
+    if (!d) throw new Error('Risultato import mancante')
+    const detected = d.dataflow_matched
+      ? ` Dataflow rilevato: ${d.dataflow_id}.`
+      : ` Dataflow non in configurazione: importato come "${d.group_key}" (${d.frequency ? FREQ_LABELS[d.frequency] || d.frequency : ''}).`
+    const adjusted = d.frequency_adjusted ? ` Frequenza corretta: ${d.frequency_adjusted}.` : ''
+    setResult(`✓ Importato: ${d.added} aggiunte, ${d.updated} aggiornate, ${d.skipped} saltate, ${d.errors} errori. ${d.series_created} nuove serie create.${detected}${adjusted}`)
+    onImported()
+  }
+
+  const pollJob = async (jobId: string) => {
+    const deadline = Date.now() + 15 * 60 * 1000
+    while (Date.now() < deadline) {
+      await delay(3000)
+      const res = await fetch(`/api/v1/indices/import-jobs/${jobId}`)
+      if (!res.ok) throw new Error('Errore nel controllo dell\'import')
+      const job = (await res.json()) as ImportJob
+      if (job.status === 'done') { showResult(job); return }
+      if (job.status === 'error') throw new Error(job.error || 'Errore importazione')
+    }
+    throw new Error('Tempo scaduto: Istat non ha risposto entro 15 minuti. Riprova.')
+  }
+
+  const handleImport = async () => {
+    if (!url.trim() || loading) return
+    setLoading(true)
+    setError('')
+    setResult(null)
+    try {
+      const res = await fetch('/api/v1/indices/import-sdmx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      })
+      if (!res.ok) throw new Error(await parseErrorDetail(res))
+      const data = await res.json()
+      if (data.job_id) {
+        await pollJob(data.job_id)
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--color-overlay)',
+    }}>
+      <div style={{
+        background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 480,
+        maxWidth: 620, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
+      }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--color-text-primary)' }}>Importa Query SDMX</h3>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
+          <p style={{ marginBottom: 8 }}>
+            Copia l'URL <strong>Data</strong> dalla sezione{' '}
+            <a
+              href="https://esploradati.istat.it/databrowser/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}
+            >
+              Query SDMX
+            </a>{' '}
+            di esploradati.istat.it/databrowser.
+          </p>
+          <p style={{ marginBottom: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
+            Esempio:{' '}
+            <span style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              https://esploradati.istat.it/SDMXWS/rest/data/IT1,145_376_DF_DCSC_PREZPRODSERV_1_7,1.0/Q..../ALL/?detail=full&amp;startPeriod=2024-01-01&amp;endPeriod=2026-03-31&amp;dimensionAtObservation=TIME_PERIOD
+            </span>
+          </p>
+          <p style={{ marginBottom: 0, fontSize: 12, color: 'var(--color-text-warning)' }}>
+            Istat consente 5 query/minuto per IP: l'importazione può richiedere fino a ~1 minuto.
+          </p>
+        </div>
+
+        <textarea
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          placeholder="https://esploradati.istat.it/SDMXWS/rest/data/…"
+          rows={4}
+          style={{
+            width: '100%', padding: '10px 12px', fontSize: 12, fontFamily: 'monospace',
+            border: '1px solid var(--color-border)', borderRadius: 8,
+            background: 'var(--color-bg-card)', color: 'var(--color-text-primary)',
+            resize: 'vertical', boxSizing: 'border-box', marginBottom: 16,
+          }}
+        />
+
+        {loading && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13,
+            background: 'var(--color-bg-offset)', color: 'var(--color-text-secondary)',
+          }}>
+            Importazione in corso — Istat può impiegare anche 5-10 minuti per query
+            con dimensioni non filtrate. Puoi chiudere la finestra: l'import continua
+            in background.
+          </div>
+        )}
+        {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{error}</div>}
+        {result && <div style={{ padding: '8px 12px', background: 'var(--color-bg-success)', color: 'var(--color-text-success)', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{result}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Chiudi</button>
+          <button onClick={handleImport} disabled={!url.trim() || loading} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: !url.trim() || loading ? 'var(--color-text-light)' : 'var(--color-primary)', color: '#fff', cursor: !url.trim() || loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>{loading ? 'Importazione in corso...' : 'Importa'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ClearIndexModal({ series, onClose, onCleared }: { series: Series; onClose: () => void; onCleared: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [understood, setUnderstood] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const parseErrorDetail = async (res: Response): Promise<string> => {
+    let detail = await res.text()
+    try {
+      const j: unknown = JSON.parse(detail)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        const raw = j.detail
+        if (typeof raw === 'string' && raw) detail = raw
+      }
+    } catch { /* body non JSON: usa il testo grezzo */ }
+    return detail || 'Errore operazione'
+  }
+
+  const doClear = async () => {
+    if (!understood || loading) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/indices/${encodeURIComponent(series.id)}/observations`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await parseErrorDetail(res))
+      onCleared()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const dangerBtn: React.CSSProperties = {
+    padding: '8px 20px', borderRadius: 8, border: 'none',
+    background: step === 1 ? 'var(--color-primary)' : 'var(--color-text-error)',
+    color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--color-overlay)',
+    }}>
+      <div style={{
+        background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 460,
+        maxWidth: 560, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
+      }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 18, color: 'var(--color-text-error)' }}>
+          {step === 1 ? 'Svuota indice' : 'Conferma definitiva'}
+        </h3>
+
+        {step === 1 ? (
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
+            <p style={{ marginBottom: 8 }}>
+              Stai per svuotare l'indice:
+            </p>
+            <p style={{ marginBottom: 8, fontFamily: 'monospace', fontSize: 12, color: 'var(--color-text-primary)' }}>
+              {series.id}
+            </p>
+            <p style={{ marginBottom: 8 }}>{series.name}</p>
+            <p style={{ marginBottom: 0, color: 'var(--color-text-warning)' }}>
+              Verranno eliminate <strong>{series.observation_count}</strong> osservazioni.
+              La serie resta, ma vuota.
+            </p>
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
+            <p style={{ marginBottom: 8 }}>
+              Ultimo passaggio: l'operazione è <strong>irreversibile</strong>. Le{' '}
+              <strong>{series.observation_count}</strong> osservazioni dell'indice{' '}
+              <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{series.id}</span>{' '}
+              saranno cancellate definitivamente.
+            </p>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+              <input type="checkbox" checked={understood} onChange={e => setUnderstood(e.target.checked)} />
+              <span>Ho capito: la cancellazione è irreversibile</span>
+            </label>
+          </div>
+        )}
+
+        {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Annulla</button>
+          {step === 1 ? (
+            <button onClick={() => setStep(2)} style={dangerBtn}>Continua</button>
+          ) : (
+            <button onClick={doClear} disabled={!understood || loading} style={{
+              ...dangerBtn,
+              background: !understood || loading ? 'var(--color-text-light)' : 'var(--color-text-error)',
+              cursor: !understood || loading ? 'not-allowed' : 'pointer',
+            }}>{loading ? 'Svuotamento...' : 'Svuota indice'}</button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function IstatCatalog() {
   const [groups, setGroups] = useState<Group[]>([])
   const [selectedGroup, setSelectedGroup] = useState<string>('')
@@ -167,6 +442,15 @@ export default function IstatCatalog() {
   const [loading, setLoading] = useState(true)
   const [loadingSeries, setLoadingSeries] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showSdmx, setShowSdmx] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [clearTarget, setClearTarget] = useState<Series | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchHit[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchGroupCache, setSearchGroupCache] = useState<Record<string, Series[]>>({})
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchActive = searchQuery.trim().length > 0
 
   useEffect(() => {
     setLoading(true)
@@ -179,11 +463,14 @@ export default function IstatCatalog() {
           return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
         })
         setGroups(data)
-        if (data.length > 0) setSelectedGroup(data[0].key)
+        setSelectedGroup(prev => {
+          const stillExists = data.some(g => g.key === prev)
+          return stillExists ? prev : data.length > 0 ? data[0].key : ''
+        })
       })
       .catch(() => setGroups([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   useEffect(() => {
     if (!selectedGroup) return
@@ -194,7 +481,37 @@ export default function IstatCatalog() {
       .then(data => setSeriesList(data))
       .catch(() => setSeriesList([]))
       .finally(() => setLoadingSeries(false))
-  }, [selectedGroup])
+  }, [selectedGroup, reloadKey])
+
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!searchActive) {
+      setSearchResults([])
+      setSearching(false)
+      setExpanded(null)
+      return
+    }
+    searchTimeout.current = setTimeout(() => {
+      setSearching(true)
+      fetch(`/api/v1/indices/search?q=${encodeURIComponent(searchQuery.trim())}`)
+        .then(r => r.json())
+        .then(data => setSearchResults(data))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false))
+    }, 250)
+  }, [searchQuery, searchActive])
+
+  useEffect(() => {
+    if (!searchActive || !expanded) return
+    const hit = searchResults.find(r => r.id === expanded)
+    const groupRef = hit?.classification_ref ?? ''
+    if (!groupRef) return
+    if (searchGroupCache[groupRef]) return
+    fetch(`/api/v1/indices/by-group/${encodeURIComponent(groupRef)}`)
+      .then(r => r.json())
+      .then(data => setSearchGroupCache(c => ({ ...c, [groupRef]: data })))
+      .catch(() => setSearchGroupCache(c => ({ ...c, [groupRef]: [] })))
+  }, [expanded, searchActive, searchResults, searchGroupCache])
 
   return (
     <div>
@@ -207,13 +524,35 @@ export default function IstatCatalog() {
             <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Indici ISTAT</h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>Serie storiche indici ISTAT per la revisione prezzi</p>
           </div>
-          <button onClick={() => setShowImport(true)} style={{
-            padding: '10px 20px', borderRadius: 8, border: 'none',
-            background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-          }}>Importa CSV</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowSdmx(true)} style={{
+              padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-primary)',
+              background: 'var(--color-bg-card)', color: 'var(--color-primary)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+            }}>Importa Query SDMX</button>
+            <button onClick={() => setShowImport(true)} style={{
+              padding: '10px 20px', borderRadius: 8, border: 'none',
+              background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+            }}>Importa CSV</button>
+          </div>
         </div>
 
-        {loading ? (
+        <input
+          type="text"
+          placeholder="Cerca indice per nome o codice…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '10px 14px', fontSize: 14,
+            border: '1px solid var(--color-border)', borderRadius: 8, outline: 'none',
+            background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', marginBottom: 16,
+          }}
+        />
+
+        {searchActive ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
+            Ricerca attiva — risultati sopra. Cancella la ricerca per tornare ai gruppi.
+          </div>
+        ) : loading ? (
           <div style={{ color: 'var(--color-text-muted)' }}>Caricamento gruppi...</div>
         ) : (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -241,7 +580,108 @@ export default function IstatCatalog() {
         background: 'var(--color-bg-card)', padding: 24, borderRadius: 12,
         boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
-        {loadingSeries ? (
+        {searchActive ? (
+          searching ? (
+            <div style={{ color: 'var(--color-text-muted)' }}>Ricerca in corso...</div>
+          ) : searchResults.length === 0 ? (
+            <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+              Nessun risultato per "{searchQuery.trim()}".
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600, width: 24 }}></th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Serie</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Codice</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Frequenza</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Gruppo</th>
+                  <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Osservazioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchResults.map(hit => {
+                  const groupSeries = hit.classification_ref ? searchGroupCache[hit.classification_ref] : undefined
+                  const full = groupSeries?.find(s => s.id === hit.id)
+                  const expandedSeries = expanded === hit.id ? full : undefined
+                  return (
+                    <React.Fragment key={hit.id}>
+                      <tr
+                        onClick={() => setExpanded(expanded === hit.id ? null : hit.id)}
+                        style={{
+                          borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
+                          background: expanded === hit.id ? 'var(--color-bg-offset)' : undefined,
+                        }}
+                      >
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          {expanded === hit.id ? '▼' : '▶'}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 500 }}>{hit.name}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{hit.id}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
+                          {hit.frequency === 'quarterly' ? 'Trimestrale' : hit.frequency === 'monthly' ? 'Mensile' : hit.frequency === 'annual' ? 'Annuale' : hit.frequency}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
+                          {hit.classification_ref ? (GROUP_LABELS[hit.classification_ref] || hit.classification_ref) : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-text-muted)' }}>
+                          {full ? full.observation_count : '—'}
+                        </td>
+                      </tr>
+                      {expanded === hit.id && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '0 12px 12px 36px' }}>
+                            {!expandedSeries ? (
+                              <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>
+                                Caricamento osservazioni...
+                              </div>
+                            ) : expandedSeries.observations.length === 0 ? (
+                              <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>Nessuna osservazione</div>
+                            ) : (
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Periodo</th>
+                                    <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Valore</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {expandedSeries.observations.map(o => (
+                                    <tr key={o.period} style={{ borderBottom: '1px solid #f9fafb' }}>
+                                      <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, expandedSeries.frequency)}</td>
+                                      <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
+                                        {o.value.toFixed(2)}
+                                        {!o.is_definitive && <span style={{ color: 'var(--color-text-warning)', marginLeft: 4, fontSize: 10 }}>provv.</span>}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                            {expandedSeries && (
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                <button
+                                  onClick={() => setClearTarget(expandedSeries)}
+                                  style={{
+                                    padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                    border: '1px solid var(--color-text-error)', background: 'var(--color-bg-card)',
+                                    color: 'var(--color-text-error)', cursor: 'pointer',
+                                  }}
+                                >
+                                  Svuota indice
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          )
+        ) : loadingSeries ? (
           <div style={{ color: 'var(--color-text-muted)' }}>Caricamento serie...</div>
         ) : seriesList.length === 0 ? (
           <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Nessuna serie per questo gruppo.</div>
@@ -302,6 +742,18 @@ export default function IstatCatalog() {
                             </tbody>
                           </table>
                         )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                          <button
+                            onClick={() => setClearTarget(s)}
+                            style={{
+                              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              border: '1px solid var(--color-text-error)', background: 'var(--color-bg-card)',
+                              color: 'var(--color-text-error)', cursor: 'pointer',
+                            }}
+                          >
+                            Svuota indice
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -312,7 +764,9 @@ export default function IstatCatalog() {
         )}
       </div>
 
-      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
+      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={() => setReloadKey(k => k + 1)} />}
+      {showSdmx && <SdmxModal onClose={() => setShowSdmx(false)} onImported={() => setReloadKey(k => k + 1)} />}
+      {clearTarget && <ClearIndexModal series={clearTarget} onClose={() => setClearTarget(null)} onCleared={() => { setClearTarget(null); setReloadKey(k => k + 1) }} />}
     </div>
   )
 }

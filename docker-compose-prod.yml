@@ -1,7 +1,6 @@
 services:
   backend:
-    #image: ghcr.io/tosolini/revisioneprezzi/backend:main
-    build: ./backend
+    image: ghcr.io/tosolini/revisioneprezzi/backend:main
     ports:
       - "127.0.0.1:8000:8000"
     environment:

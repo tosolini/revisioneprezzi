@@ -74,6 +74,30 @@ def test_indices_list(client):
     assert resp.status_code == 200
 
 
+def test_indices_search(client):
+    db = SessionLocal()
+    sid = f"SRC_{uuid.uuid4().hex[:6]}"
+    db.add(IndexSeries(
+        id=sid, name="Indice Ricerca Unica", source="TEST",
+        classification_ref="tol", frequency="annual",
+        normative_category="test_search",
+    ))
+    db.commit()
+    db.close()
+
+    hit_by_name = client.get(f"/api/v1/indices/search?q={sid.lower()[:6]}")
+    assert hit_by_name.status_code == 200
+    assert any(h["id"] == sid for h in hit_by_name.json())
+
+    hit_by_group = client.get("/api/v1/indices/search?q=Ricerca&group=tol")
+    assert hit_by_group.status_code == 200
+    assert any(h["id"] == sid for h in hit_by_group.json())
+
+    no_hit = client.get("/api/v1/indices/search?q=zzz_nonesiste_xyz")
+    assert no_hit.status_code == 200
+    assert all(h["id"] != sid for h in no_hit.json())
+
+
 def test_calculate_endpoint(client):
     db = SessionLocal()
     sid = f"TST_API_{uuid.uuid4().hex[:6]}"
