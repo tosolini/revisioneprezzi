@@ -7,6 +7,7 @@ from app.models.cpv_assignment import CpvAssignment
 from app.models.cpv_catalog import CpvCatalog
 from app.models.ateco_catalog import AtecoCatalog
 from app.models.family_definition import FamilyDefinition
+from app.models.tabella_d import CpvTabellaDAssociation, CpvTabellaDMaster
 from app.models.family_mapping import FamilyMapping
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
@@ -28,6 +29,8 @@ __all__ = [
     "CpvCatalog",
     "FamilyDefinition",
     "FamilyMapping",
+    "CpvTabellaDAssociation",
+    "CpvTabellaDMaster",
     "IndexObservation",
     "IndexSeries",
     "NormativeParam",

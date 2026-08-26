@@ -1,0 +1,462 @@
+cpv_code,cpv_description,table_class
+03100000-2,Prodotti dell'agricoltura e dell'orticoltura,D1
+03200000-3,"Cereali, patate, verdura, frutta e noci",CHILDREN
+03210000-6,Cereali e patate,CHILDREN
+03211000-3,Cereali,D1
+03212000-0,Patate e ortaggi secchi,D1
+03220000-9,"Verdura, frutta e noci",CHILDREN
+03221000-6,Ortaggi,D1
+03222000-3,Frutta e frutta con guscio,D1
+03300000-2,"Prodotti dell'allevamento, della caccia e della pesca",CHILDREN
+03310000-5,"Pesce, crostacei e prodotti acquatici",D1
+03320000-8,"Bovini, bestiame e animali piccoli",D1
+03330000-3,Prodotti di animali di allevamento,D1
+09100000-0,Combustibili,CHILDREN
+09110000-3,Combustibili solidi,D1
+09120000-6,Combustibili gassosi,D1
+09130000-9,Petrolio e distillati,CHILDREN
+09131000-6,Cherosene avio,D1
+09132000-3,Benzina,D1
+09133000-0,Gas di petrolio liquefatto (GPL),D1
+09134000-7,Gasoli,D1
+09135000-4,Oli combustibili,D1
+09200000-1,"Prodotti derivati da petrolio, carbone e oli",D1
+09300000-2,"Elettricità, riscaldamento, energia solare e nucleare",CHILDREN
+09310000-5,Elettricità,D1
+09320000-8,"Vapore, acqua calda e prodotti affini",D1
+09330000-1,Energia solare,D1
+14200000-3,Sabbia e argilla,D1
+14300000-4,Prodotti inorganici chimici e fertilizzanti minerali,D1
+14400000-5,Sale e cloruro di sodio puro,D1
+14500000-6,Prodotti affini delle miniere e delle cave,D1
+14600000-7,Minerali metalliferi e leghe,D1
+14700000-8,Metalli di base,D1
+14800000-9,Prodotti vari di minerali non metallici,D1
+15100000-9,"Prodotti di origine animale, carne e prodotti a base di carne",D1
+15200000-0,Pesci preparati e conserve di pesce,D1
+15300000-1,"Frutta, verdura e prodotti affini",CHILDREN
+15310000-4,Patate e prodotti a base di patate,D1
+15320000-7,Succhi di frutta e di verdura,D1
+15330000-0,Frutta e verdura trasformata,CHILDREN
+15331000-7,Verdura trasformata,D1
+15332000-4,Frutta e noci trasformate,D1
+15400000-2,Oli e grassi animali o vegetali,D1
+15500000-3,Prodotti lattiero-caseari,D1
+15600000-4,"Prodotti della macinazione, amido e prodotti amilacei",D1
+15700000-5,Mangimi per bestiame,D1
+15800000-6,Prodotti alimentari vari,D1
+15900000-7,"Bevande, tabacco e prodotti affini",D1
+16100000-6,Macchinari agricoli e silvicoli per la lavorazione e coltivazione del suolo,D1
+16300000-8,Macchinari per la raccolta delle messi,D1
+16400000-9,Macchinari a spruzzo per orticoltura o agricoltura,D1
+16500000-0,Rimorchi e semirimorchi autocaricanti o scaricanti per uso agricolo,D1
+16600000-1,Macchinari specialistici per l'agricoltura o la silvicoltura,D1
+16700000-2,Trattori,D1
+16800000-3,Parti di macchinari per l'agricoltura e la silvicoltura,D1
+18100000-0,"Indumenti ad uso professionale, indumenti speciali da lavoro e accessori",D1
+18200000-1,Indumenti esterni,D1
+18300000-2,Indumenti,D1
+18400000-3,Indumenti speciali ed accessori,D1
+18500000-4,"Gioielli, orologi e articoli affini",D1
+18600000-5,Pellicce e articoli di pelliccia,D1
+18800000-7,Calzature,D1
+18900000-8,"Bagagli, selleria, sacchi e borse",D1
+19100000-7,Cuoio,D1
+19200000-8,Tessuti e articoli connessi,D1
+19400000-0,Filati e filo tessile,D1
+19500000-1,Materiali di gomma e plastica,D1
+19600000-2,"Cascami di pelle, tessili, di gomma e di plastica",D1
+19700000-3,Gomma e fibre sintetiche,CHILDREN
+19710000-6,Gomma sintetica,D1
+19720000-9,Fibre sintetiche,D1
+19730000-2,Fibre artificiali,D1
+22100000-1,"Libri, opuscoli e pieghevoli",D2
+22200000-2,"Quotidiani, riviste specializzate, periodici e settimanali",D1
+22300000-3,"Cartoline postali, biglietti di auguri ed altri stampati",D1
+22400000-4,"Francobolli, moduli di assegni, banconote, azioni, pubblicità professionale, cataloghi e manuali",D1
+22500000-5,"Cliché, cilindri o altro materiale per la stampa",D1
+22600000-6,Inchiostri,D1
+22800000-8,"Registri o libri contabili, classificatori, moduli ed altri articoli di cancelleria stampati in carta o cartone",D1
+22900000-9,Stampati di vario tipo,D1
+24100000-5,Gas,D1
+24200000-6,Coloranti e pigmenti,D1
+24300000-7,Sostanze chimiche di base organiche e inorganiche,CHILDREN
+24310000-0,Sostanze chimiche di base inorganiche,D1
+24320000-3,Prodotti chimici di base organici,D1
+24400000-8,Fertilizzanti e composti azotati,D1
+24500000-9,Materie plastiche in forme primarie,D1
+24600000-0,Esplosivi,D1
+24900000-3,Prodotti chimici fini e vari,CHILDREN
+24910000-6,Colle,D1
+24920000-9,Oli essenziali,D1
+30100000-0,"Macchine per ufficio, attrezzature e forniture, esclusi i computer, le stampanti e i mobili",D1
+30120000-6,Fotocopiatrici e stampanti offset,D1
+30125000-1,"""Parti e accessori per fotocopiatrici [NB: include cartucce e toner]""",D1
+30190000-7,"Macchinari, attrezzature e forniture varie",D1
+30197000-6,Attrezzatura minuta per uffici,D1
+30197630-1,Carta da stampa,D2
+30199000-0,Articoli di cancelleria ed altri articoli di carta,D1
+30200000-1,Apparecchiature informatiche e forniture,D1
+31100000-7,"Motori, generatori e trasformatori elettrici",D1
+31200000-8,Apparecchiature per la distribuzione e il controllo dell'energia elettrica,D1
+31300000-9,Fili e cavi isolati,D1
+31400000-0,"Accumulatori, pile e batterie primarie",D1
+31500000-1,Apparecchi di illuminazione e lampade elettriche,D1
+31600000-2,Attrezzature e apparecchiature elettriche,D1
+31700000-3,"Materiale elettronico, elettromeccanico ed elettrotecnico",D1
+32200000-5,"Apparecchi trasmittenti per radiotelefonia, radiotelegrafia, radiodiffusione e televisione",D1
+32250000-0,Telefoni portatili,D1
+32300000-6,Ricevitori radiofonici e televisivi e apparecchi per la registrazione o la riproduzione del suono o dell'immagine,D1
+32320000-2,Apparecchiature audiovisive e televisive,D1
+32323000-3,Schermi video,D1
+32323500-8,Sistema di videosorveglianza,D2
+32324000-0,Televisori,D1
+32330000-5,Apparecchi per registrazione e riproduzione di suoni e immagini,D1
+32333200-8,Videocamere,D1
+32340000-8,Microfoni e altoparlanti,D1
+32350000-1,Parti di apparecchiature audio e video,D1
+32400000-7,Network,D1
+32500000-8,Materiali per telecomunicazioni,D1
+32521000-1,Cavi per telecomunicazioni,D1
+32552100-8,Apparecchi telefonici,D1
+32561000-3,Connessioni a fibre ottiche,D1
+32562000-0,Cavi a fibre ottiche,D1
+32572000-3,Cavi per comunicazioni,D1
+33100000-1,Apparecchiature mediche,CHILDREN
+33110000-4,"Immaginografia ad uso medico, dentistico e veterinario",D1
+33120000-7,Sistemi di registrazione e dispositivi di esplorazione,D1
+33130000-0,Strumenti e dispositivi odontoiatrici e di sottospecialità,D1
+33140000-3,Materiali medici,D1
+33150000-6,"Dispositivi per radioterapia, meccanoterapia, elettroterapia e terapia fisica",D1
+33160000-9,Tecnica operatoria,D1
+33170000-2,Anestesia e rianimazione,D1
+33180000-5,Sostegno funzionale,D1
+33190000-8,Dispositivi e prodotti medici vari,D1
+33700000-7,Prodotti per la cura personale,D1
+33710000-0,"Profumi, articoli di toletta e preservativi",D1
+33720000-3,Rasoi e set per manicure o pedicure,D1
+33730000-6,Prodotti per la cura degli occhi e lenti correttrici,D1
+33740000-9,Prodotti per la cura delle mani e delle unghie,D1
+33750000-2,Prodotti per la cura dei neonati,D1
+33751000-9,Pannolini monouso,D1
+33760000-5,"Carta igienica, fazzoletti, asciugamani e tovaglioli",D1
+33770000-8,Salviette igieniche di carta,D1
+33790000-4,"Articoli di vetro per laboratorio, uso igienico o farmaceutico",D1
+33900000-9,Attrezzature e forniture per autopsie e obitorio,D1
+34100000-8,Veicoli a motore,D1
+34200000-9,Carrozzerie; rimorchi o semirimorchi,D1
+34300000-0,Parti ed accessori di autoveicoli e motori dei veicoli,D1
+34400000-1,"Motocicli, biciclette e sidecar",CHILDREN
+34410000-4,Motocicli,D1
+34420000-7,Motoscooter e cicli con motori ausiliari,D1
+34430000-0,Biciclette,D1
+34900000-6,Varie attrezzature di trasporto e parti di ricambio,CHILDREN
+34920000-2,Attrezzature stradali,D2
+34930000-5,Attrezzature marittime,D2
+34940000-8,Attrezzature ferroviarie,D2
+34950000-1,Strutture portanti,D2
+34960000-4,Apparecchiature aeroportuali,D2
+34970000-7,Attrezzature di monitoraggio del traffico,D2
+34980000-0,Biglietti di trasporto,D1
+34990000-3,"Attrezzature di controllo, di sicurezza, di segnalazione e di illuminazione",D2
+34992000-7,Cartelli stradali e cartelli stradali luminosi,D2
+34993000-4,Illuminazione stradale,D1
+35100000-5,Apparecchiature di emergenza e di sicurezza,CHILDREN
+35110000-8,"Attrezzature antincendio, di salvataggio e di sicurezza",CHILDREN
+35111000-5,Attrezzature di lotta antincendio,D1
+35112000-2,Attrezzature di salvataggio e di emergenza,D1
+35113000-9,Attrezzature per la sicurezza,D1
+35120000-1,Sistemi e dispositivi di sorveglianza e di sicurezza,D1
+35800000-2,Attrezzature individuali e di supporto,D1
+37300000-1,Strumenti musicali e loro parti,D1
+37400000-2,Articoli ed attrezzature sportive,D1
+37500000-3,"Giochi e giocattoli, attrazioni da fiera",D1
+37800000-6,Articoli per lavori di artigianato e artistici,D1
+38100000-6,Strumenti per la navigazione e la meteorologia,D1
+38200000-7,Strumenti geologici e geofisici,D1
+38300000-8,Strumenti di misurazione,D1
+38400000-9,Strumenti per il controllo di caratteristiche fisiche,D1
+38500000-0,Apparecchi di prova e controllo,D1
+38600000-1,Strumenti ottici,D1
+38700000-2,Registratori di presenza e simili; parchimetri,D1
+38800000-3,Attrezzature di controllo dei processi industriali e attrezzature di controllo a distanza,D1
+38900000-4,Strumenti vari di valutazione o prova,D1
+39100000-3,Mobili,D1
+39200000-4,Arredamento,D1
+39300000-5,Attrezzature varie,D2
+39500000-7,Articoli tessili,D2
+39700000-9,Apparecchi domestici,D2
+39800000-0,Prodotti per pulire e lucidare,D2
+41100000-0,Acqua naturale,D2
+42100000-0,Macchinari per la produzione e l'uso di energia meccanica,D1
+42200000-8,"Macchine per il trattamento di alimenti, bevande e tabacco e relative parti",D1
+42300000-9,"Fornaci, inceneritori e forni industriali o da laboratorio",D1
+42400000-0,Apparecchiature di sollevamento e movimentazione e loro parti,D1
+42500000-1,Apparecchiature di raffreddamento e ventilazione,D1
+42600000-2,Macchine utensili,D1
+42700000-3,"Macchinari per l'industria tessile, dell'abbigliamento e della concia",D1
+42800000-4,Macchinari per la fabbricazione della carta e del cartone,D1
+42900000-5,Macchinari vari per usi generali e specifici,D2
+43100000-4,Macchine per l'industria mineraria,D1
+43200000-5,Macchinari per movimento terra ed escavazione e relative parti,D1
+43300000-6,Macchinari e attrezzature per costruzione,D1
+43400000-7,Macchinari per la preparazione dei minerali e la modellazione di forme per fonderia,D1
+43500000-8,Veicoli cingolati,D1
+43600000-9,"Parti di macchine per miniere, cave e cantieri",D1
+43700000-0,Macchinari per la metallurgia e loro parti,D1
+43800000-1,Impianti per officine,D1
+44100000-1,Materiali per costruzione e articoli connessi,CHILDREN
+44110000-4,Materiali per costruzione,CHILDREN
+44111000-1,Materiali da costruzione,D2
+44112000-8,Strutture varie di costruzioni,D2
+44113000-5,Materiali per costruzione stradale,D2
+44114000-2,Calcestruzzo,D2
+44115000-9,Impianti per edifici,D2
+44130000-0,Condotte fognarie,D1
+44140000-3,Prodotti connessi ai materiali da costruzione,D1
+44160000-9,"Condutture, tubi, tubazioni, alloggiamenti, tubaggi e articoli connessi",D1
+44170000-2,"Piastre, fogli, strisce e lamine connessi a metariali da costruzione",D1
+44190000-8,Materiali da costruzione vari,D2
+44200000-2,Prodotti strutturali,CHILDREN
+44210000-5,Strutture e parti di strutture,CHILDREN
+44211000-2,Edifici prefabbricati,D2
+44212000-9,Prodotti strutturali e parti tranne edifici prefabbricati,D2
+44220000-8,Falegnameria per costruzioni,D1
+44230000-1,Carpenteria per costruzioni,D1
+44300000-3,"Cavi, fili metallici e prodotti affini",D1
+44400000-4,Prodotti fabbricati vari e articoli affini,CHILDREN
+44410000-7,Articoli per il bagno e la cucina,D1
+44420000-0,Prodotti utilizzati nella costruzione,D1
+44430000-3,Protezioni blindate,D2
+44440000-6,Cuscinetti,D1
+44460000-2,Puntelli e travi per miniera,D2
+44470000-5,Prodotti in ghisa,D2
+44480000-8,Attrezzature varie di protezione antincendio,D2
+44500000-5,"Utensili, serrature, chiavi, cerniere, chiusure, catene e molle",CHILDREN
+44510000-8,Utensili,D1
+44520000-1,"Serrature, chiavi e cerniere",D1
+44530000-4,Elementi di fissaggio,D1
+44540000-7,Catene,D1
+44550000-0,Molle,D1
+44600000-6,"Cisterne, serbatoi e contenitori radiatori e caldaie per riscaldamento centrale",D1
+44800000-8,"Pitture, vernici e mastici",D1
+44900000-9,"Pietra da costruzione, pietra calcare, gesso e ardesia",D1
+45500000-2,"""Noleggio di macchinari e attrezzature per lavori edili e di genio civile con operatore.",D2
+48100000-9,Pacchetti software specifici per l'industria,D2
+48200000-0,"Pacchetti software per reti, Internet e intranet",D2
+48300000-1,"Pacchetti software per creazione di documenti, disegno, trattamento delle immagini, pianificazione e produttività",D2
+48400000-2,Pacchetti software per transazioni commerciali e personali,D2
+48500000-3,Pacchetti software di comunicazione e multimedia,D2
+48600000-4,Pacchetti software operativi e base dati,D2
+48700000-5,Utilities per pacchetti software,D2
+48800000-6,Sistemi e server di informazione,D2
+48820000-2,Server,D1
+48900000-7,Pacchetti software e sistemi informatici vari,D2
+50100000-6,"Servizi di riparazione, manutenzione e affini di veicoli e attrezzature connesse",D1
+50200000-7,"Riparazione, manutenzione e servizi affini connessi a trasporti aerei, ferroviari, strade e servizi marittimi",CHILDREN
+50210000-0,"Riparazione, manutenzione e servizi affini connessi ai trasporti aerei e altre attrezzature",D1
+50220000-3,"Riparazione, manutenzione e servizi affini connessi alle ferrovie ed altre attrezzature",D1
+50230000-6,"Riparazione, manutenzione e servizi affini connessi alle strade ed altre attrezzature",CHILDREN
+50232000-0,Manutenzione di impianti di illuminazione pubblica e semafori,D3
+50240000-9,"Riparazione, manutenzione e servizi affini relativi alle navi ed altre attrezzature",D2
+50300000-8,"Servizi di riparazione, manutenzione e servizi affini connessi a personal computer, attrezzature d'ufficio, apparecchiature per telecomunicazione e impianti audiovisivi",CHILDREN
+50310000-1,Manutenzione e riparazione di macchine per ufficio,D3
+50312000-5,Manutenzione e riparazione di attrezzatura informatica,D3
+50320000-4,Servizi di riparazione e manutenzione di computer personali,D3
+50330000-7,Servizi di manutenzione di attrezzature per telecomunicazioni,D3
+50331000-4,Servizi di riparazione e manutenzione di linee per telecomunicazioni,D3
+50332000-1,Servizi di manutenzione di infrastrutture per telecomunicazioni,D3
+50333000-8,Servizi di manutenzione di attrezzature per radiocomunicazioni,D3
+50334000-5,Servizi di riparazione e manutenzione di attrezzature telefoniche e telegrafiche,D3
+50334140-8,Servizi di riparazione e manutenzione di apparecchi telefonici,D3
+50340000-0,Servizi di riparazione e manutenzione di attrezzature audiovisive ed ottiche,D3
+50400000-9,Servizi di riparazione e manutenzione di attrezzature mediche e di precisione,D1
+50413200-5,Servizi di riparazione e manutenzione di impianti antincendio,D1
+50500000-0,"Servizi di riparazione e manutenzione di pompe, valvole, rubinetti, contenitori metallici e macchinari",D1
+50610000-4,Servizi di riparazione e manutenzione di attrezzature di sicurezza,D1
+50700000-2,Servizi di riparazione e manutenzione di impianti di edifici,CHILDREN
+50710000-5,Servizi di riparazione e manutenzione di impianti elettrici e meccanici di edifici,CHILDREN
+50711000-2,Servizi di riparazione e manutenzione di impianti elettrici di edifici,D2
+50712000-9,Servizi di riparazione e manutenzione di impianti meccanici di edifici,D2
+50720000-8,Servizi di riparazione e manutenzione di riscaldamenti centrali,D2
+50730000-1,Servizi di riparazione e manutenzione di gruppi di raffreddamento,D2
+50740000-4,Servizi di riparazione e manutenzione di scale mobili,D3
+50750000-7,Servizi di manutenzione di ascensori,D3
+50760000-0,Riparazione e manutenzione di gabinetti pubblici,D1
+50800000-3,Servizi di riparazione e manutenzione vari,CHILDREN
+50820000-9,Servizi di riparazione di articoli in cuoio,D2
+50830000-2,Servizi di riparazione di indumenti e tessuti,D2
+50850000-8,Servizi di riparazione e manutenzione di mobili,D3
+50860000-1,Servizi di riparazione e manutenzione di strumenti musicali,D3
+51100000-3,Servizi di installazione di attrezzature elettriche e meccaniche,D1
+51200000-4,"Servizi di installazione di attrezzature di misurazione, controllo, collaudo e navigazione",D1
+51300000-5,Servizi di installazione di apparecchiature di comunicazione,D1
+51400000-6,Servizi di installazione di attrezzature medico- chirurgiche,D1
+51500000-7,Servizi di installazione di macchinari e attrezzature,D1
+51600000-8,Servizi di installazione di computer e apparecchiature per ufficio,D1
+51700000-9,Servizi di installazione di attrezzature antincendio,D1
+51800000-0,Servizi di installazione di contenitori in metallo,D1
+51900000-1,Servizi di installazione di sistemi di guida e controllo,D1
+55100000-1,Servizi alberghieri,D1
+55200000-2,Campeggi ed altre sistemazioni non alberghiere,D1
+55300000-3,Servizi di ristorazione e di distribuzione pasti,D3
+55400000-4,Servizi di mescita di bevande,D1
+55500000-5,Servizi di mensa e servizi di catering,D3
+55900000-9,Servizi di vendita al dettaglio,D3
+60100000-9,Servizi di trasporto terrestre,D2
+60120000-5,Servizi di taxi,D1
+60180000-3,"""Noleggio di veicoli per trasporto merci con autista.",D2
+60200000-0,Servizi di trasporto ferroviario,D1
+60300000-1,Servizi di trasporto mediante condutture,D1
+60400000-2,Servizi di trasporto aereo,D2
+60440000-4,Servizi aerei e affini,D1
+60600000-4,Trasporti e servizi affini per via d'acqua,D2
+63100000-0,"Servizi di movimentazione, magazzinaggio e servizi affini",CHILDREN
+63110000-3,Servizi di movimentazione e magazzinaggio,D1
+63120000-6,Servizi di magazzinaggio e deposito merci,D1
+63500000-4,"Servizi di agenzie di viaggio, operatori turistici e servizi di assistenza turistica",CHILDREN
+63510000-7,Servizi di agenzie di viaggi e servizi affini,D2
+63520000-0,Servizi di agenzie di trasporto,D1
+63700000-6,"Servizi di supporto al trasporto terrestre, per via d'acqua e aereo",D1
+64100000-7,Servizi di poste e corriere,D1
+64200000-8,Servizi di telecomunicazione,CHILDREN
+64210000-1,Servizi telefonici e di trasmissione dati,D2
+64220000-4,"Servizi di telecomunicazione, esclusi i servizi telefonici e i servizi di trasmissione dati",D1
+65100000-4,Erogazione di acqua e servizi connessi,D1
+65200000-5,Erogazione di gas e servizi connessi,D1
+65300000-6,Erogazione di energia elettrica e servizi connessi,D1
+65500000-8,Servizi di lettura contatori,D2
+71200000-0,Servizi architettonici e servizi affini,D1
+71300000-1,Servizi di ingegneria,D2
+71317000-3,Servizi di consulenza per la protezione e il controllo di rischi,D1
+71317200-5,Servizi sanitari e di sicurezza,D1
+71400000-2,Servizi di urbanistica e architettura paesaggistica,D1
+71500000-3,Servizi connessi alla costruzione,D1
+71600000-4,"Servizi di prova tecnica, analisi e consulenza",D2
+71700000-5,Servizi di monitoraggio e controllo,D1
+71800000-6,Servizi di consulenza per la fornitura di acqua e lo smaltimento dei rifiuti,D1
+71900000-7,Servizi di laboratorio,D1
+72100000-6,Servizi di consulenza per attrezzature informatiche,D1
+72200000-7,Programmazione di software e servizi di consulenza,D1
+72300000-8,Servizi di elaborazione dati,D1
+72400000-4,Servizi di Internet,CHILDREN
+72410000-7,Servizi di provider,CHILDREN
+72411000-4,Fornitori di servizi Internet (ISP),D1
+72412000-1,Fornitori di servizi di posta elettronica,D1
+72413000-8,Servizi di progettazione di siti per il World wide web (WWW),D1
+72414000-5,Fornitori di motori di ricerca per il web,D1
+72415000-2,Servizi di host per operazioni connesse a siti del World wide web (WWW),D1
+72416000-9,Fornitori di servizi di applicazioni,D1
+72417000-6,Nomi di dominio di Internet,D1
+72420000-0,Servizi di programmazione di Internet,D1
+72500000-0,Servizi informatici,D2
+72600000-6,Servizi di consulenza e assistenza informatica,D1
+72700000-7,Servizi per rete informatica,D1
+72800000-8,Servizi di audit e collaudo informatico,D1
+72900000-9,Servizi di back-up informatico e di conversione informatica di cataloghi,D1
+75100000-7,Servizi di pubblica amministrazione,D2
+75200000-8,Servizi forniti all'intera collettività,D2
+77100000-1,Servizi agricoli,D3
+77200000-2,Servizi forestali,D3
+77300000-3,Servizi di orticoltura,D3
+77400000-4,Servizi zoologici,D3
+77500000-5,Servizi zootecnici,D3
+77600000-6,Servizi di caccia,D3
+77700000-7,Servizi connessi alla pesca,D3
+77800000-8,Servizi connessi all'acquacoltura,D3
+77900000-9,Servizi connessi all'apicoltura,D3
+79100000-5,Servizi giuridici,D1
+79200000-6,"Servizi di contabilità, revisione dei conti e servizi fiscali",D1
+79223000-3,Servizi di agenti di dogana,D1
+79300000-7,"Ricerca di mercato ed economica, indagini e statistiche",CHILDREN
+79310000-0,Servizi di ricerche di mercato,D3
+79311210-2,Servizi di indagini telefoniche,D3
+79400000-8,Servizi di consulenza commerciale e di gestione e servizi connessi,D2
+79500000-9,Servizi di ufficio,D1
+79511000-9,Servizi di operatore telefonico,D1
+79512000-6,Centro di raccolta delle chiamate,D1
+79530000-8,Servizi di traduzione,D1
+79540000-1,Servizi di interpretariato,D1
+79600000-0,Servizi di assunzione,D1
+79700000-1,Servizi di investigazione e sicurezza,D2
+79800000-2,Servizi di stampa e affini,D1
+79900000-3,Servizi commerciali vari ed altri servizi,CHILDREN
+79920000-9,Servizi di imballaggio e servizi affini,D3
+79930000-2,Servizi di design specializzato,D1
+79940000-5,Servizi di organismi di riscossione,D2
+79950000-8,"Servizi di organizzazione di mostre, fiere e congressi",D2
+79960000-1,Servizi fotografici e servizi ausiliari,D1
+79970000-4,Servizi di editoria,D2
+79990000-0,Servizi aziendali vari,CHILDREN
+79991000-7,Servizi di gestione delle scorte,D2
+79992000-4,Servizi di accoglienza,D2
+79993000-1,Servizi di amministrazione di edifici e gestione impianti,D2
+79994000-8,Servizi di amministrazione contratti,D1
+79995000-5,Servizi di amministrazione di biblioteche,D1
+79996000-2,Servizi di organizzazione commerciale,D2
+79997000-9,Servizi di viaggi commerciali,D2
+79998000-6,Servizi di assistenza professionale,D1
+79999000-3,Servizi di scansione e fatturazione,D1
+80500000-9,Servizi di formazione,D1
+85100000-0,Servizi sanitari,CHILDREN
+85110000-3,Servizi ospedalieri e affini,D1
+85110000,Servizio di sterilizzazione di strumentario chirurgico [NB: la descrizione del servizio non corrisponde esattamente alla descrizione del CPV],D3
+85200000-1,Servizi veterinari,D1
+85300000-2,Servizi di assistenza sociale e servizi affini,CHILDREN
+85310000-5,Servizi di assistenza sociale,CHILDREN
+85311000-2,Servizi di assistenza sociale con alloggio,D2
+85312000-9,Servizi di assistenza sociale senza alloggio,D2
+85320000-8,Servizi sociali,CHILDREN
+85321000-5,Servizi sociali amministrativi,D2
+85322000-2,Programma di azione municipale,D2
+85323000-9,Servizi sanitari municipali,D2
+90400000-1,Servizi fognari,D2
+90500000-2,Servizi connessi ai rifiuti urbani e domestici,CHILDREN
+90510000-5,Trattamento e smaltimento dei rifiuti,CHILDREN
+90511000-2,Servizi di raccolta di rifiuti,D3
+90512000-9,Servizi di trasporto di rifiuti,D3
+90513000-6,Servizi di trattamento e smaltimento di rifiuti urbani e domestici non pericolosi,D3
+90514000-3,Servizi di riciclo dei rifiuti,D3
+90520000-8,"Servizi per rifiuti radioattivi, tossici, medicali e pericolosi",D3
+90523300-2,Servizi di sminamento,D3
+90530000-1,Gestione di una discarica di rifiuti,D3
+90600000-3,"Servizi di pulizia e di igienizzazione di aree urbane o rurali, e servizi connessi",CHILDREN
+90610000-6,Servizi di pulizia e di spazzamento delle strade,D3
+90620000-9,Servizi di sgombero neve,D3
+90630000-2,Servizi di lotta contro il gelo,D3
+90640000-5,Servizi di pulizia a svuotamento di canali,D3
+90670000-4,Servizi di disinfezione e disinfestazione di aree urbane o rurali,D3
+90680000-7,Servizi di pulizia di spiagge,D3
+90690000-0,Servizi di rimozione di graffiti,D1
+90700000-4,Servizi ambientali,D1
+90900000-6,Servizi di pulizia e disinfestazione,D2
+92300000-4,Servizi di intrattenimento,D1
+92400000-5,Servizi di agenzie di stampa,D1
+92500000-6,"Servizi di biblioteche, archivi, musei e altri servizi culturali",D1
+92600000-7,Servizi sportivi,D1
+92700000-8,Servizi di cybercafè,D3
+98110000-7,"Servizi prestati da organizzazioni commerciali, professionali e specializzate",D1
+98200000-5,Servizi di consulenza in materia di pari opportunità,D1
+98300000-6,Servizi vari,CHILDREN
+98310000-9,Servizi di lavanderia e di lavaggio a secco,D1
+98310000,Servizi di lavanolo o simili (lavanderia industriale) [NB: la descrizione del servizio non corrisponde esattamente alla descrizione del CPV],D3
+98320000-2,Servizi di parrucchiere e trattamenti estetici,D1
+98330000-5,Servizi per il benessere fisico,D1
+98340000-8,Servizi di alloggio e d'ufficio,CHILDREN
+98341000-5,Servizi di alloggio,CHILDREN
+98341100-6,Servizi di gestione alloggi,D3
+98341110-9,Servizi di economia domestica,D3
+98341120-2,Servizi di portineria,D3
+98341130-5,Servizi di custodia di edifici,D3
+98341140-8,Servizi di vigilanza di edifici,D3
+98342000-2,Servizi connessi all'ambiente di lavoro,D3
+98350000-1,Servizi connessi alle infrastrutture collettive,CHILDREN
+98351000-8,Servizi di gestione di parcheggi,D1
+98360000-4,Servizi marini,D1
+98370000-7,Servizi funerari e servizi affini,D1
+98380000-0,Servizi di canile,D3
+98390000-3,Altri servizi,CHILDREN
+98392000-7,Servizi di trasloco,D3
+98393000-4,Servizi di sartoria,D2
+98394000-1,Servizi di tappezzeria,D1
+98395000-8,Servizi di fabbro,D1

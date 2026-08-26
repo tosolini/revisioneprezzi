@@ -1,0 +1,659 @@
+cpv_code,table_class,position,index_type,classification,ateco_code,index_description
+03100000-2,D1,10,PC,ECOICOP,0117,Vegetali
+03211000-3,D1,10,PC,ECOICOP,0111,Pane e cereali
+03212000-0,D1,10,PC,ECOICOP,0117,Vegetali
+03221000-6,D1,10,PC,ECOICOP,0117,Vegetali
+03222000-3,D1,10,PC,ECOICOP,0116,Frutta
+03310000-5,D1,10,PC,ECOICOP,0113,Pesci e prodotti ittici
+03320000-8,D1,10,PC,ECOICOP,0112,Carni
+03330000-3,D1,10,PC,ECOICOP,011410,Latte intero
+09110000-3,D1,10,PC,ECOICOP,0454,Combustibili solidi
+09120000-6,D1,10,PC,ECOICOP,0452,Gas
+09131000-6,D1,10,PC,ECOICOP,0722,Carburanti e lubrificanti per mezzi di trasporto privati
+09132000-3,D1,10,PC,ECOICOP,07222,Benzina
+09133000-0,D1,10,PC,ECOICOP,07223,Altri carburanti per mezzi di trasporto privati
+09134000-7,D1,10,PC,ECOICOP,07221,Gasolio per mezzi di trasporto
+09135000-4,D1,10,PC,ECOICOP,07221,Gasolio per mezzi di trasporto
+09200000-1,D1,10,PC,ECOICOP,07224,Lubrificanti
+09310000-5,D1,10,PC,ECOICOP,0451,Energia elettrica
+09320000-8,D1,10,PPI,ATECO,353,Fornitura di vapore e aria condizionata
+09330000-1,D1,10,PPI,ATECO,2711,"Fabbricazione di motori, generatori e trasformatori elettrici"
+14200000-3,D1,10,PPI,ATECO,081,"Estrazione di pietra, sabbia e argilla"
+14300000-4,D1,10,PPI,ATECO,201,"Fabbricazione di prodotti chimici di base, di fertilizzanti e composti azotati, di materie plastiche e gomma sintetica in forme primarie"
+14400000-5,D1,10,PPI,ATECO,089,Estrazione di minerali da cave e miniere nca
+14500000-6,D1,10,PPI,ATECO,089,Estrazione di minerali da cave e miniere nca
+14600000-7,D1,10,PPI,ATECO,07,Estrazione di minerali metalliferi
+14700000-8,D1,10,PPI,ATECO,07,Estrazione di minerali metalliferi
+14800000-9,D1,10,PPI,ATECO,08,Altre attività di estrazione di minerali da cave e miniere
+15100000-9,D1,10,PC,ECOICOP,0112,Carni
+15200000-0,D1,10,PC,ECOICOP,0113,Pesci e prodotti ittici
+15310000-4,D1,10,PC,ECOICOP,01174,Patate
+15320000-7,D1,10,PC,ECOICOP,01223,Succhi di frutta e verdura
+15331000-7,D1,10,PC,ECOICOP,0117,Vegetali
+15332000-4,D1,10,PC,ECOICOP,0116,Frutta
+15400000-2,D1,10,PC,ECOICOP,0115,Oli e grassi
+15500000-3,D1,10,PC,ECOICOP,0114,"Latte, formaggi e uova"
+15600000-4,D1,10,PC,ECOICOP,0111,Pane e cereali
+15700000-5,D1,10,PPI,ATECO,109,Produzione di prodotti per l'alimentazione degli animali
+15800000-6,D1,10,PC,ECOICOP,011,Prodotti Alimentari
+15900000-7,D1,10,PC,ECOICOP,021,Bevande alcoliche
+16100000-6,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+16300000-8,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+16400000-9,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+16500000-0,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+16600000-1,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+16700000-2,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+16800000-3,D1,10,PPI,ATECO,283,Fabbricazione di macchine per l'agricoltura e la silvicoltura
+18100000-0,D1,10,PPI,ATECO,1412,Confezione di indumenti da lavoro
+18200000-1,D1,10,PPI,ATECO,1413,Confezione di altro abbigliamento esterno
+18300000-2,D1,10,PPI,ATECO,14,"Confezione di articoli di abbigliamento, confezione di articoli in pelle e pelliccia"
+18400000-3,D1,10,PPI,ATECO,14,"Confezione di articoli di abbigliamento, confezione di articoli in pelle e pelliccia"
+18500000-4,D1,10,PC,ECOICOP,1231,Gioielleria ed orologeria
+18600000-5,D1,10,PPI,ATECO,142,Confezione di articoli in pelliccia
+18800000-7,D1,10,PPI,ATECO,152,Fabbricazione di calzature
+18900000-8,D1,10,PPI,ATECO,1512,"Fabbricazione di articoli da viaggio, borse e simili, pelletteria e selleria"
+19100000-7,D1,10,PPI,ATECO,151,"Preparazione e concia del cuoio, fabbricazione di articoli da viaggio, borse, pelletteria e selleria, preparazione e tintura di pellicce"
+19200000-8,D1,10,PPI,ATECO,13,Industrie tessili
+19400000-0,D1,10,PPI,ATECO,13,Industrie tessili
+19500000-1,D1,10,PPI,ATECO,22,Fabbricazione di articoli in gomma e materie plastiche
+19600000-2,D1,10,PPI,ATECO,13,Industrie tessili
+19710000-6,D1,10,PPI,ATECO,2017,Fabbricazione di gomma sintetica in forme primarie
+19720000-9,D1,10,PPI,ATECO,206,Fabbricazione di fibre sintetiche e artificiali
+19730000-2,D1,10,PPI,ATECO,206,Fabbricazione di fibre sintetiche e artificiali
+22200000-2,D1,10,PC,ECOICOP,0952,Giornali e periodici
+22300000-3,D1,10,PPI,ATECO,1812,Altra stampa
+22400000-4,D1,10,PPI,ATECO,1812,Altra stampa
+22500000-5,D1,10,PPI,ATECO,1813,Lavorazioni preliminari alla stampa e ai media
+22600000-6,D1,10,PPI,ATECO,203,"Fabbricazione di pitture, vernici e smalti, inchiostri da stampa e adesivi sintetici"
+22800000-8,D1,10,PPI,ATECO,1812,Altra stampa
+22900000-9,D1,10,PPI,ATECO,172,Fabbricazione di articoli di carta e cartone
+24100000-5,D1,10,PPI,ATECO,2011,Fabbricazione di gas industriali
+24200000-6,D1,10,PPI,ATECO,2012,Fabbricazione di coloranti e pigmenti
+24310000-0,D1,10,PPI,ATECO,2013,Fabbricazione di altri prodotti chimici di base inorganici
+24320000-3,D1,10,PPI,ATECO,2014,Fabbricazione di altri prodotti chimici di base organici
+24400000-8,D1,10,PPI,ATECO,2015,Fabbricazione di fertilizzanti e composti azotati
+24500000-9,D1,10,PPI,ATECO,2016,Fabbricazione di materie plastiche in forme primarie
+24600000-0,D1,10,PPI,ATECO,2051,Fabbricazione di esplosivi
+24910000-6,D1,10,PPI,ATECO,2052,Fabbricazione di colle
+24920000-9,D1,10,PPI,ATECO,2053,Fabbricazione di oli essenziali
+30100000-0,D1,10,PPI,ATECO,2823,Fabbricazione di macchine ed attrezzature per ufficio (esclusi computer e unità periferiche)
+30120000-6,D1,10,PPI,ATECO,262,Fabbricazione di computer e unità periferiche
+30125000-1,D1,10,PC,ECOICOP,095490,Altri articoli di cancelleria e materiale da disegno (inclusi cartucce e toner per stampanti)
+30190000-7,D1,10,PC,ECOICOP,0954,Articoli di cartoleria e materiale da disegno
+30197000-6,D1,10,PC,ECOICOP,0954,Articoli di cartoleria e materiale da disegno
+30199000-0,D1,10,PC,ECOICOP,09541,Articoli di cartoleria
+30200000-1,D1,10,PPI,ATECO,262,Fabbricazione di computer e unità periferiche
+31100000-7,D1,10,PPI,ATECO,2711,"Fabbricazione di motori, generatori e trasformatori elettrici"
+31200000-8,D1,10,PPI,ATECO,2712,Fabbricazione di apparecchiature per le reti di distribuzione e il controllo dell'elettricità
+31300000-9,D1,10,PPI,ATECO,273,Fabbricazione di cablaggi e apparecchiature di cablaggio
+31400000-0,D1,10,PPI,ATECO,272,Fabbricazione di batterie di pile ed accumulatori elettrici
+31500000-1,D1,10,PPI,ATECO,274,Fabbricazione di apparecchiature per illuminazione
+31600000-2,D1,10,PPI,ATECO,279,Fabbricazione di altre apparecchiature elettriche
+31700000-3,D1,10,PPI,ATECO,261,Fabbricazione di componenti elettronici e schede elettroniche
+32200000-5,D1,10,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+32250000-0,D1,10,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+32300000-6,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32320000-2,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32323000-3,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32324000-0,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32330000-5,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32333200-8,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32340000-8,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32350000-1,D1,10,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+32400000-7,D1,10,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+32500000-8,D1,10,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+32521000-1,D1,10,PPI,ATECO,273,Fabbricazione di cablaggi e apparecchiature di cablaggio
+32552100-8,D1,10,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+32561000-3,D1,10,PPI,ATECO,2731,Fabbricazione di cavi a fibra ottica
+32562000-0,D1,10,PPI,ATECO,2731,Fabbricazione di cavi a fibra ottica
+32572000-3,D1,10,PPI,ATECO,273,Fabbricazione di cablaggi e apparecchiature di cablaggio
+33110000-4,D1,10,PPI,ATECO,266,"Fabbricazione di strumenti per irradiazione, apparecchiature elettromedicali ed elettroterapeutiche"
+33120000-7,D1,10,PPI,ATECO,266,"Fabbricazione di strumenti per irradiazione, apparecchiature elettromedicali ed elettroterapeutiche"
+33130000-0,D1,10,PPI,ATECO,325,Fabbricazione di strumenti e forniture mediche e dentistiche
+33140000-3,D1,10,PPI,ATECO,325,Fabbricazione di strumenti e forniture mediche e dentistiche
+33150000-6,D1,10,PPI,ATECO,266,"Fabbricazione di strumenti per irradiazione, apparecchiature elettromedicali ed elettroterapeutiche"
+33160000-9,D1,10,PPI,ATECO,266,"Fabbricazione di strumenti per irradiazione, apparecchiature elettromedicali ed elettroterapeutiche"
+33170000-2,D1,10,PPI,ATECO,266,"Fabbricazione di strumenti per irradiazione, apparecchiature elettromedicali ed elettroterapeutiche"
+33180000-5,D1,10,PPI,ATECO,325,Fabbricazione di strumenti e forniture mediche e dentistiche
+33190000-8,D1,10,PPI,ATECO,325,Fabbricazione di strumenti e forniture mediche e dentistiche
+33700000-7,D1,10,PC,ECOICOP,121,Beni e servizi per la cura della persona
+33710000-0,D1,10,PC,ECOICOP,12132,"Articoli per l'igiene personale e il benessere, prodotti naturali e prodotti di bellezza"
+33720000-3,D1,10,PC,ECOICOP,12132,"Articoli per l'igiene personale e il benessere, prodotti naturali e prodotti di bellezza"
+33730000-6,D1,10,PC,ECOICOP,06131,Occhiali e lenti a contatto correttivi
+33740000-9,D1,10,PC,ECOICOP,12132,"Articoli per l'igiene personale e il benessere, prodotti naturali e prodotti di bellezza"
+33750000-2,D1,10,PC,ECOICOP,0612,Altri prodotti medicali
+33751000-9,D1,10,PPI,ATECO,1722,Fabbricazione di prodotti igienico-sanitari e per uso domestico in carta e ovatta di cellulosa
+33760000-5,D1,10,PPI,ATECO,1722,Fabbricazione di prodotti igienico-sanitari e per uso domestico in carta e ovatta di cellulosa
+33770000-8,D1,10,PPI,ATECO,1722,Fabbricazione di prodotti igienico-sanitari e per uso domestico in carta e ovatta di cellulosa
+33790000-4,D1,10,PPI,ATECO,2319,"Fabbricazione e lavorazione di altro vetro, incluso vetro per usi tecnici, lavorazione di vetro cavo"
+33900000-9,D1,10,PPI,ATECO,325,Fabbricazione di strumenti e forniture mediche e dentistiche
+34100000-8,D1,10,PPI,ATECO,291,Fabbricazione di autoveicoli
+34200000-9,D1,10,PPI,ATECO,292,"Fabbricazione di carrozzerie per autoveicoli, rimorchi e semirimorchi"
+34300000-0,D1,10,PPI,ATECO,293,Fabbricazione di parti ed accessori per autoveicoli e loro motori
+34410000-4,D1,10,PPI,ATECO,3091,Fabbricazione di motocicli (inclusi i motori)
+34420000-7,D1,10,PPI,ATECO,3091,Fabbricazione di motocicli (inclusi i motori)
+34430000-0,D1,10,PPI,ATECO,3092,Fabbricazione di biciclette e veicoli per invalidi
+34980000-0,D1,10,PPI,ATECO,1723,Fabbricazione di prodotti cartotecnici
+34993000-4,D1,10,PPI,ATECO,274,Fabbricazione di apparecchiature per illuminazione
+35111000-5,D1,10,PPI,ATECO,2829,Fabbricazione di altre macchine di impiego generale nca
+35112000-2,D1,10,PPI,ATECO,3299,Altre industrie manifatturiere nca
+35113000-9,D1,10,PPI,ATECO,3299,Altre industrie manifatturiere nca
+35120000-1,D1,10,PPI,ATECO,26,"Fabbricazione di computer e prodotti di elettronica e ottica, apparecchi elettromedicali, apparecchi di misurazione e di orologi"
+35800000-2,D1,10,PPI,ATECO,1412,Confezione di indumenti da lavoro
+37300000-1,D1,10,PPI,ATECO,322,Fabbricazione di strumenti musicali
+37400000-2,D1,10,PPI,ATECO,323,Fabbricazione di articoli sportivi
+37500000-3,D1,10,PPI,ATECO,324,Fabbricazione di giochi e giocattoli
+37800000-6,D1,10,PC,ECOICOP,0954,Articoli di cartoleria e materiale da disegno
+38100000-6,D1,10,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+38200000-7,D1,10,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+38300000-8,D1,10,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+38400000-9,D1,10,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+38500000-0,D1,10,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+38600000-1,D1,10,PPI,ATECO,267,Fabbricazione di strumenti ottici e attrezzature fotografiche
+38700000-2,D1,10,PPI,ATECO,26,"Fabbricazione di computer e prodotti di elettronica e ottica, apparecchi elettromedicali, apparecchi di misurazione e di orologi"
+38800000-3,D1,10,PPI,ATECO,26,"Fabbricazione di computer e prodotti di elettronica e ottica, apparecchi elettromedicali,    apparecchi di misurazione e di orologi"
+38900000-4,D1,10,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+39100000-3,D1,10,PPI,ATECO,31,Fabbricazione di mobili
+39200000-4,D1,10,PC,ECOICOP,054,"Cristalleria, stoviglie e utensili domestici"
+42100000-0,D1,10,PPI,ATECO,281,Fabbricazione di macchine di impiego generale
+42200000-8,D1,10,PPI,ATECO,2893,"Fabbricazione di macchine per l'industria alimentare, delle bevande e del tabacco"
+42300000-9,D1,10,PPI,ATECO,2821,"Fabbricazione di forni, bruciatori e sistemi di riscaldamento"
+42400000-0,D1,10,PPI,ATECO,2822,Fabbricazione di macchine e apparecchi di sollevamento e movimentazione
+42500000-1,D1,10,PPI,ATECO,2825,Fabbricazione di attrezzature di uso non domestico per la refrigerazione e la ventilazione
+42600000-2,D1,10,PPI,ATECO,284,Fabbricazione di macchine per la formatura dei metalli e di altre macchine utensili
+42700000-3,D1,10,PPI,ATECO,2894,"Fabbricazione di macchine per le industrie tessili, dell'abbigliamento e del cuoio (incluse parti e accessori)"
+42800000-4,D1,10,PPI,ATECO,2895,Fabbricazione di macchine per l'industria della carta e del cartone (incluse parti e accessori)
+43100000-4,D1,10,PPI,ATECO,2892,"Fabbricazione di macchine da miniera, cava e cantiere"
+43200000-5,D1,10,PPI,ATECO,2822,Fabbricazione di macchine e apparecchi di sollevamento e movimentazione
+43300000-6,D1,10,PPI,ATECO,2892,"Fabbricazione di macchine da miniera, cava e cantiere"
+43400000-7,D1,10,PPI,ATECO,289,Fabbricazione di altre macchine per impieghi speciali
+43500000-8,D1,10,PPI,ATECO,2892,"Fabbricazione di macchine da miniera, cava e cantiere"
+43600000-9,D1,10,PPI,ATECO,2892,"Fabbricazione di macchine da miniera, cava e cantiere"
+43700000-0,D1,10,PPI,ATECO,289,Fabbricazione di altre macchine per impieghi speciali
+43800000-1,D1,10,PPI,ATECO,28,Fabbricazione di macchinari ed apparecchiature nca
+44130000-0,D1,10,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44140000-3,D1,10,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44160000-9,D1,10,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44170000-2,D1,10,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44220000-8,D1,10,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44230000-1,D1,10,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44300000-3,D1,10,PPI,ATECO,242,"Fabbricazione di tubi, condotti, profilati cavi e relativi accessori in acciaio esclusi quelli in acciaio colato"
+44410000-7,D1,10,PPI,ATECO,2342,Fabbricazione di articoli sanitari in ceramica
+44420000-0,D1,10,PPI,ATECO,2599,Fabbricazione di altri prodotti in metallo nca
+44440000-6,D1,10,PPI,ATECO,2815,"Fabbricazione di cuscinetti, ingranaggi e organi di trasmissione, (esclusi quelli idraulici)"
+44510000-8,D1,10,PPI,ATECO,2573,Fabbricazione di utensileria
+44520000-1,D1,10,PPI,ATECO,2572,Fabbricazione di serrature e cerniere
+44530000-4,D1,10,PPI,ATECO,2594,Fabbricazione di articoli di bulloneria
+44540000-7,D1,10,PPI,ATECO,2593,"Fabbricazione di prodotti fabbricati con fili metallici, catene e molle"
+44550000-0,D1,10,PPI,ATECO,2593,"Fabbricazione di prodotti fabbricati con fili metallici, catene e molle"
+44600000-6,D1,10,PPI,ATECO,252,"Fabbricazione di cisterne, serbatoi, radiatori e contenitori in metallo"
+44800000-8,D1,10,PPI,ATECO,203,"Fabbricazione di pitture, vernici e smalti, inchiostri da stampa e adesivi sintetici"
+44900000-9,D1,10,PPI,ATECO,0811,"Estrazione di pietre ornamentali e da costruzione, calcare, pietra da gesso, creta e ardesia"
+48820000-2,D1,10,PPI,ATECO,262,Fabbricazione di computer e unità periferiche
+50100000-6,D1,10,PC,ECOICOP,0723,Manutenzione e riparazione mezzi di trasporto privati
+50210000-0,D1,10,PPI,ATECO,3316,Riparazione e manutenzione di aeromobili e di veicoli spaziali
+50220000-3,D1,10,PPI,ATECO,3317,Riparazione e manutenzione di locomotive e di materiale rotabile ferro- tranviario (esclusi i loro motori)
+50400000-9,D1,10,PPI,ATECO,3313,Riparazione e manutenzione di apparecchiature elettroniche ed ottiche
+50413200-5,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+50500000-0,D1,10,PPI,ATECO,331,"Riparazione e manutenzione di prodotti in metallo, macchine ed apparecchiature"
+50610000-4,D1,10,PPI,ATECO,33,"Riparazione, manutenzione ed installazione di macchine ed apparecchiature"
+50760000-0,D1,10,PC,ECOICOP,04321,Servizi degli idraulici
+51100000-3,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51200000-4,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51300000-5,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51400000-6,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51500000-7,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51600000-8,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+51700000-9,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51800000-0,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+51900000-1,D1,10,PPI,ATECO,332,Installazione di macchine ed apparecchiature industriali
+55100000-1,D1,10,PC,ECOICOP,11201,"Alberghi, motel, pensioni e simili"
+55200000-2,D1,10,PC,ECOICOP,11202,"Villaggi vacanze, campeggi, ostelli della gioventù e simili"
+55400000-4,D1,10,PC,ECOICOP,111,Servizi di ristorazione
+60120000-5,D1,10,PC,ECOICOP,07322,Trasporto passeggeri su taxi
+60200000-0,D1,10,PC,ECOICOP,0731,Trasporto passeggeri su rotaia
+60300000-1,D1,10,PC,ECOICOP,0731,Trasporto passeggeri su rotaia
+60440000-4,D1,10,PPS,ATECO,512,Trasporto aereo di merci e trasporto spaziale
+63110000-3,D1,10,PPS,ATECO,5224,Movimentazione merci
+63120000-6,D1,10,PPS,ATECO,521,Magazzinaggio e custodia
+63520000-0,D1,10,PPS,ATECO,5229,Altre attività di supporto connesse ai trasporti
+63700000-6,D1,10,PPS,ATECO,522,Attività di supporto ai trasporti
+64100000-7,D1,10,PPS,ATECO,53,Servizi postali e attività di corriere
+64220000-4,D1,10,PPS,ATECO,61,Telecomunicazioni
+65100000-4,D1,10,PPI,ATECO,36,"Raccolta, trattamento e fornitura di acqua"
+65200000-5,D1,10,PPI,ATECO,352,"Produzione di gas, distribuzione di combustibili gassosi mediante condotte"
+65300000-6,D1,10,PPI,ATECO,351,"Produzione, trasmissione e distribuzione di energia elettrica"
+71200000-0,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+71317000-3,D1,10,PPS,ATECO,702,Attività di consulenza gestionale
+71317200-5,D1,10,PC,ECOICOP,862,Servizi degli studi medici e odontoiatrici
+71400000-2,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+71500000-3,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+71700000-5,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+71800000-6,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+71900000-7,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+72100000-6,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72200000-7,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72300000-8,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+72411000-4,D1,10,PC,ECOICOP,08303,Servizi di fornitura accesso ad internet
+72412000-1,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+72413000-8,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72414000-5,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+72415000-2,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+72416000-9,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+72417000-6,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+72420000-0,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72600000-6,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72700000-7,D1,10,PPS,ATECO,61,Telecomunicazioni
+72800000-8,D1,10,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72900000-9,D1,10,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+79100000-5,D1,10,PPS,ATECO,691_692-702,"Attività legali, contabilità, consulenza gestionale (691, 692, 702)"
+79200000-6,D1,10,PPS,ATECO,691_692-702,"Attività legali, contabilità, consulenza gestionale (691, 692, 702)"
+79223000-3,D1,10,PPS,ATECO,5229,Altre attività di supporto connesse ai trasporti
+79500000-9,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79511000-9,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79512000-6,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79530000-8,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79540000-1,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79600000-0,D1,10,PPS,ATECO,78,"Attività di ricerca, selezione, fornitura di personale"
+79800000-2,D1,10,PPI,ATECO,18,Stampa e riproduzione di supporti registrati
+79930000-2,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+79960000-1,D1,10,PC,ECOICOP,09425,Servizi per la fotografia
+79994000-8,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79995000-5,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79998000-6,D1,10,PPS,ATECO,702,Attività di consulenza gestionale
+79999000-3,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+80500000-9,D1,10,PC,ECOICOP,105,Corsi d'istruzione e di formazione
+85110000-3,D1,10,PC,ECOICOP,063,Servizi ospedalieri
+85200000-1,D1,10,PC,ECOICOP,0935,Servizi veterinari e altri servizi per animali domestici
+90690000-0,D1,10,PPS,ATECO,812,Attività di pulizia e disinfestazione
+90700000-4,D1,10,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+92300000-4,D1,10,PC,ECOICOP,094,Servizi ricreativi e culturali
+92400000-5,D1,10,PPS,ATECO,639,Altre attività dei servizi d'informazione
+92500000-6,D1,10,PC,ECOICOP,0942,Servizi culturali
+92600000-7,D1,10,PC,ECOICOP,0941,Servizi ricreativi e sportivi
+98110000-7,D1,10,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+98200000-5,D1,10,PPS,ATECO,702,Attività di consulenza gestionale
+98310000-9,D1,10,PC,ECOICOP,0314,"Servizi di lavanderia, riparazione e noleggio abiti"
+98320000-2,D1,10,PC,ECOICOP,1211,Servizi di parrucchiere e trattamenti di bellezza
+98330000-5,D1,10,PC,ECOICOP,06232,"Cure termali, ginnastica correttiva, servizi di ambulanza e noleggio di attrezzature sanitarie"
+98351000-8,D1,10,PPS,ATECO,522,Attività di supporto ai trasporti
+98360000-4,D1,10,PPS,ATECO,522,Attività di supporto ai trasporti
+98370000-7,D1,10,PC,ECOICOP,12703,Servizi funebri
+98394000-1,D1,10,PPI,ATECO,3109,Fabbricazione di altri mobili
+98395000-8,D1,10,PPI,ATECO,2599,Fabbricazione di altri prodotti in metallo nca
+22100000-1,D2,1,PC,ECOICOP,0951,Libri
+22100000-1,D2,11,PPI,ATECO,1812,Altra stampa
+30197630-1,D2,1,PC,ECOICOP,09541,Articoli di cartoleria
+30197630-1,D2,11,PPI,ATECO,1723,Fabbricazione di prodotti cartotecnici
+32323500-8,D2,1,PPI,ATECO,26,"Fabbricazione di computer e prodotti di elettronica e ottica, apparecchi elettromedicali, apparecchi di misurazione e di orologi"
+32323500-8,D2,11,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+34920000-2,D2,1,PPI,ATECO,2511,Fabbricazione di strutture metalliche e di parti di strutture
+34920000-2,D2,11,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+34920000-2,D2,21,PPI,ATECO,274,Fabbricazione di apparecchiature per illuminazione
+34930000-5,D2,1,PPI,ATECO,2511,Fabbricazione di strutture metalliche e di parti di strutture
+34930000-5,D2,11,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+34930000-5,D2,21,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+34940000-8,D2,1,PPI,ATECO,2511,Fabbricazione di strutture metalliche e di parti di strutture
+34940000-8,D2,11,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+34940000-8,D2,21,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+34950000-1,D2,1,PPI,ATECO,2511,Fabbricazione di strutture metalliche e di parti di strutture
+34950000-1,D2,11,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+34960000-4,D2,1,PPI,ATECO,2511,Fabbricazione di strutture metalliche e di parti di strutture
+34960000-4,D2,11,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+34960000-4,D2,21,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+34970000-7,D2,1,PPI,ATECO,26,"Fabbricazione di computer e prodotti di elettronica e ottica, apparecchi elettromedicali, apparecchi di misurazione e di orologi"
+34970000-7,D2,11,PPI,ATECO,2651,"Fabbricazione di strumenti e apparecchi di misurazione, prova e navigazione (esclusi quelli ottici)"
+34970000-7,D2,21,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+34990000-3,D2,1,PPI,ATECO,26,"Fabbricazione di computer e prodotti di elettronica e ottica, apparecchi elettromedicali, apparecchi di misurazione e di orologi"
+34990000-3,D2,11,PPI,ATECO,274,Fabbricazione di apparecchiature per illuminazione
+34992000-7,D2,1,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+34992000-7,D2,11,PPI,ATECO,274,Fabbricazione di apparecchiature per illuminazione
+39300000-5,D2,1,PC,ECOICOP,054,"Cristalleria, stoviglie e utensili domestici"
+39300000-5,D2,2,PC,ECOICOP,052,Articoli tessili per la casa
+39300000-5,D2,3,PC,ECOICOP,053,Elettrodomestici e apparecchi per la casa
+39300000-5,D2,4,PC,ECOICOP,05611,Prodotti per la pulizia e la manutenzione della casa
+39300000-5,D2,11,PPI,ATECO,31,Fabbricazione di mobili
+39300000-5,D2,12,PPI,ATECO,1392,"Confezionamento di articoli tessili, esclusi gli articoli di abbigliamento"
+39300000-5,D2,13,PPI,ATECO,275,Fabbricazione di apparecchi per uso domestico
+39300000-5,D2,14,PPI,ATECO,204,"Fabbricazione di saponi e detergenti, di prodotti per la pulizia e la lucidatura, di profumi e cosmetici"
+39500000-7,D2,1,PC,ECOICOP,052,Articoli tessili per la casa
+39500000-7,D2,11,PPI,ATECO,1392,"Confezionamento di articoli tessili, esclusi gli articoli di abbigliamento"
+39700000-9,D2,1,PC,ECOICOP,053,Elettrodomestici e apparecchi per la casa
+39700000-9,D2,11,PPI,ATECO,275,Fabbricazione di apparecchi per uso domestico
+39800000-0,D2,1,PC,ECOICOP,05611,Prodotti per la pulizia e la manutenzione della casa
+39800000-0,D2,11,PPI,ATECO,204,"Fabbricazione di saponi e detergenti, di prodotti per la pulizia e la lucidatura, di profumi e cosmetici"
+41100000-0,D2,1,PC,ECOICOP,0441,Fornitura acqua
+41100000-0,D2,2,PC,ECOICOP,01221,Acque minerali
+41100000-0,D2,11,PPI,ATECO,1107,"Industria delle bibite analcoliche, delle acque minerali e di altre acque in bottiglia"
+42900000-5,D2,1,PPI,ATECO,28,Fabbricazione di macchinari ed apparecchiature nca
+42900000-5,D2,2,PPI,ATECO,281,Fabbricazione di macchine di impiego generale
+42900000-5,D2,3,PPI,ATECO,2812,Fabbricazione di apparecchiature fluidodinamiche
+42900000-5,D2,4,PPI,ATECO,2813,Fabbricazione di altre pompe e compressori
+42900000-5,D2,5,PPI,ATECO,2814,Fabbricazione di altri rubinetti e valvole
+42900000-5,D2,6,PPI,ATECO,2815,"Fabbricazione di cuscinetti, ingranaggi e organi di trasmissione, (esclusi quelli idraulici)"
+42900000-5,D2,11,PPI,ATECO,282,Fabbricazione di altre macchine di impiego generale
+42900000-5,D2,12,PPI,ATECO,2821,"Fabbricazione di forni, bruciatori e sistemi di riscaldamento"
+42900000-5,D2,13,PPI,ATECO,2822,Fabbricazione di macchine e apparecchi di sollevamento e movimentazione
+42900000-5,D2,14,PPI,ATECO,2823,Fabbricazione di macchine ed attrezzature per ufficio (esclusi computer e unità periferiche)
+42900000-5,D2,21,PPI,ATECO,2824,Fabbricazione di utensili portatili a motore
+42900000-5,D2,22,PPI,ATECO,2825,Fabbricazione di attrezzature di uso non domestico per la refrigerazione e la ventilazione
+42900000-5,D2,23,PPI,ATECO,2829,Fabbricazione di altre macchine di impiego generale nca
+42900000-5,D2,24,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunicazioni
+44111000-1,D2,1,PPI,ATECO,231,Fabbricazione di vetro e di prodotti in vetro
+44111000-1,D2,2,PPI,ATECO,2311,Fabbricazione di vetro piano
+44111000-1,D2,3,PPI,ATECO,2312,Lavorazione e trasformazione del vetro piano
+44111000-1,D2,4,PPI,ATECO,2313,Fabbricazione di vetro cavo
+44111000-1,D2,5,PPI,ATECO,2314,Fabbricazione di fibre di vetro
+44111000-1,D2,6,PPI,ATECO,2319,"Fabbricazione e lavorazione di altro vetro, incluso vetro per usi tecnici, lavorazione di vetro cavo"
+44111000-1,D2,7,PPI,ATECO,232,Fabbricazione di prodotti refrattari
+44111000-1,D2,8,PPI,ATECO,233,Fabbricazione di materiali da costruzione in terracotta
+44111000-1,D2,9,PPI,ATECO,2331,Fabbricazione di piastrelle in ceramica per pavimenti e rivestimenti
+44111000-1,D2,10,PPI,ATECO,2332,"Fabbricazione di mattoni, tegole ed altri prodotti per l'edilizia in terracotta"
+44111000-1,D2,11,PPI,ATECO,234,Fabbricazione di altri prodotti in porcellana e in ceramica
+44111000-1,D2,12,PPI,ATECO,2341,Fabbricazione di prodotti in ceramica per usi domestici e ornamentali
+44111000-1,D2,13,PPI,ATECO,2342,Fabbricazione di articoli sanitari in ceramica
+44111000-1,D2,14,PPI,ATECO,2343,Fabbricazione di isolatori e di pezzi isolanti in ceramica
+44111000-1,D2,15,PPI,ATECO,2344,Fabbricazione di altri prodotti in ceramica per uso tecnico e industriale
+44111000-1,D2,16,PPI,ATECO,2349,Fabbricazione di altri prodotti in ceramica
+44111000-1,D2,17,PPI,ATECO,235,"Produzione di cemento, calce e gesso"
+44111000-1,D2,18,PPI,ATECO,2351,Produzione di cemento
+44111000-1,D2,19,PPI,ATECO,2352,Produzione di calce e gesso
+44111000-1,D2,21,PPI,ATECO,236,"Fabbricazione di prodotti in calcestruzzo, cemento e gesso"
+44111000-1,D2,22,PPI,ATECO,2361,Fabbricazione di prodotti in calcestruzzo per l'edilizia
+44111000-1,D2,23,PPI,ATECO,2362,Fabbricazione di prodotti in gesso per l'edilizia
+44111000-1,D2,24,PPI,ATECO,2363,Produzione di calcestruzzo pronto per l'uso
+44111000-1,D2,25,PPI,ATECO,2364,Produzione di malta
+44111000-1,D2,26,PPI,ATECO,2365,Fabbricazione di prodotti in fibrocemento
+44111000-1,D2,27,PPI,ATECO,2369,"Fabbricazione di altri prodotti in calcestruzzo, gesso e cemento"
+44111000-1,D2,28,PPI,ATECO,237,"Taglio, modellatura e finitura di pietre"
+44111000-1,D2,29,PPI,ATECO,239,Fabbricazione di prodotti abrasivi e di prodotti in minerali non metalliferi nca
+44111000-1,D2,30,PPI,ATECO,2391,Produzione di prodotti abrasivi
+44111000-1,D2,31,PPI,ATECO,2399,Fabbricazione di altri prodotti in minerali non metalliferi nca
+44112000-8,D2,1,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44112000-8,D2,11,PPI,ATECO,231,Fabbricazione di vetro e di prodotti in vetro
+44112000-8,D2,21,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44113000-5,D2,1,PPI,ATECO,192,Fabbricazione di prodotti derivanti dalla raffinazione del petrolio
+44113000-5,D2,11,PPI,ATECO,081,"Estrazione di pietra, sabbia e argilla"
+44114000-2,D2,1,PPI,ATECO,2363,Produzione di calcestruzzo pronto per l'uso
+44114000-2,D2,11,PPI,ATECO,2369,"Fabbricazione di altri prodotti in calcestruzzo, gesso e cemento"
+44114000-2,D2,21,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44115000-9,D2,1,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44115000-9,D2,11,PPI,ATECO,2223,Fabbricazione di articoli in plastica per l'edilizia
+44190000-8,D2,1,PPI,ATECO,25,Fabbricazione di prodotti in metallo (esclusi macchinari e attrezzature)
+44190000-8,D2,11,PPI,ATECO,2223,Fabbricazione di articoli in plastica per l'edilizia
+44190000-8,D2,21,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44211000-2,D2,1,PPI,ATECO,251,Fabbricazione di elementi da costruzione in metallo
+44211000-2,D2,11,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44211000-2,D2,21,PPI,ATECO,2361,Fabbricazione di prodotti in calcestruzzo per l'edilizia
+44212000-9,D2,1,PPI,ATECO,251,Fabbricazione di elementi da costruzione in metallo
+44212000-9,D2,11,PPI,ATECO,2511,Fabbricazione di strutture metalliche e di parti di strutture
+44212000-9,D2,21,PPI,ATECO,2361,Fabbricazione di prodotti in calcestruzzo per l'edilizia
+44430000-3,D2,1,PPI,ATECO,259,Fabbricazione di altri prodotti in metallo
+44430000-3,D2,11,PPI,ATECO,2599,Fabbricazione di altri prodotti in metallo nca
+44460000-2,D2,1,PPI,ATECO,251,Fabbricazione di elementi da costruzione in metallo
+44460000-2,D2,11,PPI,ATECO,1623,Fabbricazione di altri prodotti di carpenteria in legno e falegnameria per l'edilizia
+44470000-5,D2,1,PPI,ATECO,251,Fabbricazione di elementi da costruzione in metallo
+44470000-5,D2,11,PPI,ATECO,2451,Fusione di ghisa
+44480000-8,D2,1,PPI,ATECO,2822,Fabbricazione di macchine e apparecchi di sollevamento e movimentazione
+44480000-8,D2,11,PPI,ATECO,2599,Fabbricazione di altri prodotti in metallo nca
+45500000-2,D2,1,PPS,ATECO,773,"Noleggio di altre macchine, attrezzature e beni materiali"
+45500000-2,D2,11,IR,ATECO,0011,TOTALE INDUSTRIA (b-f)
+48100000-9,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48100000-9,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48200000-0,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48200000-0,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48300000-1,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48300000-1,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48400000-2,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48400000-2,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48500000-3,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48500000-3,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48600000-4,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48600000-4,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48700000-5,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48700000-5,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48800000-6,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48800000-6,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+48900000-7,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+48900000-7,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+50240000-9,D2,1,PPI,ATECO,3315,Riparazione e manutenzione di navi e imbarcazioni (esclusi i loro motori)
+50240000-9,D2,11,PPI,ATECO,3312,Riparazione e manutenzione di macchinari
+50711000-2,D2,1,PC,ECOICOP,04322,Servizi degli elettricisti
+50711000-2,D2,11,PPI,ATECO,271,"Fabbricazione di motori, generatori e trasformatori elettrici e di apparecchiature per la distribuzione e il controllo dell'elettricità"
+50711000-2,D2,21,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50712000-9,D2,1,PC,ECOICOP,0432,Servizi per la riparazione e manutenzione della casa
+50712000-9,D2,11,PPI,ATECO,28,Fabbricazione di macchinari ed apparecchiature nca
+50712000-9,D2,21,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50720000-8,D2,1,PC,ECOICOP,04323,Servizi di manutenzione dei sistemi di riscaldamento
+50720000-8,D2,11,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50720000-8,D2,21,PC,ECOICOP,00ST,Indice generale senza tabacchi
+50730000-1,D2,1,PC,ECOICOP,04323,Servizi di manutenzione dei sistemi di riscaldamento
+50730000-1,D2,11,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50730000-1,D2,21,PC,ECOICOP,00ST,Indice generale senza tabacchi
+50820000-9,D2,1,PPI,ATECO,151,"Preparazione e concia del cuoio, fabbricazione di articoli da viaggio, borse, pelletteria e selleria, preparazione e tintura di pellicce"
+50820000-9,D2,11,IR,ATECO,151,"Preparazione e concia del cuoio, fabbricazione di articoli da viaggio, borse, pelletteria e selleria, preparazione e tintura di pellicce"
+50830000-2,D2,1,PC,ECOICOP,03142,Riparazione e noleggio abiti
+50830000-2,D2,11,PPI,ATECO,13,Industrie tessili
+60100000-9,D2,1,PC,ECOICOP,0732,Trasporto passeggeri su strada
+60100000-9,D2,11,PPS,ATECO,49,Trasporto terrestre e trasporto mediante condotte
+60180000-3,D2,1,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+60180000-3,D2,11,PPS,ATECO,771,Noleggio di autoveicoli
+60400000-2,D2,1,PC,ECOICOP,0733,Trasporto aereo passeggeri
+60400000-2,D2,11,PPS,ATECO,511,Trasporto aereo di passeggeri
+60400000-2,D2,21,PPS,ATECO,512,Trasporto aereo di merci e trasporto spaziale
+60600000-4,D2,1,PC,ECOICOP,0734,Trasporto marittimo e per vie d'acqua interne
+60600000-4,D2,11,PPS,ATECO,50,Trasporto marittimo e per vie d'acqua
+63510000-7,D2,1,IR,ATECO,79,"AttivitÃ  dei servizi delle agenzie di viaggio, dei tour operator e servizi di prenotazione e attivitÃ  connesse"
+63510000-7,D2,11,PC,ECOICOP,00ST,indice generale senza tabacchi
+64210000-1,D2,1,PPS,ATECO,611,Telecomunicazioni fisse
+64210000-1,D2,11,PPS,ATECO,612,Telecomunica zioni mobili
+65500000-8,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+65500000-8,D2,11,IR,ATECO,829,Servizi di supporto alle imprese nca
+65500000-8,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+71300000-1,D2,1,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+71300000-1,D2,11,PPS,ATECO,702,Attività di consulenza gestionale
+71600000-4,D2,1,PPS,ATECO,702,Attività di consulenza gestionale
+71600000-4,D2,11,PPS,ATECO,71,"Attività degli studi di architettura e d'ingegneria, collaudi ed analisi tecniche"
+72500000-0,D2,1,PPS,ATECO,62,"Produzione di software, consulenza informatica e attività connesse"
+72500000-0,D2,11,PPS,ATECO,631,"Elaborazione dei dati, hosting e attività connesse, portali web"
+75100000-7,D2,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+75100000-7,D2,11,PPS,ATECO,702,Attività di consulenza gestionale
+75200000-8,D2,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+75200000-8,D2,11,PPS,ATECO,702,Attività di consulenza gestionale
+79400000-8,D2,1,PPS,ATECO,702,Attività di consulenza gestionale
+79400000-8,D2,11,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79700000-1,D2,1,PPS,ATECO,80,Servizi di vigilanza e investigazione
+79700000-1,D2,11,IR,ATECO,80,Servizi di vigilanza e investigazione
+79700000-1,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+79940000-5,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79940000-5,D2,11,IR,ATECO,829,Servizi di supporto alle imprese nca
+79940000-5,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+79950000-8,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79950000-8,D2,11,IR,ATECO,823,Organizzazione di convegni e fiere
+79950000-8,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+79970000-4,D2,1,PPI,ATECO,18,Stampa e riproduzione di supporti registrati
+79970000-4,D2,11,IR,ATECO,581,"Edizione di libri, periodici ed altre attività editoriali"
+79991000-7,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79991000-7,D2,11,PPS,ATECO,702,Attività di consulenza gestionale
+79992000-4,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79992000-4,D2,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+79993000-1,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79993000-1,D2,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+79996000-2,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79996000-2,D2,11,PPS,ATECO,702,Attività di consulenza gestionale
+79997000-9,D2,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79997000-9,D2,11,PPS,ATECO,791,Attività delle agenzie di viaggio e dei tour operator
+85311000-2,D2,1,PC,ECOICOP,12402,Case di cura per anziani e residenze per persone disabili
+85311000-2,D2,11,IR,ATECO,87,Servizi di assistenza sociale residenziale
+85311000-2,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+85312000-9,D2,1,PC,ECOICOP,1240,Assistenza sociale
+85312000-9,D2,11,IR,ATECO,88,Assistenza sociale non residenziale
+85312000-9,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+85321000-5,D2,1,PC,ECOICOP,1240,Assistenza sociale
+85321000-5,D2,11,IR,ATECO,88,Assistenza sociale non residenziale
+85321000-5,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+85322000-2,D2,1,PC,ECOICOP,1240,Assistenza sociale
+85322000-2,D2,11,IR,ATECO,88,Assistenza sociale non residenziale
+85322000-2,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+85323000-9,D2,1,PC,ECOICOP,06,-- servizi sanitari e spese per la salute
+85323000-9,D2,11,IR,ATECO,86,Assistenza sanitaria
+85323000-9,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+90400000-1,D2,1,PC,ECOICOP,0443,Raccolta acque di scarico
+90400000-1,D2,11,IR,ATECO,37,Gestione delle reti fognarie
+90400000-1,D2,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+90900000-6,D2,1,PPS,ATECO,812,Attività di pulizia e disinfestazione
+90900000-6,D2,11,PC,ECOICOP,00ST,indice generale senza tabacchi
+90900000-6,D2,21,IR,ATECO,812,Attività di pulizia e disinfestazione
+98393000-4,D2,1,PC,ECOICOP,03142,Riparazione e noleggio abiti
+98393000-4,D2,11,PPI,ATECO,1413,Confezione di altro abbigliamento esterno
+50232000-0,D3,1,PPI,ATECO,274,Fabbricazione di apparecchiature per illuminazione
+50232000-0,D3,11,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50310000-1,D3,1,PPI,ATECO,2823,Fabbricazione di macchine ed attrezzature per ufficio (esclusi computer e unità periferiche)
+50310000-1,D3,11,PPI,ATECO,331,"Riparazione e manutenzione di prodotti in metallo, macchine ed apparecchiature"
+50310000-1,D3,21,IR,ATECO,951,Riparazione di computer e di apparecchiature per le comunicazioni
+50312000-5,D3,1,PPI,ATECO,262,Fabbricazione di computer e unità periferiche
+50312000-5,D3,11,IR,ATECO,951,Riparazione di computer e di apparecchiature per le comunicazioni
+50320000-4,D3,1,PPI,ATECO,262,Fabbricazione di computer e unità periferiche
+50320000-4,D3,11,IR,ATECO,951,Riparazione di computer e di apparecchiature per le comunicazioni
+50330000-7,D3,1,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunica zioni
+50330000-7,D3,11,IR,ATECO,951,Riparazione di computer e di apparecchiature per le comunicazioni
+50331000-4,D3,1,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunica zioni
+50331000-4,D3,11,IR,ATECO,61,Telecomunicazioni
+50332000-1,D3,1,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunica zioni
+50332000-1,D3,11,IR,ATECO,61,Telecomunicazioni
+50333000-8,D3,1,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunica zioni
+50333000-8,D3,11,IR,ATECO,61,Telecomunicazioni
+50334000-5,D3,1,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunica zioni
+50334000-5,D3,11,IR,ATECO,61,Telecomunicazioni
+50334140-8,D3,1,PC,ECOICOP,08204,Riparazione apparecchi di telefonia e telefax
+50334140-8,D3,11,PPI,ATECO,263,Fabbricazione di apparecchiature per le telecomunica zioni
+50334140-8,D3,21,IR,ATECO,61,Telecomunicazioni
+50340000-0,D3,1,PPI,ATECO,3313,Riparazione e manutenzione di apparecchiature elettroniche ed ottiche
+50340000-0,D3,11,PPI,ATECO,264,Fabbricazione di prodotti di elettronica di consumo audio e video
+50340000-0,D3,21,IR,ATECO,951,Riparazione di computer e di apparecchiature per le comunicazioni
+50740000-4,D3,1,PPI,ATECO,2822,Fabbricazione di macchine e apparecchi di sollevamento e movimentazione
+50740000-4,D3,11,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50750000-7,D3,1,PPI,ATECO,2822,Fabbricazione di macchine e apparecchi di sollevamento e movimentazione
+50750000-7,D3,11,IR,ATECO,432,"Installazione di impianti elettrici, idraulici ed altri lavori di costruzione e installazione"
+50850000-8,D3,1,PPI,ATECO,31,Fabbricazione di mobili
+50850000-8,D3,11,IR,ATECO,31,Fabbricazione di mobili
+50860000-1,D3,1,PPI,ATECO,322,Fabbricazione di strumenti musicali
+50860000-1,D3,11,IR,ATECO,322,Fabbricazione di strumenti musicali
+55300000-3,D3,1,PC,ECOICOP,01,-- prodotti alimentari e bevande analcoliche
+55300000-3,D3,11,PC,ECOICOP,00ST,Indice generale senza tabacchi
+55300000-3,D3,21,IR,ATECO,562,Fornitura di pasti preparati (catering) e altri servizi di ristorazione
+55500000-5,D3,1,PC,ECOICOP,01,-- prodotti alimentari e bevande analcoliche
+55500000-5,D3,11,PC,ECOICOP,00ST,Indice generale senza tabacchi
+55500000-5,D3,21,IR,ATECO,562,Fornitura di pasti preparati (catering) e altri servizi di ristorazione
+55900000-9,D3,1,PC,ECOICOP,00ST,Indice generale senza tabacchi
+55900000-9,D3,11,IR,ATECO,47,Commercio al dettaglio (escluso quello di autoveicoli e di motocicli)
+77100000-1,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77100000-1,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77100000-1,D3,21,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+77200000-2,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77200000-2,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77200000-2,D3,21,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+77300000-3,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77300000-3,D3,11,IR,ATECO,813,Cura e manutenzione del paesaggio
+77300000-3,D3,21,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+77400000-4,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77400000-4,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77500000-5,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77500000-5,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77600000-6,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77600000-6,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77700000-7,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77700000-7,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77800000-8,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77800000-8,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+77900000-9,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+77900000-9,D3,11,IR,ATECO,A,"Agricoltura, silvicoltura e pesca"
+79310000-0,D3,1,PPS,ATECO,702,Attività di consulenza gestionale
+79310000-0,D3,2,PPS,ATECO,73,Pubblicità e ricerche di mercato
+79310000-0,D3,3,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79310000-0,D3,11,PC,ECOICOP,00ST,indice generale senza tabacchi
+79310000-0,D3,21,IR,ATECO,732,Ricerche di mercato e sondaggi di opinione
+79311210-2,D3,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79311210-2,D3,11,PC,ECOICOP,00ST,indice generale senza tabacchi
+79311210-2,D3,21,IR,ATECO,822,Attività dei call center
+79920000-9,D3,1,PPS,ATECO,82,Attività di supporto per le funzioni d'ufficio e altri servizi di supporto alle imprese
+79920000-9,D3,11,PPI,ATECO,1624,Fabbricazione di imballaggi in legno
+79920000-9,D3,12,PPI,ATECO,2592,Fabbricazione di imballaggi leggeri in metallo
+79920000-9,D3,13,PPI,ATECO,2222,Fabbricazione di imballaggi in materie plastiche
+79920000-9,D3,14,PPI,ATECO,1721,Fabbricazione di carta e cartone ondulato e di imballaggi di carta e cartone
+79920000-9,D3,21,IR,ATECO,829,Servizi di supporto alle imprese nca
+85111000,D3,1,IR,ATECO,9601,Lavanderia e pulitura di articoli tessili e pelliccia
+85111000,D3,11,PPI,ATECO,325,Fabbricazione di strumenti e forniture mediche e dentistiche
+85111000,D3,21,PPI,ATECO,0020,TOTALE INDUSTRIA ESCLUSE COSTRUZIO NI (b-e)
+90511000-2,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90511000-2,D3,11,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90511000-2,D3,21,IR,ATECO,38,"Attività di raccolta, trattamento e smaltimento dei rifiuti recupero dei materiali"
+90512000-9,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90512000-9,D3,11,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90512000-9,D3,21,IR,ATECO,38,"Attività di raccolta, trattamento e smaltimento dei rifiuti recupero dei materiali"
+90513000-6,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90513000-6,D3,11,IR,ATECO,38,"Attività di raccolta, trattamento e smaltimento dei rifiuti recupero dei materiali"
+90514000-3,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90514000-3,D3,11,IR,ATECO,38,"Attività di raccolta, trattamento e smaltimento dei rifiuti recupero dei materiali"
+90520000-8,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90520000-8,D3,11,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90520000-8,D3,21,IR,ATECO,38,"Attività di raccolta, trattamento e smaltimento dei rifiuti recupero dei materiali"
+90523300-2,D3,1,PPS,ATECO,773,"Noleggio di altre macchine, attrezzature e beni materiali"
+90523300-2,D3,11,IR,ATECO,390,Attività di risanamento e altri servizi di gestione dei rifiuti
+90523300-2,D3,21,PC,ECOICOP,00ST,indice generale senza tabacchi
+90530000-1,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90530000-1,D3,11,IR,ATECO,38,"Attività di raccolta, trattamento e smaltimento dei rifiuti recupero dei materiali"
+90610000-6,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90610000-6,D3,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+90610000-6,D3,12,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90610000-6,D3,21,IR,ATECO,81,Attività di servizi per edifici e paesaggio
+90620000-9,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90620000-9,D3,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+90620000-9,D3,12,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90620000-9,D3,21,IR,ATECO,81,Attività di servizi per edifici e paesaggio
+90630000-2,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90630000-2,D3,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+90630000-2,D3,12,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90630000-2,D3,21,IR,ATECO,81,Attività di servizi per edifici e paesaggio
+90640000-5,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90640000-5,D3,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+90640000-5,D3,12,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90640000-5,D3,21,IR,ATECO,81,Attività di servizi per edifici e paesaggio
+90670000-4,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90670000-4,D3,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+90670000-4,D3,12,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90670000-4,D3,21,IR,ATECO,81,Attività di servizi per edifici e paesaggio
+90680000-7,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+90680000-7,D3,11,PPS,ATECO,81,Attività di servizi per edifici e paesaggio
+90680000-7,D3,12,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+90680000-7,D3,21,IR,ATECO,81,Attività di servizi per edifici e paesaggio
+92700000-8,D3,1,PPS,ATECO,61,Telecomunicazioni
+92700000-8,D3,11,PC,ECOICOP,00ST,indice generale senza tabacchi
+98310000,D3,1,IR,ATECO,9601,Lavanderia e pulitura di articoli tessili e pelliccia
+98310000,D3,11,PPI,ATECO,13,Industrie tessili
+98310000,D3,21,PPI,ATECO,0020,TOTALE INDUSTRIA ESCLUSE COSTRUZIO NI (b-e)
+98341100-6,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98341100-6,D3,11,IR,ATECO,821,Attività di supporto per le funzioni d'ufficio
+98341100-6,D3,21,IR,ATECO,811,Servizi integrati di gestione agli edifici
+98341110-9,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98341110-9,D3,11,IR,ATECO,821,Attività di supporto per le funzioni d'ufficio
+98341110-9,D3,21,IR,ATECO,811,Servizi integrati di gestione agli edifici
+98341120-2,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98341120-2,D3,11,IR,ATECO,821,Attività di supporto per le funzioni d'ufficio
+98341120-2,D3,12,IR,ATECO,811,Servizi integrati di gestione agli edifici
+98341120-2,D3,13,IR,ATECO,80,Servizi di vigilanza e investigazione
+98341120-2,D3,21,PPS,ATECO,80,Servizi di vigilanza e investigazione
+98341130-5,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98341130-5,D3,11,IR,ATECO,821,Attività di supporto per le funzioni d'ufficio
+98341130-5,D3,12,IR,ATECO,811,Servizi integrati di gestione agli edifici
+98341130-5,D3,13,IR,ATECO,80,Servizi di vigilanza e investigazione
+98341130-5,D3,21,PPS,ATECO,80,Servizi di vigilanza e investigazione
+98341140-8,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98341140-8,D3,11,PPS,ATECO,80,Servizi di vigilanza e investigazione
+98341140-8,D3,21,IR,ATECO,80,Servizi di vigilanza e investigazione
+98342000-2,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98342000-2,D3,11,IR,ATECO,821,Attività di supporto per le funzioni d'ufficio
+98380000-0,D3,1,PC,ECOICOP,00ST,indice generale senza tabacchi
+98380000-0,D3,11,IR,ATECO,9609,Attività di servizi per la persona nca
+98392000-7,D3,1,PPS,ATECO,494,Trasporto di merci su strada e servizi di trasloco
+98392000-7,D3,11,IR,ATECO,52,Magazzinaggio e attività di supporto ai trasporti

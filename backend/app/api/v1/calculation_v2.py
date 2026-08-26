@@ -28,6 +28,7 @@ class IndicesConfigSingle(BaseModel):
 class IndicesConfigComposite(BaseModel):
     """Configurazione indice composito (multi-TOL o multi-indice CPV)"""
     type: Literal["composite"] = "composite"
+    method: Literal["weighted_values", "weighted_variations"] = "weighted_values"
     components: dict[str, float] = Field(
         ...,
         description="Mappa series_id: peso_percentuale (somma deve essere 100)"
@@ -88,6 +89,7 @@ def calculate(
         else:
             indices_config = {
                 "type": "composite",
+                "method": request.indices_config.method,
                 "components": request.indices_config.components
             }
         

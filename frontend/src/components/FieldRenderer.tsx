@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface FieldConfig {
   key: string
@@ -6,6 +6,7 @@ interface FieldConfig {
   type: string
   required?: boolean
   options?: { value: string; label: string }[]
+  hint?: string
 }
 
 interface Props {
@@ -13,6 +14,81 @@ interface Props {
   value: string
   onChange: (key: string, value: string) => void
   error?: string
+}
+
+const MONTH_LABELS = [
+  ['01', 'Gennaio'], ['02', 'Febbraio'], ['03', 'Marzo'], ['04', 'Aprile'],
+  ['05', 'Maggio'], ['06', 'Giugno'], ['07', 'Luglio'], ['08', 'Agosto'],
+  ['09', 'Settembre'], ['10', 'Ottobre'], ['11', 'Novembre'], ['12', 'Dicembre'],
+] as const
+
+function parseMonthValue(value: string): [string, string] {
+  const [year, month] = (value || '').split('-')
+  return [year || '', month || '']
+}
+
+function buildYearRange(): string[] {
+  const currentYear = new Date().getFullYear()
+  const years: string[] = []
+  for (let y = currentYear - 15; y <= currentYear + 15; y++) {
+    years.push(String(y))
+  }
+  return years
+}
+
+function MonthInput({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  const [seedYear, seedMonth] = parseMonthValue(value)
+  const [year, setYear] = useState(seedYear)
+  const [month, setMonth] = useState(seedMonth)
+  const years = buildYearRange()
+
+  useEffect(() => {
+    const [y, m] = parseMonthValue(value)
+    setYear(y)
+    setMonth(m)
+  }, [value])
+
+  const selectStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)',
+    borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box',
+    background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+    colorScheme: 'dark',
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <select
+        id={`${id}-month`}
+        value={month}
+        style={{ ...selectStyle, width: 160 }}
+        onChange={e => {
+          const m = e.target.value
+          setMonth(m)
+          if (year && m) onChange(`${year}-${m}`)
+        }}
+      >
+        <option value="">Mese</option>
+        {MONTH_LABELS.map(([v, l]) => (
+          <option key={v} value={v}>{l}</option>
+        ))}
+      </select>
+      <select
+        id={`${id}-year`}
+        value={year}
+        style={{ ...selectStyle, width: 120 }}
+        onChange={e => {
+          const y = e.target.value
+          setYear(y)
+          if (y && month) onChange(`${y}-${month}`)
+        }}
+      >
+        <option value="">Anno</option>
+        {years.map(y => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+    </div>
+  )
 }
 
 export default function FieldRenderer({ field, value, onChange, error }: Props) {
@@ -51,20 +127,35 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
   const errorStyle: React.CSSProperties = {
     color: 'var(--color-text-error)', fontSize: 12, marginTop: 2,
   }
+  const hintStyle: React.CSSProperties = {
+    color: 'var(--color-text-muted)', fontSize: 12, marginTop: 4, lineHeight: 1.5,
+  }
 
   switch (field.type) {
-    case 'text':
     case 'month':
       return (
         <div style={{ marginBottom: 16 }}>
           <label htmlFor={id} style={labelStyle}>
             {field.label}{field.required && ' *'}
           </label>
+          <MonthInput id={id} value={value} onChange={v => onChange(field.key, v)} />
+          {field.hint && <div style={hintStyle}>{field.hint}</div>}
+          {error && <div style={errorStyle}>{error}</div>}
+        </div>
+      )
+
+    case 'text':
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor={id} style={labelStyle}>
+            {field.label}{field.required && ' *'}
+          </label>
           <input
-            id={id} type={field.type === 'month' ? 'month' : 'text'}
+            id={id} type="text"
             value={value} onChange={handleChange}
             style={inputStyle}
           />
+          {field.hint && <div style={hintStyle}>{field.hint}</div>}
           {error && <div style={errorStyle}>{error}</div>}
         </div>
       )
@@ -126,6 +217,7 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
             id={id} value={value} onChange={handleChange}
             rows={4} style={{ ...inputStyle, resize: 'vertical' }}
           />
+          {field.hint && <div style={hintStyle}>{field.hint}</div>}
           {error && <div style={errorStyle}>{error}</div>}
         </div>
       )

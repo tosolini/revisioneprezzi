@@ -108,10 +108,59 @@ def calculate_synthetic_index(
             continue
         synthetic += (weight / 100.0) * value
     
-    if errors:
-        return None, errors
-    
     return _round(synthetic, 4), []
+
+
+def calculate_weighted_variation(
+    db: Session,
+    components: dict[str, float],  # {series_id: weight_percent}
+    base_period: date,
+    comparison_period: date,
+) -> tuple[float | None, list[dict], list[str]]:
+    """
+    Variazione come media ponderata delle variazioni dei singoli indici
+    (Tabella D punto 7): Vt = Σ(wi/100)·Vt(i), dove
+    Vt(i) = ((I_confronto − I_base) / I_base) × 100 per ciascun componente.
+
+    Returns:
+        (variazione_totale, component_details, errori)
+    component_details = [{series_id, weight, base_value, comparison_value,
+                        variation_percent}] per componente.
+    """
+    total_weight = sum(components.values())
+    if abs(total_weight - 100.0) > 0.01:
+        return None, [], [f"I pesi devono sommarsi a 100% (attuale: {total_weight}%)"]
+
+    errors = []
+    details = []
+    weighted_sum = 0.0
+
+    for series_id, weight in components.items():
+        base_value = _get_index_value(db, series_id, base_period)
+        comp_value = _get_index_value(db, series_id, comparison_period)
+        if base_value is None or comp_value is None:
+            missing = []
+            if base_value is None:
+                missing.append(f"periodo base {base_period}")
+            if comp_value is None:
+                missing.append(f"periodo di confronto {comparison_period}")
+            errors.append(f"Indice {series_id} non trovato per {', '.join(missing)}")
+            continue
+        variation = ((comp_value - base_value) / base_value) * 100
+        variation = _round(variation, 4)
+        details.append({
+            "series_id": series_id,
+            "weight": weight,
+            "base_value": base_value,
+            "comparison_value": comp_value,
+            "variation_percent": variation,
+        })
+        weighted_sum += (weight / 100.0) * variation
+
+    if errors:
+        return None, details, errors
+
+    return _round(weighted_sum, 4), details, []
 
 
 def calculate_price_revision(
@@ -160,6 +209,9 @@ def calculate_price_revision(
     # 2. Calcola indici base e confronto
     index_type = indices_config.get("type", "single")
     
+    method = indices_config.get("method", "weighted_values")
+    weighted_component_variations = None
+
     if index_type == "single":
         series_id = indices_config["single_series_id"]
         base_value = _get_index_value(db, series_id, base_period)
@@ -209,22 +261,49 @@ def calculate_price_revision(
     
     else:  # composite
         components = indices_config["components"]
-        base_value, base_errors = calculate_synthetic_index(db, components, base_period)
-        comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
         
+        method = indices_config.get("method", "weighted_values")
+        weighted_component_variations = None
+
+        if method == "weighted_variations":
+            variation_w, comp_details, weighted_errors = calculate_weighted_variation(
+                db, components, base_period, comparison_period
+            )
+            if weighted_errors:
+                return {
+                    "error": "Errori nel calcolo media ponderata variazioni",
+                    "comparison_errors": weighted_errors,
+                }
+            # Valori sintetici solo per display (media ponderata dei VALORI)
+            base_value, base_errors = calculate_synthetic_index(db, components, base_period)
+            comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
+            weighted_component_variations = comp_details
+        else:
+            base_value, base_errors = calculate_synthetic_index(db, components, base_period)
+            comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
+
         if base_errors or comp_errors:
             return {
                 "error": "Errori nel calcolo indice sintetico",
                 "base_errors": base_errors,
-                "comparison_errors": comp_errors
+                "comparison_errors": comp_errors,
             }
+        
         
         steps.append({
             "step": 1,
-            "description": "Calcolo indice sintetico ponderato",
+            "description": (
+                "Calcolo media ponderata delle variazioni"
+                if method == "weighted_variations"
+                else "Calcolo indice sintetico ponderato"
+            ),
             "details": {
                 "componenti": components,
-                "formula": "Is = Σ(pi × Ii) dove pi è il peso percentuale",
+                "formula": (
+                    "Vt = Σ(wi/100)·Vt(i), Vt(i) = ((Ii_confronto − Ii_base)/Ii_base) × 100"
+                    if method == "weighted_variations"
+                    else "Is = Σ(pi × Ii) dove pi è il peso percentuale"
+                ),
                 "periodo_base": base_period.isoformat(),
                 "indice_sintetico_base": base_value,
                 "periodo_confronto": comparison_period.isoformat(),
@@ -234,8 +313,11 @@ def calculate_price_revision(
         })
     
     # 3. Calcola variazione percentuale
-    variation = ((comp_value - base_value) / base_value) * 100
-    variation = _round(variation, 4)
+    if method == "weighted_variations":
+        variation = variation_w
+    else:
+        variation = ((comp_value - base_value) / base_value) * 100
+        variation = _round(variation, 4)
     
     steps.append({
         "step": 2,
@@ -263,6 +345,7 @@ def calculate_price_revision(
             "base_value": base_value,
             "comparison_value": comp_value,
             "variation_percent": variation,
+            "weighted_component_variations": weighted_component_variations,
             "threshold_percent": threshold,
             "threshold_exceeded": False,
             "excess_percent": 0.0,
@@ -319,6 +402,7 @@ def calculate_price_revision(
         "base_value": base_value,
         "comparison_value": comp_value,
         "variation_percent": variation,
+        "weighted_component_variations": weighted_component_variations,
         "threshold_percent": threshold,
         "threshold_exceeded": True,
         "excess_percent": excess,

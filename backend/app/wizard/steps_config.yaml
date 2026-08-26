@@ -118,6 +118,12 @@ steps:
         type: select
         options_from_service: true
         required: true
+
+      - key: index_weights
+        label: "Pesi % indici"
+        type: text
+        required: false
+        hint: "Peso percentuale di ciascun indice nella media ponderata delle variazioni (Tabella D punto 7: Vt = Σ wi/100 × Vt(i)). La somma dei pesi deve essere 100. JSON, es.: {\"ISTAT_PPI_263_D\": 20, \"ISTAT_RCO_SETT_S\": 80}"
       - key: override_reason
         label: "Motivazione scelta (se manuale)"
         type: textarea

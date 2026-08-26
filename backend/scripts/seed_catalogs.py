@@ -12,6 +12,7 @@ from app.models import FamilyDefinition
 from app.models.cpv_catalog import CpvCatalog
 from app.models.family_mapping import FamilyMapping
 from app.models.index_observation import IndexObservation
+from app.models.tabella_d import CpvTabellaDAssociation, CpvTabellaDMaster
 from app.models.index_series import IndexSeries
 from app.models.normative_param import NormativeParam
 
@@ -148,39 +149,93 @@ def seed_normative_params(db):
 
 
 def seed_observations(db):
-    path = SEEDS_DIR / "istat_observations_sample.csv"
-    if not path.exists():
-        print(f"SKIP: {path} not found")
+    paths = [
+        SEEDS_DIR / "istat_observations_sample.csv",
+        SEEDS_DIR / "istat_observations_rco.csv",
+    ]
+    for path in paths:
+        if not path.exists():
+            print(f"SKIP: {path} not found")
+            continue
+        count = 0
+        with open(path) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                series_id = row["series_id"].strip()
+                series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+                if not series:
+                    print(f"  WARN: unknown series '{series_id}', skipping")
+                    continue
+                ref_period = date.fromisoformat(row["ref_period"].strip())
+                existing = (
+                    db.query(IndexObservation)
+                    .filter(
+                        IndexObservation.series_id == series_id,
+                        IndexObservation.ref_period == ref_period,
+                    )
+                    .first()
+                )
+                if not existing:
+                    db.add(IndexObservation(
+                        series_id=series_id,
+                        ref_period=ref_period,
+                        value=float(row["value"]),
+                        is_definitive=row["is_definitive"].strip().lower() in ("true", "1"),
+                        notes=row.get("notes", "").strip() or None,
+                    ))
+                    count += 1
+        db.commit()
+        print(f"OK: {count} observations loaded ({path.name})")
+
+
+def seed_cpv_tabella_d(db):
+    """Carica master e associazioni Tabella D (Allegato II.2-bis) dai CSV seed."""
+    master_path = SEEDS_DIR / "cpv_tabella_d.csv"
+    assoc_path = SEEDS_DIR / "cpv_tabella_d_association.csv"
+    if not master_path.exists() or not assoc_path.exists():
+        print("SKIP: cpv_tabella_d.csv o cpv_tabella_d_association.csv non trovati")
         return
     count = 0
-    with open(path) as f:
+    updated = 0
+    with open(master_path) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            series_id = row["series_id"].strip()
-            series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
-            if not series:
-                print(f"  WARN: unknown series '{series_id}', skipping")
-                continue
-            ref_period = date.fromisoformat(row["ref_period"].strip())
-            existing = (
-                db.query(IndexObservation)
-                .filter(
-                    IndexObservation.series_id == series_id,
-                    IndexObservation.ref_period == ref_period,
-                )
-                .first()
-            )
-            if not existing:
-                db.add(IndexObservation(
-                    series_id=series_id,
-                    ref_period=ref_period,
-                    value=float(row["value"]),
-                    is_definitive=row["is_definitive"].strip().lower() in ("true", "1"),
-                    notes=row.get("notes", "").strip() or None,
+            existing = db.query(CpvTabellaDMaster).filter_by(cpv_code=row["cpv_code"]).first()
+            if existing:
+                if (
+                    existing.cpv_description != row["cpv_description"]
+                    or existing.table_class != row["table_class"]
+                ):
+                    existing.cpv_description = row["cpv_description"]
+                    existing.table_class = row["table_class"]
+                    updated += 1
+            else:
+                db.add(CpvTabellaDMaster(
+                    cpv_code=row["cpv_code"],
+                    cpv_description=row["cpv_description"],
+                    table_class=row["table_class"],
                 ))
                 count += 1
     db.commit()
-    print(f"OK: {count} observations loaded")
+    a_count = 0
+    db.query(CpvTabellaDAssociation).delete()
+    with open(assoc_path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            db.add(CpvTabellaDAssociation(
+                cpv_code=row["cpv_code"],
+                table_class=row["table_class"],
+                position=int(row["position"]),
+                index_type=row["index_type"],
+                classification=row["classification"],
+                ateco_code=row["ateco_code"],
+                index_description=row["index_description"],
+            ))
+            a_count += 1
+    db.commit()
+    print(f"OK: {count} nuovi master Tabella D, {updated} aggiornati, {a_count} associazioni")
+
+
 
 
 def main():
@@ -191,6 +246,7 @@ def main():
         seed_family_definitions(db)
         seed_family_mappings(db)
         seed_normative_params(db)
+        seed_cpv_tabella_d(db)
         seed_observations(db)
         print("\nSeed completato.")
     finally:

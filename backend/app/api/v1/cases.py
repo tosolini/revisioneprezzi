@@ -65,10 +65,12 @@ def update_case(case_id: UUID, payload: CaseUpdate, db: Session = Depends(get_db
     return case
 
 
-@router.delete("/{case_id}", status_code=204)
-def delete_case(case_id: UUID, db: Session = Depends(get_db)):
-    case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
-    db.delete(case)
+@router.post("/delete-drafts")
+def delete_draft_cases(db: Session = Depends(get_db)):
+    """Elimina in blocco le pratiche lasciate in bozza (status 'draft')."""
+    drafts = db.query(CaseFile).filter(CaseFile.status == "draft").all()
+    count = len(drafts)
+    for case in drafts:
+        db.delete(case)
     db.commit()
+    return {"deleted": count}

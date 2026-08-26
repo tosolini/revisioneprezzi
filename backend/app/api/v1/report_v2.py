@@ -373,12 +373,40 @@ def add_calculation_to_report(
     case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    
-    # In futuro, salvare in database (es. revision_result)
-    # Per ora ritorna solo acknowledgment
-    
+
+    from app.services.calculation_service import save_result
+
+    # Normalizza il risultato v2 nelle colonne di RevisionResult:
+    # il ramo multi-componente espone overall_variation_percent invece di
+    # variation_percent e non ha valori sintetici.
+    result = dict(calculation_result)
+    if result.get("is_multi_component"):
+        result["variation_percent"] = result.get("overall_variation_percent")
+        overall = result.get("overall_variation_percent")
+        threshold = result.get("threshold_percent")
+        result["excess_percent"] = (
+            max(0.0, (overall or 0.0) - (threshold or 0.0))
+            if overall is not None else None
+        )
+        result["base_value"] = None
+        result["comparison_value"] = None
+        result["recognition_percent"] = None
+        if not result.get("steps") and not result.get("formula_detail"):
+            result["formula_detail"] = result.get("summary") or ""
+
+    last = (
+        db.query(RevisionResult)
+        .filter(RevisionResult.case_id == case_id)
+        .order_by(RevisionResult.result_version.desc())
+        .first()
+    )
+    next_version = (last.result_version + 1) if last else 1
+    record = save_result(db, case_id, result, version=next_version)
+    db.commit()
+
     return {
         "case_id": str(case_id),
         "calculation_saved": True,
-        "result": calculation_result
+        "result_version": next_version,
+        "result_id": str(record.id),
     }

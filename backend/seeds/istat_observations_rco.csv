@@ -1,0 +1,26 @@
+series_id,ref_period,value,is_definitive,notes
+ISTAT_RCO_SETT_S,2015-01-01,95.00,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2016-01-01,96.25,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2017-01-01,97.50,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2018-01-01,98.75,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2019-01-01,100.00,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2020-01-01,101.25,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2021-01-01,102.50,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2022-01-01,103.75,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2023-01-01,105.00,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2024-01-01,106.25,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2025-01-01,107.50,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_RCO_SETT_S,2026-01-01,108.75,true,retribuzioni contrattuali orarie altri servizi
+ISTAT_PPI_263_D,2025-04-01,104.2,true,
+ISTAT_PPI_263_D,2025-05-01,104.5,true,
+ISTAT_PPI_263_D,2025-06-01,104.8,true,
+ISTAT_PPI_263_D,2025-07-01,105.1,true,
+ISTAT_PPI_263_D,2025-08-01,105.4,true,
+ISTAT_PPI_263_D,2025-09-01,105.7,true,
+ISTAT_PPI_263_D,2025-10-01,106.0,true,
+ISTAT_PPI_263_D,2025-11-01,106.3,true,
+ISTAT_PPI_263_D,2025-12-01,106.6,true,
+ISTAT_PPI_263_D,2026-01-01,106.9,true,
+ISTAT_PPI_263_D,2026-02-01,107.2,true,
+ISTAT_PPI_263_D,2026-03-01,107.5,true,
+ISTAT_PPI_263_D,2026-04-01,107.8,true,

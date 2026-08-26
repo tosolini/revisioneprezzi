@@ -2,24 +2,27 @@ services:
   backend:
     image: ghcr.io/tosolini/revisioneprezzi/backend:main
     ports:
-      - "127.0.0.1:8000:8000"
+      - "8003:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-revuser}:${POSTGRES_PASSWORD:-changeme-local-only}@db:5432/${POSTGRES_DB:-revision_db}
       - DEBUG=${DEBUG:-false}
+    restart: unless-stopped
     depends_on:
       - db
 
   frontend:
-    build: ./frontend
+    image: ghcr.io/tosolini/revisioneprezzi/frontend:main
     ports:
-      - "127.0.0.1:3000:80"
+      - "3001:80"
+    restart: unless-stopped
     depends_on:
       - backend
 
   parser:
     image: ghcr.io/tosolini/revisioneprezzi/parser:main
     ports:
-      - "127.0.0.1:8002:8002"
+      - "8002:8002"
+    restart: unless-stopped
 
   db:
     image: postgres:16
@@ -36,8 +39,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme-local-only}
       POSTGRES_DB: ${POSTGRES_DB:-revision_db}
     # Bind DB to localhost only so it is never reachable from the network.
+    restart: unless-stopped
     ports:
-      - "127.0.0.1:5433:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 

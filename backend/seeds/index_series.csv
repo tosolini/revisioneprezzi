@@ -49,3 +49,4 @@ ISTAT_RCO_SETT_P,Retribuzioni contrattuali orarie istruzione,ISTAT,labour_index,
 ISTAT_RCO_SETT_Q,Retribuzioni contrattuali orarie sanità,ISTAT,labour_index,ATECO_Q,yearly
 ISTAT_RCO_SETT_R,Retribuzioni contrattuali orarie arte e intrattenimento,ISTAT,labour_index,ATECO_R,yearly
 ISTAT_RCO_SETT_S,Retribuzioni contrattuali orarie altri servizi,ISTAT,labour_index,ATECO_S,yearly
+ISTAT_PPI_263_D,Prezzi alla produzione apparecchiature telecomunicazioni (ATECO 263),ISTAT,ppi,ATECOC_263,monthly

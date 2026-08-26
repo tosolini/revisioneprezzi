@@ -91,6 +91,8 @@ export const api = {
       request<CaseDetail>(`/cases/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/cases/${id}`, { method: 'DELETE' }),
+    deleteDrafts: () =>
+      request<{ deleted: number }>('/cases/delete-drafts', { method: 'POST' }),
   },
   wizard: {
     save: (caseId: string, step: number, answers: { step: number; field_key: string; field_value: string }[]) =>

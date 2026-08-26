@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [totalSteps, setTotalSteps] = useState(8)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [deletingDrafts, setDeletingDrafts] = useState(false)
   const navigate = useNavigate()
 
   const load = async (q?: string) => {
@@ -42,6 +43,26 @@ export default function Dashboard() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchQuery])
 
+  const draftsCount = cases.filter(c => c.status === 'draft').length
+
+  const deleteDrafts = async () => {
+    if (draftsCount === 0) return
+    const ok = window.confirm(
+      `Eliminare definitivamente ${draftsCount} pratiche in bozza?\n\nQuesta azione non è reversibile.`
+    )
+    if (!ok) return
+    setDeletingDrafts(true)
+    try {
+      const res = await api.cases.deleteDrafts()
+      await load(searchQuery.trim() || undefined)
+      if (res.deleted > 0) setError('')
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setDeletingDrafts(false)
+    }
+  }
+
   const create = async () => {
     if (!title.trim()) return
     try {
@@ -60,16 +81,31 @@ export default function Dashboard() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Pratiche</h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          style={{
-            padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-primary-text)',
-            border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          + Nuova pratica
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {draftsCount > 0 && (
+            <button
+              onClick={deleteDrafts}
+              disabled={deletingDrafts}
+              style={{
+                padding: '10px 20px', background: 'var(--color-bg-card)', color: 'var(--color-text-error)',
+                border: '1px solid var(--color-border-error)', borderRadius: 8, fontSize: 14, fontWeight: 600,
+                cursor: deletingDrafts ? 'wait' : 'pointer',
+              }}
+            >
+              {deletingDrafts ? 'Eliminazione...' : `Elimina bozze (${draftsCount})`}
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreate(true)}
+            style={{
+              padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-primary-text)',
+              border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            + Nuova pratica
+          </button>
+        </div>
       </div>
 
       {error && (

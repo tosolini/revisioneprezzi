@@ -20,3 +20,4 @@ cpv_pattern,family,strength,mapping_note
 70,ppi,weak,Beni strumentali → ppi manifatturiero
 55,ppi_services,weak,Ristorazione → ppi_services con attenzione a manodopera
 50,ppi_services,weak,Riparazioni e manutenzioni → verificare incidenza materiali
+642,ppi_services,strong,Servizi di telecomunicazione → B2B telecomunicazioni (ATECO 61)

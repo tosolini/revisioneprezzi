@@ -5,6 +5,7 @@ import FieldRenderer from '../components/FieldRenderer'
 import CpvSearchModal from '../components/CpvSearchModal'
 import ReportView from '../components/ReportView'
 import ReportV2View from '../components/ReportV2View'
+import IndexWeightsEditor from '../components/IndexWeightsEditor'
 
 interface StepField {
   key: string
@@ -32,6 +33,22 @@ interface SecondaryCpv {
   weight: number
 }
 
+interface MappingAssocV1 {
+  index_type: string
+  classification: string
+  ateco_code: string
+  description: string
+  series_id: string | null
+  available: boolean
+}
+
+interface ResolvedCpv {
+  description: string
+  series: IndexSeries[]
+}
+
+
+
 export default function CaseWizard() {
   const { id, step: stepParam } = useParams()
   const navigate = useNavigate()
@@ -52,12 +69,19 @@ export default function CaseWizard() {
   const [secondaryCpvs, setSecondaryCpvs] = useState<SecondaryCpv[]>([])
 
   const [cpvIndices, setCpvIndices] = useState<IndexSeries[]>([])
+  const [tabellaDAssociations, setTabellaDAssociations] = useState<MappingAssocV1[]>([])
+  const [multiCpvResolved, setMultiCpvResolved] = useState<Record<string, ResolvedCpv>>({})
   const [cpvDescription, setCpvDescription] = useState('')
   const [calcResult, setCalcResult] = useState<CalcResult | null>(null)
   const [calcError, setCalcError] = useState('')
   const [reportContent, setReportContent] = useState('')
   const [reportData, setReportData] = useState<any>(null)
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+  // Copia automatica step 2: debounce per avere la cifra completa prima di copiare;
+  // il follow si interrompe appena l'utente tocca manualmente il campo destinazione.
+  const amountCopyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const amountManualEdited = useRef(false)
 
   const handlePrint = () => {
     const style = document.createElement('style')
@@ -81,6 +105,12 @@ export default function CaseWizard() {
   }
 
   useEffect(() => {
+    return () => {
+      if (amountCopyTimer.current) clearTimeout(amountCopyTimer.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!id) return
     setLoading(true)
     setError('')
@@ -91,6 +121,19 @@ export default function CaseWizard() {
     setReportContent('')
     setReportData(null)
     setWarnings([])
+  const persistCalculation = async (result: unknown) => {
+    if (!id) return
+    try {
+      await fetch(`/api/v1/report/v2/cases/${id}/calculation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result),
+      })
+    } catch {
+      // la persistenza è best-effort: non blocca la navigazione
+    }
+  }
+
     // Fetch step 2 answers once for all steps (used for amount prefill in step 3)
     const step2Promise = api.wizard.get(id, 2).then(arr => {
       const map: Record<string, string> = {}
@@ -161,6 +204,28 @@ export default function CaseWizard() {
         }
       }
 
+      // Step 5: riporta data base (stipula), confronto (avvio esecuzione) e
+      // importo assoggettabile dallo step 2, solo se lo step 5 è ancora vuoto.
+      // I campi restano modificabili.
+      if (step === 5) {
+        const prefill: Record<string, string> = {}
+        const stip = step2Saved['stipulation_date']
+        const exec = step2Saved['execution_start_date']
+        if (!saved['base_period'] && stip && stip.length >= 7) {
+          prefill['base_period'] = stip.substring(0, 7)
+        }
+        if (!saved['comparison_period'] && exec && exec.length >= 7) {
+          prefill['comparison_period'] = exec.substring(0, 7)
+        }
+        if (!saved['amount_subject_to_revision']) {
+          const amount = step2Saved['amount_subject_to_revision'] || ''
+          if (amount) prefill['amount_subject_to_revision'] = amount
+        }
+        if (Object.keys(prefill).length > 0) {
+          setAnswers(prev => ({ ...prev, ...prefill }))
+        }
+      }
+
       // Parse secondary CPVs from saved answers
       const secCodes = (saved['cpv_secondary'] || step3Saved['cpv_secondary'] || '').split(',').map(s => s.trim()).filter(Boolean)
       const secWeights = (saved['cpv_secondary_weights'] || step3Saved['cpv_secondary_weights'] || '').split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n))
@@ -181,35 +246,112 @@ export default function CaseWizard() {
 
       if (sc?.auto_evaluate && sc.evaluation_service === 'index_selection') {
         const cpv = saved['cpv_primary'] || step3Saved['cpv_primary']
-        if (cpv) loadIndicesForCpv(cpv, saved['contract_type'] || step3Saved['contract_type'] || step2Saved['contract_type'])
+        const secCodesResolve = (saved['cpv_secondary'] || step3Saved['cpv_secondary'] || '')
+          .split(',').map((s: string) => s.trim()).filter(Boolean)
+        const ct = saved['contract_type'] || step3Saved['contract_type'] || step2Saved['contract_type']
+        if (cpv) resolveIndexForCpv(cpv, ct, secCodesResolve.length > 0 ? secCodesResolve : undefined)
       }
     }).catch(e => setError(e.message))
       .finally(() => {
         setLoading(false)
-        // Step 6: auto-calculate
+        // Step 6: auto-calculate (V2: Tabella D, media ponderata variazioni)
         if (step === 6) {
           Promise.all([
+            api.wizard.get(id, 3).catch(() => []),
             api.wizard.get(id, 4).catch(() => []),
             api.wizard.get(id, 5).catch(() => []),
-          ]).then(([step4, step5]) => {
+          ]).then(async ([step3, step4, step5]) => {
+            const s3: Record<string, string> = {}
+            step3.forEach((a: any) => { s3[a.field_key] = a.field_value || '' })
             const s4: Record<string, string> = {}
             step4.forEach((a: any) => { s4[a.field_key] = a.field_value || '' })
             const s5: Record<string, string> = {}
             step5.forEach((a: any) => { s5[a.field_key] = a.field_value || '' })
-            const seriesId = s4['selected_index_series_id']
             const basePeriod = s5['base_period']
             const compPeriod = s5['comparison_period']
             const amount = parseFloat(s5['amount_subject_to_revision'] || '0')
-            if (seriesId && basePeriod && compPeriod && amount > 0) {
-              setCalcError('')
-              api.calculate({
-                case_id: id, series_id: seriesId,
-                base_period: basePeriod.includes('-') && basePeriod.length <= 7 ? `${basePeriod}-01` : basePeriod,
-                comparison_period: compPeriod.includes('-') && compPeriod.length <= 7 ? `${compPeriod}-01` : compPeriod,
-                amount,
-              }).then(setCalcResult).catch((err: any) => {
-                setCalcError(err?.message || 'Errore nel calcolo')
-              })
+            const contractType = s3['contract_type'] || s4['contract_type'] || 'services'
+            const cpvPrimary = s3['cpv_primary'] || ''
+            const secCodes = (s3['cpv_secondary'] || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+            const secWeights = (s3['cpv_secondary_weights'] || '').split(',').map((s: string) => parseFloat(s.trim())).filter((n: number) => !isNaN(n))
+            const bPeriod = basePeriod && basePeriod.includes('-') && basePeriod.length <= 7 ? `${basePeriod}-01` : basePeriod
+            const cPeriod = compPeriod && compPeriod.includes('-') && compPeriod.length <= 7 ? `${compPeriod}-01` : compPeriod
+
+            if (!cpvPrimary || !bPeriod || !cPeriod || amount <= 0) return
+            setCalcError('')
+
+            try {
+              const ct = contractType === 'supply' ? 'supplies' : contractType === 'service' ? 'services' : contractType
+              if (secCodes.length === 0) {
+                // 1 CPV: config da step 4 (single o composite weighted_variations)
+                const weightsRaw = s4['index_weights'] && s4['index_weights'].trim() ? s4['index_weights'] : ''
+                let indicesConfig: { type: string; single_series_id?: string; method?: string; components?: Record<string, number> }
+                if (weightsRaw) {
+                  const parsed = JSON.parse(weightsRaw)
+                  const total = Object.values(parsed).reduce((s: number, v: unknown) => s + (typeof v === 'number' ? v : 0), 0)
+                  if (Math.abs(total - 100) > 0.01) throw new Error(`I pesi indici devono sommarsi a 100% (attuale: ${total.toFixed(2)}%)`)
+                  indicesConfig = { type: 'composite', method: 'weighted_variations', components: parsed }
+                } else if (s4['selected_index_series_id']) {
+                  indicesConfig = { type: 'single', single_series_id: s4['selected_index_series_id'] }
+                } else {
+                  setCalcError('Nessun indice selezionato allo step 4')
+                  return
+                }
+                const res = await fetch('/api/v1/calculation/v2/calculate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contract_type: ct, amount, base_period: bPeriod, comparison_period: cPeriod,
+                    indices_config: indicesConfig,
+                  }),
+                })
+                const body = await res.json()
+                if (!res.ok) throw new Error(body.detail || 'Errore nel calcolo')
+                setCalcResult(body)
+                await persistCalculation(body)
+              } else {
+                // Multi-CPV (Art. 13): componenti con importo ripartito dai pesi CPV
+                const secTotal = secWeights.reduce((s: number, w: number) => s + w, 0)
+                const primaryWeight = Math.max(0, 100 - secTotal)
+                const components: Array<{ amount: number; indices_config: any; description: string }> = []
+                const buildConfig = async (cpv: string): Promise<any> => {
+                  const mapping = await fetchCpvMapping(cpv)
+                  if (mapping && mapping.table_class) {
+                    const assocs = mapping.associations.filter(a => a.series_id)
+                    if (assocs.length === 1) {
+                      return { type: 'single', single_series_id: assocs[0].series_id }
+                    }
+                    if (mapping.table_class === 'D3' || assocs.length > 1) {
+                      const componentsCfg: Record<string, number> = {}
+                      const share = parseFloat((100 / assocs.length).toFixed(2))
+                      assocs.forEach(a => { componentsCfg[a.series_id as string] = share })
+                      return { type: 'composite', method: 'weighted_variations', components: componentsCfg }
+                    }
+                  }
+                  const r = await api.indices.forCpv(cpv, contractType)
+                  if (r.candidates.length > 0) return { type: 'single', single_series_id: r.candidates[0].id }
+                  throw new Error(`Nessun indice risolto per ${cpv}`)
+                }
+                const primaryCfg = await buildConfig(cpvPrimary)
+                components.push({ amount: amount * (primaryWeight / 100), indices_config: primaryCfg, description: cpvPrimary })
+                for (let i = 0; i < secCodes.length; i++) {
+                  const cfg = await buildConfig(secCodes[i])
+                  components.push({ amount: amount * ((secWeights[i] || 0) / 100), indices_config: cfg, description: secCodes[i] })
+                }
+                const res = await fetch('/api/v1/calculation/v2/calculate/multi-component', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contract_type: ct, base_period: bPeriod, comparison_period: cPeriod, components,
+                  }),
+                })
+                const body = await res.json()
+                if (!res.ok) throw new Error(body.detail || 'Errore nel calcolo')
+                setCalcResult(body)
+                await persistCalculation(body)
+              }
+            } catch (err: any) {
+              setCalcError(err?.message || 'Errore nel calcolo')
             }
           })
         }
@@ -250,36 +392,154 @@ export default function CaseWizard() {
       })
   }, [id, step])
 
-  const loadIndicesForCpv = useCallback(async (cpv: string, contractType?: string) => {
-    if (!cpv) return
+  const fetchCpvMapping = useCallback(async (cpv: string): Promise<{
+    table_class: string | null
+    associations: MappingAssocV1[]
+  } | null> => {
     try {
-      const r = await api.indices.forCpv(cpv, contractType)
-      setCpvIndices(r.candidates)
-      setWarnings(r.warnings)
+      const res = await fetch('/api/v1/classify/cpv-index-mapping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpv_code: cpv }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      const assocs: MappingAssocV1[] = (data.associations || []).map((a: any) => ({
+        index_type: a.index_type,
+        classification: a.classification,
+        ateco_code: a.ateco_code,
+        description: a.description,
+        series_id: a.series_id ?? null,
+        available: a.available,
+      }))
+      return { table_class: data.table_class || null, associations: assocs }
+    } catch {
+      return null
+    }
+  }, [])
+
+  const mapAssocsToSeries = (assocs: MappingAssocV1[]): IndexSeries[] =>
+    assocs
+      .filter(a => a.series_id)
+      .map(a => ({
+        id: a.series_id as string,
+        name: `${a.index_type} [${a.ateco_code}] ${a.description}`,
+        source: 'Tabella D',
+        normative_category: null,
+        classification_ref: null,
+        frequency: null,
+      }))
+
+  const resolveIndexForCpv = useCallback(async (cpv: string, contractType?: string, secondaryCodes?: string[]) => {
+    if (!cpv) return
+    const mapping = await fetchCpvMapping(cpv)
+
+    // Multi-CPV: riepilogo per CPV (senza select unica)
+    if (secondaryCodes && secondaryCodes.length > 0) {
+      const codes = [cpv, ...secondaryCodes]
+      const resolved: Record<string, ResolvedCpv> = {}
+      for (const code of codes) {
+        const m = await fetchCpvMapping(code)
+        let series: IndexSeries[] = []
+        if (m && m.table_class) {
+          series = mapAssocsToSeries(m.associations)
+        } else {
+          const r = await api.indices.forCpv(code, contractType)
+          series = r.candidates
+        }
+        resolved[code] = { description: '', series }
+      }
+      setMultiCpvResolved(resolved)
+      return
+    }
+
+    // Single CPV: Tabella D → select + index_weights prefill
+    if (mapping && mapping.table_class) {
+      const series = mapAssocsToSeries(mapping.associations)
+      setCpvIndices(series)
+      setTabellaDAssociations(mapping.associations)
+      setWarnings(mapping.associations.some(a => !a.available)
+        ? ['Alcune serie associate non hanno dati disponibili (verificare l\'import SDMX/seed).']
+        : [])
       setStepConfig(prev => {
         if (!prev) return prev
         return {
           ...prev,
           fields: prev.fields.map(f =>
             f.key === 'selected_index_series_id'
-              ? { ...f, options: r.candidates.map((s: any) => ({ value: s.id, label: s.name })) }
+              ? { ...f, options: series.map(s => ({ value: s.id, label: s.name })) }
               : f
           ),
         }
       })
-      if (!r.requires_human_intervention && r.candidates.length > 0) {
+      const firstId = series[0]?.id
+      if (firstId) {
+        setAnswers(prev => ({ ...prev, selected_index_series_id: firstId }))
+      }
+      // D.2/D.3: prefill index_weights con pesi uguali 100/n
+      if (mapping.table_class === 'D2' || mapping.table_class === 'D3') {
+        const n = series.length
+        if (n > 0) {
+          const weights: Record<string, number> = {}
+          series.forEach(s => { weights[s.id] = parseFloat((100 / n).toFixed(2)) })
+          setAnswers(prev => ({ ...prev, index_weights: JSON.stringify(weights) }))
+        }
+      } else {
         setAnswers(prev => {
-          if (prev.selected_index_series_id && r.candidates.some((s: any) => s.id === prev.selected_index_series_id)) {
-            return prev
-          }
-          return { ...prev, selected_index_series_id: r.candidates[0].id }
+          const next = { ...prev }
+          delete next.index_weights
+          return next
         })
       }
-    } catch { /* ignore */ }
-  }, [])
+      return
+    }
+
+    // CPV fuori Tabella D: candidati famiglia (Art. 11.4)
+    const r = await api.indices.forCpv(cpv, contractType)
+    setCpvIndices(r.candidates)
+    setTabellaDAssociations([])
+    setWarnings([...r.warnings, 'CPV non elencato in Tabella D: selezionare manualmente un indice (Art. 11.4).'])
+    setStepConfig(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        fields: prev.fields.map(f =>
+          f.key === 'selected_index_series_id'
+            ? { ...f, options: r.candidates.map((s: any) => ({ value: s.id, label: s.name })) }
+            : f
+        ),
+      }
+    })
+    if (r.candidates.length > 0) {
+      setAnswers(prev => {
+        if (prev.selected_index_series_id && r.candidates.some((s: any) => s.id === prev.selected_index_series_id)) {
+          return prev
+        }
+        return { ...prev, selected_index_series_id: r.candidates[0].id }
+      })
+    }
+  }, [fetchCpvMapping])
 
   const handleFieldChange = (key: string, value: string) => {
     setAnswers(prev => ({ ...prev, [key]: value }))
+
+    // Step 2: copia automatica da "Importo complessivo contrattuale" a
+    // "Importo assoggettabile a revisione". Debounced (600ms) così la copia
+    // avviene sulla cifra completa, non sulla prima cifra digitata. Il follow
+    // continua finché l'utente non modifica manualmente il campo destinazione.
+    if (step === 2 && key === 'contract_amount_total' && !amountManualEdited.current) {
+      if (amountCopyTimer.current) clearTimeout(amountCopyTimer.current)
+      amountCopyTimer.current = setTimeout(() => {
+        setAnswers(prev => {
+          if (amountManualEdited.current) return prev
+          return { ...prev, amount_subject_to_revision: value }
+        })
+      }, 600)
+    }
+    // Il tocco manuale del destinatario ferma il follow (e lo riattiva se svuotato).
+    if (step === 2 && key === 'amount_subject_to_revision') {
+      amountManualEdited.current = value !== ''
+    }
 
     if (key === 'cpv_primary') {
       setCpvDescription('')
@@ -294,6 +554,77 @@ export default function CaseWizard() {
       setCpvIndices(prev => prev)
       setWarnings([])
     }
+  }
+
+  const overrideActive = answers['index_override'] === 'true'
+  const weightEditorActive = cpvIndices.length > 1 || !!answers['index_weights']
+
+  // Forzatura Art. 11.5: indice singolo fuori dalla ponderazione Tabella D.
+  const confirmOverride = () => {
+    setAnswers(prev => {
+      const next: Record<string, string> = { ...prev, index_override: 'true' }
+      delete next.index_weights
+      if (!next.selected_index_series_id && cpvIndices.length > 0) {
+        next.selected_index_series_id = cpvIndices[0].id
+      }
+      return next
+    })
+    setOverrideModalOpen(false)
+  }
+
+  const revertOverride = () => {
+    setAnswers(prev => {
+      const next = { ...prev }
+      delete next.index_override
+      delete next.override_reason
+      const n = cpvIndices.length
+      if (n > 0) {
+        const weights: Record<string, number> = {}
+        cpvIndices.forEach(s => { weights[s.id] = parseFloat((100 / n).toFixed(2)) })
+        next.index_weights = JSON.stringify(weights)
+      } else {
+        delete next.index_weights
+      }
+      return next
+    })
+  }
+
+  // Blocco allo step 4: i pesi indici devono sommare a 100 prima di avanzare.
+  const validateStep = (): string => {
+    if (step !== 4) return ''
+    if (overrideActive) {
+      if (!answers['selected_index_series_id']) {
+        return 'Selezionare un indice dalla tendina (forzatura Art. 11.5).'
+      }
+      if (!(answers['override_reason'] || '').trim()) {
+        return 'Indicare la motivazione della forzatura nel campo "Motivazione scelta" (Art. 11.5).'
+      }
+      return ''
+    }
+    const weightsActive = weightEditorActive
+    if (!weightsActive) return ''
+    const raw = (answers['index_weights'] || '').trim()
+    if (!raw) return 'Inserire i pesi percentuali degli indici (somma 100%) prima di continuare.'
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return 'Pesi indici non validi: controllare i valori inseriti.'
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return 'Pesi indici non validi: controllare i valori inseriti.'
+    }
+    let total = 0
+    for (const value of Object.values(parsed as Record<string, unknown>)) {
+      if (typeof value !== 'number' || isNaN(value)) {
+        return 'Pesi indici non validi: controllare i valori inseriti.'
+      }
+      total += value
+    }
+    if (Math.abs(total - 100) > 0.01) {
+      return `I pesi indici devono sommarsi a 100% (attuale: ${total.toFixed(2)}%).`
+    }
+    return ''
   }
 
   const saveStep = async () => {
@@ -315,18 +646,28 @@ export default function CaseWizard() {
       if (secondaryCpvs.length > 0) {
         answersArr.push({ step, field_key: 'cpv_secondary_weights', field_value: secondaryCpvs.map(s => s.weight).join(',') })
       }
+      if (answers['index_override'] === 'true') {
+        answersArr.push({ step, field_key: 'index_override', field_value: 'true' })
+      }
       await api.wizard.save(id, step, answersArr)
       setSavedAnswers({ ...allAnswers })
+      return true
     } catch (e: any) {
       setError(e.message)
+      return false
     } finally {
       setSaving(false)
     }
   }
 
   const goNext = async () => {
-    await saveStep()
-    if (error) return
+    const validationMsg = validateStep()
+    if (validationMsg) {
+      setError(validationMsg)
+      return
+    }
+    const saved = await saveStep()
+    if (!saved) return
     if (step >= totalSteps) {
       if (id) await api.cases.update(id, { status: 'completed' as string }).catch(() => {})
       navigate(`/cases`)
@@ -406,13 +747,40 @@ export default function CaseWizard() {
       )}
 
       {/* Indices for CPV — only on step 4 */}
-      {cpvIndices.length > 0 && step === 4 && (
+      {step === 4 && Object.keys(multiCpvResolved).length > 0 && (
         <div style={{
           background: 'var(--color-threshold-ok-bg)', padding: 16, borderRadius: 8, marginBottom: 16,
           border: '1px solid var(--color-border-success)',
         }}>
           <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>
-            Indici ISTAT disponibili per il CPV inserito
+            Riepilogo associato per CPV (Art. 13 — multi-CPV)
+          </div>
+          {Object.entries(multiCpvResolved).map(([code, rc]) => {
+            const sec = secondaryCpvs.find(s => s.code === code)
+            const label = sec?.description || (code === (answers['cpv_primary'] || '') ? cpvDescription : '')
+            return (
+              <div key={code} style={{ padding: '8px 0', fontSize: 13, borderBottom: '1px solid var(--color-border-light)' }}>
+                <strong style={{ fontFamily: 'monospace' }}>{code}</strong>
+                {label && <span style={{ color: 'var(--color-text-muted)', marginLeft: 8 }}>{label}</span>}
+                {rc.series.length > 0
+                  ? <div style={{ marginTop: 4, color: 'var(--color-text-muted)' }}>
+                      {rc.series.map(s => <div key={s.id}>• {s.name} <span style={{ color: 'var(--color-text-light)' }}>({s.id})</span></div>)}
+                    </div>
+                  : <div style={{ marginTop: 4, color: 'var(--color-text-warning)' }}>Nessun indice associato</div>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Associazione Tabella D — single CPV, only on step 4 */}
+      {cpvIndices.length > 0 && step === 4 && Object.keys(multiCpvResolved).length === 0 && (
+        <div style={{
+          background: 'var(--color-threshold-ok-bg)', padding: 16, borderRadius: 8, marginBottom: 16,
+          border: '1px solid var(--color-border-success)',
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>
+            Associazione Tabella D per il CPV inserito
           </div>
           {cpvIndices.map(s => (
             <div key={s.id} style={{
@@ -423,13 +791,20 @@ export default function CaseWizard() {
               {s.frequency && <span style={{ color: 'var(--color-text-light)', marginLeft: 4 }}>— {s.frequency}</span>}
             </div>
           ))}
+          {tabellaDAssociations.length > 0 && tabellaDAssociations.some(a => !a.available) && (
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-warning)' }}>
+              Attenzione: alcune serie associate non hanno dati disponibili.
+            </div>
+          )}
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
-            Seleziona l'indice desiderato dal menu a tendina qui sotto.
+            Per D.1 (e per i CPV fuori Tabella D) l'indice è scelto dal menu a tendina; per D.2 ponderata e D.3 i pesi percentuali si impostano qui sotto (somma 100%).
           </div>
         </div>
       )}
 
+
       {/* Form fields */}
+
       <div style={{
         background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, marginBottom: 16,
         boxShadow: '0 1px 3px var(--color-shadow)',
@@ -444,6 +819,14 @@ export default function CaseWizard() {
           .filter(f => {
             if (f.key === 'cpv_secondary' || f.key === 'cpv_secondary_weights') return false
             if (step === 3 && (f.key === 'cpv_total_amount')) return false
+            // Multi-CPV: senza select unica (riepilogo per CPV sopra); index_weights solo per 1 CPV ponderato
+            if (step === 4 && Object.keys(multiCpvResolved).length > 0 &&
+                (f.key === 'selected_index_series_id' || f.key === 'index_weights')) return false
+            // D.2 ponderata / D.3: la selezione avviene con l'editor dei pesi, la tendina è residua
+            // (in forzatura Art. 11.5 la tendina torna a essere il controllo)
+            if (step === 4 && !overrideActive &&
+                (cpvIndices.length > 1 || !!answers['index_weights']) &&
+                f.key === 'selected_index_series_id') return false
             if (!f.required_if) return true
             const dep = answers[f.required_if.field]
             if (f.required_if.operator === '>') {
@@ -495,6 +878,18 @@ export default function CaseWizard() {
                 </div>
               )
             }
+            if (field.key === 'index_weights') {
+              const useEditor = weightEditorActive && !overrideActive
+              if (!useEditor) return null
+              return (
+                <IndexWeightsEditor
+                  key={field.key}
+                  series={cpvIndices.map(s => ({ id: s.id, label: s.name }))}
+                  value={answers['index_weights'] || ''}
+                  onChange={json => handleFieldChange('index_weights', json)}
+                />
+              )
+            }
             return (
               <FieldRenderer
                 key={field.key}
@@ -504,6 +899,47 @@ export default function CaseWizard() {
               />
             )
           })}
+
+        {/* Forzatura Art. 11.5 — solo step 4, editor pesi attivo (D.2 ponderata / D.3) */}
+        {step === 4 && stepConfig.step === 4 && weightEditorActive && !overrideActive && (
+          <div style={{ marginTop: 4, marginBottom: 16 }}>
+            <button
+              type="button"
+              onClick={() => setOverrideModalOpen(true)}
+              style={{
+                padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                border: '1px solid var(--color-border-warning)', background: 'var(--color-bg-warning)',
+                color: 'var(--color-text-warning)', cursor: 'pointer',
+              }}
+            >
+              Forza indice singolo (Art. 11.5)
+            </button>
+          </div>
+        )}
+
+        {step === 4 && overrideActive && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{
+              padding: '10px 12px', background: 'var(--color-bg-warning)',
+              color: 'var(--color-text-warning)', borderRadius: 8, fontSize: 13, marginBottom: 8,
+              border: '1px solid var(--color-border-warning)',
+            }}>
+              Forzatura attiva: indice singolo fuori dalla ponderazione prevista dalla Tabella D.
+              Indicare la motivazione nel campo "Motivazione scelta". (Art. 11.5)
+            </div>
+            <button
+              type="button"
+              onClick={revertOverride}
+              style={{
+                padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                border: '1px solid var(--color-border)', background: 'var(--color-bg-card)',
+                color: 'var(--color-text-secondary)', cursor: 'pointer',
+              }}
+            >
+              Torna alla ponderazione (Tabella D)
+            </button>
+          </div>
+        )}
 
         {/* Step 3: CPV total amount + secondary CPVs */}
         {stepConfig.step === 3 && (
@@ -778,6 +1214,60 @@ export default function CaseWizard() {
           setCpvModalOpen(false)
         }}
       />
+
+      {/* Modal conferma forzatura Art. 11.5 */}
+      {overrideModalOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'var(--color-overlay)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setOverrideModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'var(--color-bg-card)', borderRadius: 12, width: 560, maxWidth: '90vw',
+              padding: 24, boxShadow: '0 8px 32px var(--color-shadow-heavy)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--color-text-warning)' }}>
+              Forzatura selezione indice (Art. 11.5)
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
+              Si sta scegliendo un <strong>indice singolo</strong> al posto del sistema di ponderazione
+              previsto dalla Tabella D dell'Allegato II.2-bis. L'Art. 11.5 consente questa scelta solo
+              se motivata nei documenti di gara: verrà richiesta la motivazione nel campo
+              "Motivazione scelta" prima di proseguire.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={() => setOverrideModalOpen(false)}
+                style={{
+                  padding: '8px 20px', borderRadius: 6, border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                }}
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={confirmOverride}
+                style={{
+                  padding: '8px 20px', borderRadius: 6, border: 'none',
+                  background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                }}
+              >
+                Procedi con forzatura
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CpvSearchModal
         open={secondaryCpvModalOpen}

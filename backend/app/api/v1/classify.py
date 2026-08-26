@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.classification_service import classify
 from app.services.index_selection_service import get_candidate_series
+from app.services.tabella_d_service import resolve_associations, resolve_series
 
 router = APIRouter(prefix="/classify", tags=["classification"])
 
@@ -70,4 +71,39 @@ def get_indices_for_cpv(payload: CpvIndexRequest, db: Session = Depends(get_db))
         "candidates": list(seen.values()),
         "requires_human_intervention": result.get("requires_human_intervention", False),
         "warnings": result.get("warnings", []),
+    }
+
+
+class CpvIndexMappingRequest(BaseModel):
+    cpv_code: str
+
+
+@router.post("/cpv-index-mapping")
+def cpv_index_mapping(payload: CpvIndexMappingRequest, db: Session = Depends(get_db)):
+    """Risolve un CPV verso l'associazione Tabella D (D.1/D.2/D.3).
+
+    Ritorna `{cpv_code, resolved_cpv_code, table_class, associations}` con
+    `table_class: null` e `associations: []` se il CPV non è in Tabella D
+    (il frontend applica allora l'Art. 11.4)."""
+    result = resolve_associations(payload.cpv_code, db)
+    if result is None:
+        return {
+            "cpv_code": payload.cpv_code,
+            "resolved_cpv_code": None,
+            "table_class": None,
+            "associations": [],
+        }
+    associations = []
+    for assoc in result["associations"]:
+        series = resolve_series(assoc, db)
+        associations.append({
+            **assoc,
+            "series_id": series["series_id"],
+            "available": series["available"],
+        })
+    return {
+        "cpv_code": result["cpv_code"],
+        "resolved_cpv_code": result["resolved_cpv_code"],
+        "table_class": result["table_class"],
+        "associations": associations,
     }
