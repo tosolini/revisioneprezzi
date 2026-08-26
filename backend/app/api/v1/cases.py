@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -63,6 +63,16 @@ def update_case(case_id: UUID, payload: CaseUpdate, db: Session = Depends(get_db
     db.commit()
     db.refresh(case)
     return case
+
+
+@router.delete("/{case_id}", status_code=204)
+def delete_case(case_id: UUID, db: Session = Depends(get_db)):
+    case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    db.delete(case)
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.post("/delete-drafts")
