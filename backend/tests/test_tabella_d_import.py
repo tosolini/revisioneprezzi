@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from scripts.import_tabella_d import normalize_cpv, parse_source
 
 SOURCE = (
@@ -11,12 +13,27 @@ SOURCE = (
 )
 
 
-def test_source_exists():
-    assert SOURCE.exists(), f"file sorgente non trovato: {SOURCE}"
+@pytest.fixture()
+def source():
+    """File sorgente Tabella D (normalmente gitignorato in `source/`).
+
+    Assente nel checkout CI e nell'immagine Docker: i test che verificano i
+    conteggi e gli spot sul documento vengono saltati, non falliti. Il test
+    puro di normalizzazione CPV resta attivo ovunque."""
+    if not SOURCE.exists():
+        pytest.skip(
+            "file sorgente Tabella D non presente (source/ è gitignorato): "
+            "test eseguibile solo con il file nel checkout"
+        )
+    return SOURCE
 
 
-def test_master_and_counts():
-    master, assoc = parse_source(SOURCE)
+def test_source_exists(source):
+    assert source.exists()
+
+
+def test_master_and_counts(source):
+    master, assoc = parse_source(source)
     assert len(master) > 0
     # Conteggi verificati sul file sorgente: la legge dichiara 76 (D.2) e 54 (D.3);
     # per D.1 il file contiene 282 righe (284 nel piano era un conteggio errato).
@@ -43,8 +60,8 @@ def test_normalize_cpv():
     assert normalize_cpv("85110000") == "85110000"
 
 
-def test_spot_50330000():
-    _, assoc = parse_source(SOURCE)
+def test_spot_50330000(source):
+    _, assoc = parse_source(source)
     rows = [a for a in assoc if a["cpv_code"] == "50330000-7"]
     assert len(rows) == 2
     assert rows[0]["table_class"] == "D3"
@@ -54,8 +71,8 @@ def test_spot_50330000():
     assert rows[1]["ateco_code"] == "951"
 
 
-def test_spot_03211000_d1():
-    _, assoc = parse_source(SOURCE)
+def test_spot_03211000_d1(source):
+    _, assoc = parse_source(source)
     rows = [a for a in assoc if a["cpv_code"] == "03211000-3"]
     assert len(rows) == 1
     assert rows[0]["table_class"] == "D1"
@@ -64,16 +81,16 @@ def test_spot_03211000_d1():
     assert rows[0]["classification"] == "ECOICOP"
 
 
-def test_spot_221000_d2():
-    _, assoc = parse_source(SOURCE)
+def test_spot_221000_d2(source):
+    _, assoc = parse_source(source)
     rows = [a for a in assoc if a["cpv_code"] == "22100000-1"]
     assert len(rows) == 2
     assert (rows[0]["index_type"], rows[0]["ateco_code"]) == ("PC", "0951")
     assert (rows[1]["index_type"], rows[1]["ateco_code"]) == ("PPI", "1812")
 
 
-def test_special_rows_without_check_digit():
-    master, assoc = parse_source(SOURCE)
+def test_special_rows_without_check_digit(source):
+    master, assoc = parse_source(source)
     master_codes = {m["cpv_code"] for m in master}
     assert "85110000" in master_codes
     assert "98310000" in master_codes
