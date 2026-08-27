@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { useTheme } from '../theme'
 import pkg from '../../package.json'
@@ -10,6 +10,13 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { isDark, toggleTheme } = useTheme()
   const loc = useLocation()
   const isActive = (p: string) => loc.pathname === p ? 'active' : ''
+  const [showTop, setShowTop] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 320)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
     <div style={{
@@ -20,6 +27,8 @@ export default function Layout({ children }: { children: ReactNode }) {
         background: 'var(--color-bg-nav)', color: '#fff', padding: '0 24px',
         display: 'flex', alignItems: 'center', height: 56, gap: 16,
         overflowX: 'auto', flexShrink: 0,
+        position: 'sticky', top: 0, zIndex: 40,
+        boxShadow: '0 6px 20px -10px rgba(0, 0, 0, 0.5)',
       }}>
         <Link to="/" style={{ color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 18, whiteSpace: 'nowrap' }}>
           Revisione Prezzi
@@ -73,6 +82,24 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}>
         Revisione Prezzi v{pkg.version} del {__BUILD_DATE__} &mdash; Autore: {AUTHOR}
       </footer>
+      {showTop && (
+        <button
+          type="button"
+          aria-label="Torna in alto"
+          title="Torna in alto"
+          onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          style={{
+            position: 'fixed', right: 20, bottom: 20, zIndex: 60,
+            width: 44, height: 44, borderRadius: '50%', cursor: 'pointer',
+            background: 'var(--color-bg-nav)', color: '#fff', border: 'none',
+            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, lineHeight: 1,
+          }}
+        >
+          ↑
+        </button>
+      )}
     </div>
   )
 }

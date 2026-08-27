@@ -12,6 +12,14 @@ interface Observation {
   is_definitive: boolean
 }
 
+interface SavedQuery {
+  id: string
+  url: string
+  dataflow_id: string
+  key_part?: string
+  created_at?: string | null
+}
+
 interface Series {
   id: string
   name: string
@@ -19,6 +27,7 @@ interface Series {
   normative_category: string
   observation_count: number
   observations: Observation[]
+  saved_query?: SavedQuery | null
 }
 
 interface SearchHit {
@@ -28,6 +37,7 @@ interface SearchHit {
   normative_category: string | null
   classification_ref: string | null
   frequency: string
+  saved_query?: SavedQuery | null
 }
 
 const GROUP_LABELS: Record<string, string> = {
@@ -60,6 +70,25 @@ interface ImportJob {
   status: 'ready' | 'running' | 'done' | 'error'
   result?: { details: ImportDetails } | null
   error?: string | null
+}
+
+const delay = (ms: number) => {
+  const { promise, resolve } = Promise.withResolvers<void>()
+  setTimeout(resolve, ms)
+  return promise
+}
+
+async function pollImportJob(jobId: string): Promise<ImportJob> {
+  const deadline = Date.now() + 15 * 60 * 1000
+  while (Date.now() < deadline) {
+    await delay(3000)
+    const res = await fetch(`/api/v1/indices/import-jobs/${jobId}`)
+    if (!res.ok) throw new Error('Errore nel controllo dell\'import')
+    const job = (await res.json()) as ImportJob
+    if (job.status === 'done') return job
+    if (job.status === 'error') throw new Error(job.error || 'Errore importazione')
+  }
+  throw new Error('Tempo scaduto: Istat non ha risposto entro 15 minuti. Riprova.')
 }
 
 function formatPeriod(period: string, freq: string): string {
@@ -95,6 +124,51 @@ const FREQ_OPTIONS = [
   { value: 'quarterly', label: 'Trimestrale' },
   { value: 'annual', label: 'Annuale' },
 ]
+
+function SdmxChip({ query }: { query: SavedQuery }) {
+  return (
+    <span
+      title={query.dataflow_id}
+      style={{
+        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6,
+        background: 'var(--color-bg-info)', color: 'var(--color-text-info)',
+        marginLeft: 6, verticalAlign: 'middle', whiteSpace: 'nowrap',
+      }}
+    >SDMX</span>
+  )
+}
+
+function QueryActions({ query, running, onRun, onManage }: {
+  query: SavedQuery
+  running: boolean
+  onRun: (q: SavedQuery) => void
+  onManage: (q: SavedQuery) => void
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+      <button
+        title="Riscarica dati"
+        onClick={e => { e.stopPropagation(); onRun(query) }}
+        disabled={running}
+        style={{
+          padding: '6px 10px', borderRadius: 8, fontSize: 12, lineHeight: 1,
+          border: '1px solid var(--color-border)', background: 'var(--color-bg-card)',
+          color: 'var(--color-text-secondary)', cursor: running ? 'not-allowed' : 'pointer',
+          opacity: running ? 0.5 : 1,
+        }}
+      >⟳</button>
+      <button
+        title="Aggiorna o elimina query"
+        onClick={e => { e.stopPropagation(); onManage(query) }}
+        style={{
+          padding: '6px 10px', borderRadius: 8, fontSize: 12, lineHeight: 1,
+          border: '1px solid var(--color-border)', background: 'var(--color-bg-card)',
+          color: 'var(--color-text-secondary)', cursor: 'pointer',
+        }}
+      >✎</button>
+    </div>
+  )
+}
 
 function ImportModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -200,18 +274,12 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
     annual: 'annuale',
   }
 
-  const delay = (ms: number) => {
-    const { promise, resolve } = Promise.withResolvers<void>()
-    setTimeout(resolve, ms)
-    return promise
-  }
-
   const parseErrorDetail = async (res: Response): Promise<string> => {
     let detail = await res.text()
     try {
       const j: unknown = JSON.parse(detail)
       if (j && typeof j === 'object' && 'detail' in j) {
-        const raw = j.detail
+        const raw = (j as { detail?: unknown }).detail
         if (typeof raw === 'string' && raw) detail = raw
       }
     } catch { /* body non JSON: usa il testo grezzo */ }
@@ -229,19 +297,6 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
     onImported()
   }
 
-  const pollJob = async (jobId: string) => {
-    const deadline = Date.now() + 15 * 60 * 1000
-    while (Date.now() < deadline) {
-      await delay(3000)
-      const res = await fetch(`/api/v1/indices/import-jobs/${jobId}`)
-      if (!res.ok) throw new Error('Errore nel controllo dell\'import')
-      const job = (await res.json()) as ImportJob
-      if (job.status === 'done') { showResult(job); return }
-      if (job.status === 'error') throw new Error(job.error || 'Errore importazione')
-    }
-    throw new Error('Tempo scaduto: Istat non ha risposto entro 15 minuti. Riprova.')
-  }
-
   const handleImport = async () => {
     if (!url.trim() || loading) return
     setLoading(true)
@@ -256,7 +311,7 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
       if (!res.ok) throw new Error(await parseErrorDetail(res))
       const data = await res.json()
       if (data.job_id) {
-        await pollJob(data.job_id)
+        showResult(await pollImportJob(data.job_id))
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
@@ -345,7 +400,7 @@ function ClearIndexModal({ series, onClose, onCleared }: { series: Series; onClo
     try {
       const j: unknown = JSON.parse(detail)
       if (j && typeof j === 'object' && 'detail' in j) {
-        const raw = j.detail
+        const raw = (j as { detail?: unknown }).detail
         if (typeof raw === 'string' && raw) detail = raw
       }
     } catch { /* body non JSON: usa il testo grezzo */ }
@@ -434,6 +489,147 @@ function ClearIndexModal({ series, onClose, onCleared }: { series: Series; onClo
   )
 }
 
+function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
+  query: SavedQuery
+  onClose: () => void
+  onSaved: () => void
+  onDeleted: () => void
+}) {
+  const [url, setUrl] = useState(query.url)
+  const [step, setStep] = useState<1 | 2>(1)
+  const [understood, setUnderstood] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const parseErrorDetail = async (res: Response): Promise<string> => {
+    let detail = await res.text()
+    try {
+      const j: unknown = JSON.parse(detail)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        const raw = (j as { detail?: unknown }).detail
+        if (typeof raw === 'string' && raw) detail = raw
+      }
+    } catch { /* body non JSON: usa il testo grezzo */ }
+    return detail || 'Errore operazione'
+  }
+
+  const handleSave = async () => {
+    if (!url.trim() || loading) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(query.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      })
+      if (!res.ok) throw new Error(await parseErrorDetail(res))
+      onSaved()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!understood || loading) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(query.id)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await parseErrorDetail(res))
+      onDeleted()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const dangerBtn: React.CSSProperties = {
+    padding: '8px 20px', borderRadius: 8, border: 'none',
+    background: 'var(--color-text-error)',
+    color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--color-overlay)',
+    }}>
+      <div style={{
+        background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 480,
+        maxWidth: 620, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
+      }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 18, color: 'var(--color-text-primary)' }}>
+          {step === 1 ? 'Query SDMX salvata' : 'Conferma eliminazione'}
+        </h3>
+
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          Dataflow:{' '}
+          <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--color-text-primary)' }}>{query.dataflow_id}</span>
+        </p>
+
+        {step === 1 ? (
+          <>
+            <textarea
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://esploradati.istat.it/SDMXWS/rest/data/…"
+              rows={4}
+              style={{
+                width: '100%', padding: '10px 12px', fontSize: 12, fontFamily: 'monospace',
+                border: '1px solid var(--color-border)', borderRadius: 8,
+                background: 'var(--color-bg-card)', color: 'var(--color-text-primary)',
+                resize: 'vertical', boxSizing: 'border-box', marginBottom: 16,
+              }}
+            />
+            <div style={{ fontSize: 12, color: 'var(--color-text-warning)', marginBottom: 16, lineHeight: 1.5 }}>
+              "Aggiorna" salva solo l'URL — per ri-scaricare i dati usa il pulsante ⟳ sulla riga.
+              Istat consente 5 query/minuto per IP.
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
+            <p style={{ marginBottom: 8 }}>
+              La query salvata sarà rimossa dai dati dell'indice. Le osservazioni
+              già caricate <strong>restano</strong>.
+            </p>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+              <input type="checkbox" checked={understood} onChange={e => setUnderstood(e.target.checked)} />
+              <span>Ho capito: la query sarà rimossa, le osservazioni caricate restano</span>
+            </label>
+          </div>
+        )}
+
+        {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Annulla</button>
+          {step === 1 ? (
+            <>
+              <button onClick={handleSave} disabled={!url.trim() || loading} style={{
+                padding: '8px 20px', borderRadius: 8, border: 'none',
+                background: !url.trim() || loading ? 'var(--color-text-light)' : 'var(--color-primary)',
+                color: '#fff', cursor: !url.trim() || loading ? 'not-allowed' : 'pointer',
+                fontSize: 14, fontWeight: 600,
+              }}>{loading ? 'Salvataggio...' : 'Salva'}</button>
+              <button onClick={() => setStep(2)} style={dangerBtn}>Elimina</button>
+            </>
+          ) : (
+            <button onClick={handleDelete} disabled={!understood || loading} style={{
+              ...dangerBtn,
+              background: !understood || loading ? 'var(--color-text-light)' : 'var(--color-text-error)',
+              cursor: !understood || loading ? 'not-allowed' : 'pointer',
+            }}>{loading ? 'Eliminazione...' : 'Elimina query'}</button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function IstatCatalog() {
   const [groups, setGroups] = useState<Group[]>([])
   const [selectedGroup, setSelectedGroup] = useState<string>('')
@@ -445,12 +641,47 @@ export default function IstatCatalog() {
   const [showSdmx, setShowSdmx] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const [clearTarget, setClearTarget] = useState<Series | null>(null)
+  const [manageTarget, setManageTarget] = useState<SavedQuery | null>(null)
+  const [runState, setRunState] = useState<{ query: SavedQuery; status: 'running' | 'done' | 'error'; message?: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchHit[]>([])
   const [searching, setSearching] = useState(false)
   const [searchGroupCache, setSearchGroupCache] = useState<Record<string, Series[]>>({})
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchActive = searchQuery.trim().length > 0
+
+  const parseErrorDetail = async (res: Response): Promise<string> => {
+    let detail = await res.text()
+    try {
+      const j: unknown = JSON.parse(detail)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        const raw = (j as { detail?: unknown }).detail
+        if (typeof raw === 'string' && raw) detail = raw
+      }
+    } catch { /* body non JSON: usa il testo grezzo */ }
+    return detail || 'Errore operazione'
+  }
+
+  const handleRunQuery = async (query: SavedQuery) => {
+    if (runState?.status === 'running' && runState.query.id === query.id) return
+    setRunState({ query, status: 'running' })
+    try {
+      const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(query.id)}/run`, { method: 'POST' })
+      if (!res.ok) throw new Error(await parseErrorDetail(res))
+      const data = await res.json()
+      const job = await pollImportJob(data.job_id)
+      const d = job.result?.details
+      if (!d) throw new Error('Risultato import mancante')
+      setRunState({
+        query,
+        status: 'done',
+        message: `Riscaricata "${query.dataflow_id}": ${d.added} aggiunte, ${d.updated} aggiornate, ${d.skipped} saltate, ${d.errors} errori. ${d.series_created} nuove serie create.`,
+      })
+      setReloadKey(k => k + 1)
+    } catch (e: unknown) {
+      setRunState({ query, status: 'error', message: e instanceof Error ? e.message : String(e) })
+    }
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -580,6 +811,21 @@ export default function IstatCatalog() {
         background: 'var(--color-bg-card)', padding: 24, borderRadius: 12,
         boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
+        {runState && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap',
+            background: runState.status === 'done'
+              ? 'var(--color-bg-success)'
+              : runState.status === 'error' ? 'var(--color-bg-error)' : 'var(--color-bg-offset)',
+            color: runState.status === 'done'
+              ? 'var(--color-text-success)'
+              : runState.status === 'error' ? 'var(--color-text-error)' : 'var(--color-text-secondary)',
+          }}>
+            {runState.status === 'running'
+              ? `Riscaricamento query ${runState.query.dataflow_id} in corso — Istat può impiegare 5-10 minuti per query con dimensioni non filtrate. Puoi continuare a usare la pagina: il download continua in background.`
+              : runState.status === 'done' ? `✓ ${runState.message}` : runState.message}
+          </div>
+        )}
         {searchActive ? (
           searching ? (
             <div style={{ color: 'var(--color-text-muted)' }}>Ricerca in corso...</div>
@@ -597,6 +843,7 @@ export default function IstatCatalog() {
                   <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Frequenza</th>
                   <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Gruppo</th>
                   <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Osservazioni</th>
+                  <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Query SDMX</th>
                 </tr>
               </thead>
               <tbody>
@@ -616,7 +863,10 @@ export default function IstatCatalog() {
                         <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                           {expanded === hit.id ? '▼' : '▶'}
                         </td>
-                        <td style={{ padding: '10px 12px', fontWeight: 500 }}>{hit.name}</td>
+                        <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                          {hit.name}
+                          {hit.saved_query && <SdmxChip query={hit.saved_query} />}
+                        </td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{hit.id}</td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                           {hit.frequency === 'quarterly' ? 'Trimestrale' : hit.frequency === 'monthly' ? 'Mensile' : hit.frequency === 'annual' ? 'Annuale' : hit.frequency}
@@ -627,10 +877,20 @@ export default function IstatCatalog() {
                         <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-text-muted)' }}>
                           {full ? full.observation_count : '—'}
                         </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                          {hit.saved_query && (
+                            <QueryActions
+                              query={hit.saved_query}
+                              running={runState?.status === 'running' && runState.query.id === hit.saved_query.id}
+                              onRun={handleRunQuery}
+                              onManage={setManageTarget}
+                            />
+                          )}
+                        </td>
                       </tr>
                       {expanded === hit.id && (
                         <tr>
-                          <td colSpan={6} style={{ padding: '0 12px 12px 36px' }}>
+                          <td colSpan={7} style={{ padding: '0 12px 12px 36px' }}>
                             {!expandedSeries ? (
                               <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>
                                 Caricamento osservazioni...
@@ -694,6 +954,7 @@ export default function IstatCatalog() {
                 <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Codice</th>
                 <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Frequenza</th>
                 <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Osservazioni</th>
+                <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Query SDMX</th>
               </tr>
             </thead>
             <tbody>
@@ -709,16 +970,29 @@ export default function IstatCatalog() {
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       {expanded === s.id ? '▼' : '▶'}
                     </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>{s.name}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                      {s.name}
+                      {s.saved_query && <SdmxChip query={s.saved_query} />}
+                    </td>
                     <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{s.id}</td>
                     <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                       {s.frequency === 'quarterly' ? 'Trimestrale' : s.frequency === 'monthly' ? 'Mensile' : s.frequency === 'annual' ? 'Annuale' : s.frequency}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-text-muted)' }}>{s.observation_count}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                      {s.saved_query && (
+                        <QueryActions
+                          query={s.saved_query}
+                          running={runState?.status === 'running' && runState.query.id === s.saved_query.id}
+                          onRun={handleRunQuery}
+                          onManage={setManageTarget}
+                        />
+                      )}
+                    </td>
                   </tr>
                   {expanded === s.id && (
                     <tr>
-                      <td colSpan={5} style={{ padding: '0 12px 12px 36px' }}>
+                      <td colSpan={6} style={{ padding: '0 12px 12px 36px' }}>
                         {s.observations.length === 0 ? (
                           <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', padding: 12 }}>Nessuna osservazione</div>
                         ) : (
@@ -767,6 +1041,14 @@ export default function IstatCatalog() {
       {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={() => setReloadKey(k => k + 1)} />}
       {showSdmx && <SdmxModal onClose={() => setShowSdmx(false)} onImported={() => setReloadKey(k => k + 1)} />}
       {clearTarget && <ClearIndexModal series={clearTarget} onClose={() => setClearTarget(null)} onCleared={() => { setClearTarget(null); setReloadKey(k => k + 1) }} />}
+      {manageTarget && (
+        <SavedQueryModal
+          query={manageTarget}
+          onClose={() => setManageTarget(null)}
+          onSaved={() => { setManageTarget(null); setReloadKey(k => k + 1) }}
+          onDeleted={() => { setManageTarget(null); setReloadKey(k => k + 1) }}
+        />
+      )}
     </div>
   )
 }

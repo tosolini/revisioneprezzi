@@ -10,27 +10,28 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 
 ### Funzionalità principali
 
-- **Wizard guidato** — raccolta strutturata dei dati di input (pratica, contratto, CPV, indici ISTAT)
-- **Motore di classificazione** — mapping CPV → famiglia di revisione basato su regole YAML
-- **Motore di calcolo** — applicazione della formula legale (soglia 5%, coefficiente 80% per servizi/forniture; 3%/90% per lavori)
-- **Indice sintetico** — ponderazione multi-TOL per contratti di lavori
-- **Calcolo multi-componente** — contratti con prestazioni di natura diversa (Art. 13)
-- **Report in Markdown** — dossier di revisione completo e tracciabile
-- **Audit logging** — ogni operazione significativa è tracciata (import, svuotamenti)
-- **Catalogo ISTAT** — gestione indici: import da query SDMX del databrowser (asincrono), sincronizzazione via API SDMX ISTAT, svuotamento con doppia conferma
-- **Catalogo CPV e ATECO** — consultazione e ricerca
+- **Wizard guidato** — due percorsi: V1 a 7 passi (`/cases/:id/wizard/:step`) e V2 a 5 passi (`/cases/:id/wizard-v2`, con supporto TOL per i lavori)
+- **Mapping CPV → Tabella D** — associazione CPV → indici ISTAT (serie singola o media ponderata, Art. 11 e Allegato II.2-bis), con fallback sui candidati di famiglia (Art. 11.4) e forzatura indice singolo motivata (Art. 11.5)
+- **Motore di calcolo** — media ponderata delle variazioni (Tabella D) e indice sintetico (TOL), applicazione della formula legale (soglia 5%, coefficiente 80% per servizi/forniture; 3%/90% per lavori), calcolo multi-componente (Art. 13)
+- **Trasparenza sui dati ISTAT** — i periodi richiesti senza dato vengono segnalati con i mesi non registrati e il periodo effettivamente usato (fallback)
+- **Vincolo sull'ordine dei periodi** — il periodo base deve precedere il confronto; l'inversione è bloccata con messaggio esplicativo (override riservato, non esposto in UI)
+- **Report V2 strutturato** — dossier di revisione completo (e report Markdown classico) con passaggi di calcolo, pronto per stampa/PDF
+- **Audit logging** — ogni operazione significativa è tracciata (import, svuotamenti, eliminazione query SDMX)
+- **Catalogo ISTAT** — gestione indici: import CSV, import da query SDMX (asincrono) con salvataggio automatico delle query, riscarica e gestione della provenienza per serie, ricerca per gruppo, svuotamento con doppia conferma
+- **Cataloghi CPV, ATECO, TOL** — consultazione e ricerca
 - **Parser documentale** (V2) — estrazione automatica dei dati da DOCX/PDF
+- **Backup del database** — esportazione e ripristino dal backend (`/api/v1/backup`)
 
 ### Stack tecnologico
 
 | Layer | Tecnologia |
 |-------|-----------|
-| Backend | Python 3.12 + FastAPI + SQLAlchemy 2.0 |
-| Frontend | React 18 + TypeScript + Vite |
+| Backend | Python 3.14 + FastAPI + SQLAlchemy 2.0 |
+| Frontend | React 19 + TypeScript + Vite |
 | Database | PostgreSQL 16 (containerizzata) |
-| Parser | Python + python-docx + pdfplumber |
+| Parser | Python 3.12 + python-docx + pdfplumber |
 | Container | Docker Compose (4 servizi) |
-| Linting | ruff |
+| Linting | ruff (regole E/F) |
 
 ---
 
@@ -75,12 +76,20 @@ open http://localhost:3000
 |---------|------------|
 | `make up` | Avvia i servizi in background |
 | `make down` | Ferma i servizi |
-| `make migrate` | Applica le migrazioni Alembic |
-| `make seed` | Popola i cataloghi |
-| `make test` | Esegue i test |
-| `make lint` | Esegue ruff linter |
-| `make logs` | Log del backend |
 | `make build` | Build locale con `docker-compose-build.yml` |
+| `make migrate` | Applica le migrazioni Alembic |
+| `make migrate-new name="..."` | Genera una nuova migrazione Alembic (autogenerate) |
+| `make seed` | Popola i cataloghi (`scripts/seed_catalogs.py`) |
+| `make sync-indices csv=...` | Sincronizza gli indici da un CSV ISTAT via CLI |
+| `make shell` | Shell dentro il container backend |
+| `make db-shell` | `psql` sul database |
+| `make test` | Esegue i test pytest |
+| `make test-coverage` | Test con copertura (`--cov=app`) |
+| `make lint` | Esegue ruff (regole E/F) |
+| `make logs` | Log del backend |
+| `make restart` | Riavvia il backend |
+| `make trivy-scan` / `make trivy-scan-all` | Scan di sicurezza delle immagini |
+| `make setup` | `up` + `seed` in un comando |
 
 ---
 
@@ -89,17 +98,19 @@ open http://localhost:3000
 ```
 revprezzi/
 ├── backend/          # API FastAPI (Python)
+│   ├── alembic/      # Migrazioni Alembic (versions/)
 │   ├── app/
 │   │   ├── api/v1/   # Endpoint REST
 │   │   ├── core/     # Configurazione, database, health
-│   │   ├── models/   # ORM SQLAlchemy (25 tabelle)
+│   │   ├── models/   # ORM SQLAlchemy (24 tabelle)
 │   │   ├── schemas/  # Pydantic request/response
 │   │   ├── services/ # Business logic
 │   │   ├── rules/    # Regole YAML (classificazione, indici, parametri)
+│   │   ├── reporting/# Template report
+│   │   ├── data/     # Dati di runtime (cache SDMX, stato import)
 │   │   └── wizard/   # Configurazione wizard
-│   ├── seeds/        # CSV e SQL per inizializzazione dati
-│   ├── scripts/      # Utility (sync indici, import CPV, seed)
-│   ├── migrations/   # Alembic versioni
+│   ├── seeds/        # Config dataflow ISTAT
+│   ├── scripts/      # Utility (seed_catalogs, import_tabella_d, sync_indices, import_cpv)
 │   └── tests/        # Test pytest
 ├── frontend/         # SPA React + TypeScript
 │   └── src/
@@ -143,15 +154,24 @@ Endpoint principali:
 | GET | `/health` | Health check |
 | POST | `/api/v1/cases` | Crea nuova pratica |
 | POST | `/api/v1/cases/{id}/wizard/{step}` | Salva risposte wizard |
-| POST | `/api/v1/classify` | Classifica CPV → famiglia |
-| POST | `/api/v1/calculate` | Calcola revisione |
-| POST | `/api/v1/cases/{id}/report` | Genera report Markdown |
+| POST | `/api/v1/classify` | Classifica CPV → Tabella D |
+| POST | `/api/v1/calculation/v2/calculate` | Calcola revisione (serie singola o composita) |
+| POST | `/api/v1/calculation/v2/calculate/multi-component` | Calcolo multi-componente (Art. 13) |
+| POST | `/api/v1/calculation/v2/coverage` | Copertura periodi per serie (periodo usato, mesi mancanti) |
+| POST | `/api/v1/report/v2/cases/{id}/calculation` | Salva il risultato di calcolo per il report |
+| GET | `/api/v1/report/v2/cases/{id}` | Report strutturato (V2) |
 | GET | `/api/v1/indices` | Elenco serie ISTAT |
+| GET | `/api/v1/indices/search` | Ricerca serie (nome/codice/gruppo) |
+| GET | `/api/v1/indices/by-group/{group}` | Serie di un gruppo |
 | POST | `/api/v1/indices/import-csv` | Importa osservazioni da CSV ISTAT |
 | POST | `/api/v1/indices/import-sdmx` | Avvia import da query SDMX (asincrono, ritorna `job_id`) |
 | GET | `/api/v1/indices/import-jobs/{id}` | Stato dell'import SDMX (esito al termine) |
+| GET/PUT/DELETE | `/api/v1/indices/saved-queries/{id}` | Legge/aggiorna/elimina una query SDMX salvata |
+| POST | `/api/v1/indices/saved-queries/{id}/run` | Riesegue (riscarica) una query SDMX salvata |
 | DELETE | `/api/v1/indices/{series_id}/observations` | Svuota un indice (osservazioni, serie conservata) |
 | GET | `/api/v1/tol/list` | Elenco TOL |
+| GET/PUT | `/api/v1/settings` | Preferenze utente |
+| GET/POST | `/api/v1/backup/export` · `/api/v1/backup/import` | Backup e ripristino del database |
 
 ---
 
@@ -172,6 +192,38 @@ Dalla pagina **Indici ISTAT** → **“Importa Query SDMX”** si incolla l'URL 
 **Svuotamento indice**: espandendo un indice compare **“Svuota indice”** — un modal a doppia
 conferma elimina tutte le osservazioni della serie (la serie resta vuota e re-importabile) e
 l'operazione viene registrata nell'audit log.
+
+### Query SDMX salvate e provenienza dati
+
+Ogni import SDMX riuscito **salva automaticamente la query** (URL normalizzata, dataflow, chiave)
+e la collega alle serie toccate: la provenienza del dato resta visibile nel catalogo. Sulla riga
+di una serie con query salvata compaiono:
+
+- **Chip `SDMX`** accanto al nome, con il dataflow in tooltip;
+- **`⟳` Riscarica dati** — riesegue la query salvata (job in background, banner di stato con
+  contatori al termine); se una frequenza richiesta non ha dati l'app la corregge da sola e la
+  variante corretta viene salvata come query dedicata;
+- **`✎` Aggiorna o elimina query** — modifica l'URL (ri-validato) oppure elimina la provenienza
+  con doppia conferma; **la cancellazione non tocca serie né osservazioni** (l'evento è tracciato
+  nell'audit log).
+
+L'"Aggiorna" salva solo l'URL: per ri-scaricare i dati si usa il pulsante **Riscarica**. Una serie
+può mostrare la più recente tra più query che l'hanno popolata nel tempo (es. varianti di frequenza).
+
+---
+
+## Trasparenza del calcolo: copertura periodi e ordine base/confronto
+
+- **Mesi non registrati da ISTAT**: quando un periodo richiesto non ha osservazioni definitive, il
+  calcolo usa la più vicina disponibile (fallback). Nello step Calcolo (e nel report) viene
+  segnalato chiaramente — es. *“Periodo di confronto (agosto 2026): il calcolo non ha registrato
+  luglio 2026, agosto 2026; è partito dall'osservazione di giugno 2026”*. L'endpoint
+  `/calculation/v2/coverage` espone la stessa informazione per ogni serie componente.
+- **Ordine dei periodi**: il **periodo base** (data aggiudicazione) deve essere antecedente o uguale
+  al **periodo di confronto** (data rilevazione); l'inversione restituirebbe una variazione col
+  segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
+  `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
+  puntuali, ma non è esposto in alcuna interfaccia.
 
 ---
 

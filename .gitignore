@@ -43,3 +43,6 @@ node_modules/
 frontend/node_modules/
 *.tsbuildinfo
 
+
+# Trivy scan output
+trivy-report/

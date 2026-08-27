@@ -1,11 +1,11 @@
 import type { ComponentProps } from 'react'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import ContractTypeSelector from '../components/ContractTypeSelector'
 import TolSelector from '../components/TolSelector'
-import RevisionResultCard from '../components/RevisionResultCard'
 import ReportV2View from '../components/ReportV2View'
 import CpvSearchModal from '../components/CpvSearchModal'
+import WizardTimeline from '../components/WizardTimeline'
 import { asNullableString, asNumber, isRecord } from '../components/utils'
 interface TolSelection {
   code: string
@@ -36,6 +36,11 @@ interface WeightedComponentVariation {
   base_value: number
   comparison_value: number
   variation_percent: number
+  contribution_percent?: number
+  used_base_period?: string | null
+  used_comparison_period?: string | null
+  base_exact?: boolean
+  comparison_exact?: boolean
 }
 
 interface CalcStep {
@@ -43,6 +48,8 @@ interface CalcStep {
   description: string
   formula: string
   result: string
+  calculation?: string
+  details?: Record<string, unknown>
 }
 
 interface CalcResultLike {
@@ -114,6 +121,25 @@ interface CpvMapping {
   weights: Record<string, number>
 }
 
+interface PeriodCoverage {
+  series_id: string
+  weight: number
+  base: { requested: string; used: string | null; value: number | null; exact: boolean; missing_months?: string[] }
+  comparison: { requested: string; used: string | null; value: number | null; exact: boolean; missing_months?: string[] }
+  satisfied: boolean
+  missing: boolean
+}
+
+const COV_MONTH_NAMES = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+
+const fmtCovMonth = (ym: string): string =>
+  `${COV_MONTH_NAMES[parseInt(ym.slice(5, 7), 10)] || ''} ${ym.slice(0, 4)}`
+
+const fmtCovMonths = (months: string[]): string =>
+  months.length > 8
+    ? months.slice(0, 6).map(fmtCovMonth).join(', ') + ` … e altri ${months.length - 6} mesi`
+    : months.map(fmtCovMonth).join(', ')
+
 // Mappa divisione ATECO → lettera sezione (nota Tabella D, Art. 11.2)
 const IR_DIVISION_TO_SECTION: [number, number, string][] = [
   [1, 3, 'A'], [5, 9, 'B'], [10, 33, 'C'], [35, 35, 'D'], [36, 39, 'E'],
@@ -154,9 +180,13 @@ export default function CaseWizardV2() {
   const [reportData, setReportData] = useState<ReportViewProps | null>(null)
   const [mappings, setMappings] = useState<Record<string, CpvMapping>>({})
   const [mappingLoading, setMappingLoading] = useState(false)
+  const [periodCoverage, setPeriodCoverage] = useState<Record<string, PeriodCoverage> | null>(null)
+  const [coverageLoading, setCoverageLoading] = useState(false)
   const [cpvModalOpen, setCpvModalOpen] = useState(false)
   const [atecoSuggestions, setAtecoSuggestions] = useState<{ code: string; description: string }[]>([])
   const [atecoInputs, setAtecoInputs] = useState<Record<string, string>>({})
+  const dataRef = useRef(data)
+  useEffect(() => { dataRef.current = data }, [data])
 
   const totalSteps = 5
 
@@ -364,14 +394,29 @@ export default function CaseWizardV2() {
       }
       if (Object.keys(weights).length > 0) return weights
     }
-    // Default: pesi uguali su tutte le associazioni usabili
+    // Default: se è presente l'indice IR (retribuzioni — servizi ad alta
+    // intensità di manodopera) gli si attribuisce il 90%, valore di
+    // riferimento dell'incidenza manodopera (Allegato II.2-bis punto 13),
+    // ripartendo il 10% residuo equamente sulle altre associazioni usabili.
+    // Altrimenti pesi uguali.
     const usable = assocs.filter(a => a.series_id)
     const weights: Record<string, number> = {}
     if (usable.length > 0) {
-      const share = 100 / usable.length
-      usable.forEach(a => {
-        weights[a.series_id as string] = share
-      })
+      const ir = usable.find(a => a.index_type === 'IR')
+      if (ir) {
+        const irSeries = ir.series_id as string
+        weights[irSeries] = 90
+        const others = usable.filter(a => (a.series_id as string) !== irSeries)
+        if (others.length > 0) {
+          const share = 10 / others.length
+          others.forEach(a => { weights[a.series_id as string] = share })
+        }
+      } else {
+        const share = 100 / usable.length
+        usable.forEach(a => {
+          weights[a.series_id as string] = share
+        })
+      }
     }
     return weights
   }
@@ -424,6 +469,56 @@ export default function CaseWizardV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep])
 
+  // Copertura periodi: mostra chiaramente se i periodi richiesti esistono
+  // nelle serie selezionate o vengono soddisfatti per fallback.
+  useEffect(() => {
+    if (currentStep !== 4) return
+    if (!data.base_period || !data.comparison_period) {
+      setPeriodCoverage(null)
+      return
+    }
+    const series: Record<string, number> = {}
+    for (const sel of data.cpv_selections) {
+      const m = mappings[sel.cpv_code]
+      if (!m) continue
+      for (const a of m.associations) {
+        if (a.series_id && !(a.series_id in series)) {
+          series[a.series_id] = m.weights[a.series_id] ?? 0
+        }
+      }
+    }
+    const ids = Object.keys(series)
+    if (ids.length === 0) {
+      setPeriodCoverage(null)
+      return
+    }
+    setCoverageLoading(true)
+    fetch('/api/v1/calculation/v2/coverage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        components: series,
+        base_period: data.base_period,
+        comparison_period: data.comparison_period,
+      }),
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => {
+        if (isRecord(body) && Array.isArray(body['series'])) {
+          const map: Record<string, PeriodCoverage> = {}
+          for (const c of body['series']) {
+            if (isRecord(c) && typeof c['series_id'] === 'string') {
+              map[c['series_id']] = c as unknown as PeriodCoverage
+            }
+          }
+          setPeriodCoverage(map)
+        } else {
+          setPeriodCoverage(null)
+        }
+      })
+      .catch(() => setPeriodCoverage(null))
+      .finally(() => setCoverageLoading(false))
+  }, [currentStep, mappings, data.base_period, data.comparison_period, data.cpv_selections])
   const setMode = (cpv: string, mode: 'single' | 'weighted') => {
     setMappings(prev => {
       const m = prev[cpv]
@@ -502,6 +597,18 @@ export default function CaseWizardV2() {
         const total = weights.reduce((sum, v) => sum + v, 0)
         if (Math.abs(total - 100) > 0.01) {
           issues.push(`CPV ${sel.cpv_code}: i pesi devono sommarsi a 100% (attuale: ${total.toFixed(2)}%)`)
+        }
+      }
+
+      // Copertura periodi: serie senza alcuna osservazione definitiva nei
+      // periodi richiesti → il calcolo fallirebbe.
+      if (periodCoverage) {
+        for (const a of m.associations) {
+          if (!a.series_id) continue
+          const cov = periodCoverage[a.series_id]
+          if (cov && cov.missing) {
+            issues.push(`CPV ${sel.cpv_code}: ${a.series_id} senza dati nei periodi richiesti (base ${data.base_period || '?'} → confronto ${data.comparison_period || '?'})`)
+          }
         }
       }
     }
@@ -657,6 +764,7 @@ export default function CaseWizardV2() {
 
   const loadReport = async (calcResult?: unknown) => {
     if (!id) return
+    const d = dataRef.current
     try {
       const response = await fetch(`/api/v1/report/v2/cases/${id}`)
       if (!response.ok) throw new Error('Errore caricamento report')
@@ -672,10 +780,14 @@ export default function CaseWizardV2() {
         const title = sec.title || ''
         const secData = sec.data && typeof sec.data === 'object' ? sec.data : {}
         if (title === 'Importi e Date') {
-          return { ...sec, data: { ...secData, contract_amount: data.amount, revisable_amount: data.amount, base_period: data.base_period, comparison_period: data.comparison_period } }
+          return { ...sec, data: { ...secData, contract_amount: d.amount, revisable_amount: d.amount, base_period: d.base_period, comparison_period: d.comparison_period } }
         }
         if (title === 'Indici ISTAT' && effective) {
-          return { ...sec, data: { ...secData, synthetic_index_base: effective.base_value, synthetic_index_comparison: effective.comparison_value } }
+          return (() => {
+            const step1 = (effective.steps ?? []).find(s => s.step === 1)
+            const d1 = step1?.details
+            return { ...sec, data: { ...secData, synthetic_index_base: effective.base_value, synthetic_index_comparison: effective.comparison_value, components: effective.weighted_component_variations ?? null, component_details: d1 ? d1['component_details'] ?? null : null, calc_formula: d1 ? d1['formula'] ?? null : null, calc_math: d1 ? d1['calculation'] ?? null : null } }
+          })()
         }
         if (title === 'Risultato Calcolo' && effective) {
           return { ...sec, data: { variation_percent: effective.variation_percent, threshold_exceeded: effective.threshold_exceeded, revision_amount: effective.revision_amount, revision_type: effective.revision_type, formula_steps: effective.steps || [] } }
@@ -699,6 +811,7 @@ export default function CaseWizardV2() {
         return data.cpv_selections.length > 0
       case 3:
         return data.amount > 0 && data.base_period !== '' && data.comparison_period !== ''
+          && data.base_period <= data.comparison_period
       case 4:
         return data.cpv_selections.length > 0 && !mappingLoading && mappingIssues().length === 0
       default:
@@ -720,6 +833,38 @@ export default function CaseWizardV2() {
   }
 
   // ---- Render helper step 4 ----
+  const coverageNote = (seriesId: string | null) => {
+    if (coverageLoading) return null
+    const cov = seriesId ? periodCoverage?.[seriesId] : undefined
+    if (!cov) return null
+    if (cov.missing) {
+      return (
+        <span style={{ color: 'var(--color-text-error)', display: 'block', fontSize: 12, marginTop: 2 }}>
+          Nessun dato definitivo nei periodi richiesti: il calcolo fallirebbe per questa serie.
+        </span>
+      )
+    }
+    const notes: string[] = []
+    if (!cov.base.exact) {
+      notes.push(`periodo base ${cov.base.requested}: non registrato${cov.base.missing_months?.length ? ` (${fmtCovMonths(cov.base.missing_months)})` : ''} — usata osservazione ${cov.base.used}`)
+    }
+    if (!cov.comparison.exact) {
+      notes.push(`periodo confronto ${cov.comparison.requested}: non registrato${cov.comparison.missing_months?.length ? ` (${fmtCovMonths(cov.comparison.missing_months)})` : ''} — usata osservazione ${cov.comparison.used}`)
+    }
+    if (notes.length === 0) {
+      return (
+        <span style={{ color: 'var(--color-text-success)', display: 'block', fontSize: 12, marginTop: 2 }}>
+          Periodi richiesti soddisfatti (osservazioni definitive).
+        </span>
+      )
+    }
+    return (
+      <span style={{ color: 'var(--color-text-warning)', display: 'block', fontSize: 12, marginTop: 2 }}>
+        I periodi richiesti non esistono in questa serie: {notes.join(' · ')}.
+      </span>
+    )
+  }
+
   const renderWeights = (mapping: CpvMapping, sel: CpvSelection) => {
     const usable = mapping.associations.filter(a => a.series_id)
     const weights = Object.values(mapping.weights)
@@ -741,6 +886,7 @@ export default function CaseWizardV2() {
             <span style={{ flex: 1 }}>
               <strong>{a.index_type}</strong> [{a.ateco_code}] {a.description}
               {!a.available && <span style={{ color: 'var(--color-text-warning)', marginLeft: 6 }}>— dati non disponibili</span>}
+              {coverageNote(a.series_id)}
             </span>
             <input
               type="number"
@@ -841,6 +987,7 @@ export default function CaseWizardV2() {
               <strong>{a.index_type}</strong> [{a.ateco_code}] {a.description}
               {a.series_id && <span style={{ color: 'var(--color-text-muted)', marginLeft: 6 }}>({a.series_id})</span>}
               {!a.available && <span style={{ color: 'var(--color-text-warning)', marginLeft: 6 }}>— dati non disponibili</span>}
+              {coverageNote(a.series_id)}
             </span>
           </label>
         ))}
@@ -873,6 +1020,7 @@ export default function CaseWizardV2() {
                 ))}
               </select>
             ) : renderWeights(mapping, sel)}
+            {mapping.mode === 'single' && coverageNote(mapping.manualSingle)}
           </div>
         )}
 
@@ -1080,7 +1228,7 @@ export default function CaseWizardV2() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Periodo base (mese aggiudicazione)
+                  Periodo base (mese aggiudicazione) — deve precedere il periodo di confronto
                 </label>
                 <input
                   type="month"
@@ -1101,7 +1249,7 @@ export default function CaseWizardV2() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Periodo confronto (mese rilevazione)
+                  Periodo confronto (mese rilevazione) — deve seguire il periodo base
                 </label>
                 <input
                   type="month"
@@ -1118,6 +1266,12 @@ export default function CaseWizardV2() {
                 <p className="text-xs text-gray-500 mt-1">
                   Il mese e anno di rilevazione corrente (indice da confrontare)
                 </p>
+                {data.base_period && data.comparison_period && data.base_period > data.comparison_period && (
+                  <p style={{ fontSize: 12, color: 'var(--color-text-error)', marginTop: 4 }}>
+                    Il periodo base deve precedere il periodo di confronto: con l'ordine inverso
+                    la variazione risulterebbe col segno invertito. Correggi i periodi.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1198,31 +1352,6 @@ export default function CaseWizardV2() {
           <div>
             {reportData ? (
               <ReportV2View reportData={reportData} />
-            ) : data.result ? (
-              <>
-                <h2 className="text-2xl font-bold mb-2">Risultato Calcolo</h2>
-                <p className="text-gray-600 mb-6">
-                  Esito del calcolo della revisione prezzi secondo normativa vigente
-                </p>
-                <RevisionResultCard
-                  result={data.result as unknown as ComponentProps<typeof RevisionResultCard>['result']}  // shape legacy del card
-                  onExport={() => {
-                    console.log('Export PDF')
-                  }}
-                  onNew={() => {
-                    setData({
-                      contract_type: '',
-                      cpv_selections: [],
-                      ateco_selections: [],
-                      amount: 0,
-                      base_period: '',
-                      comparison_period: ''
-                    })
-                    setReportData(null)
-                    setCurrentStep(1)
-                  }}
-                />
-              </>
             ) : (
               <div className="text-center py-8">
                 <p className="text-gray-500">Caricamento report...</p>
@@ -1238,32 +1367,11 @@ export default function CaseWizardV2() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      {/* Progress bar */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          {Array.from({ length: totalSteps }, (_, i) => i + 1).map(stepNum => (
-            <div key={stepNum} className="flex items-center flex-1">
-              <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center font-bold
-                ${stepNum < currentStep ? 'bg-green-500 text-white' :
-                  stepNum === currentStep ? 'bg-blue-500 text-white' :
-                  'bg-gray-200 text-gray-500'}
-              `}>
-                {stepNum < currentStep ? '✓' : stepNum}
-              </div>
-              {stepNum < totalSteps && (
-                <div className={`
-                  flex-1 h-1 mx-2
-                  ${stepNum < currentStep ? 'bg-green-500' : 'bg-gray-200'}
-                `} />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="text-sm text-gray-600 text-center">
-          Step {currentStep} di {totalSteps}
-        </div>
-      </div>
+      {/* Timeline avanzamento */}
+      <WizardTimeline
+        steps={['Contratto', 'Classificazione', 'Importi', 'Indici', 'Report']}
+        currentStep={currentStep}
+      />
 
       {/* Error display */}
       {error && !initialLoading && (

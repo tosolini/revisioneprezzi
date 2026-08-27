@@ -5,6 +5,18 @@ interface ReportSection {
   data: any;
   order: number;
 }
+interface ComponentRow {
+  series_id?: string
+  weight?: number
+  base_value?: number
+  comparison_value?: number
+  variation_percent?: number
+  contribution_percent?: number
+  used_base_period?: string | null
+  used_comparison_period?: string | null
+  base_exact?: boolean
+  comparison_exact?: boolean
+}
 
 interface ReportData {
   case_id: string;
@@ -367,6 +379,53 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             </p>
           </div>
         </div>
+        {data.components && data.components.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+              Calcolo ponderato per componente (Tabella D punto 7)
+            </p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, border: '1px solid #e5e7eb' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg-offset)' }}>
+                    <th style={thStyle}>Serie ISTAT</th>
+                    <th style={thStyle}>Peso %</th>
+                    <th style={thStyle}>Indice base</th>
+                    <th style={thStyle}>Indice confronto</th>
+                    <th style={thStyle}>Variazione Vi %</th>
+                    <th style={thStyle}>Contributo %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.components.map((c: ComponentRow, i: number) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={tdStyle}>{c.series_id}</td>
+                      <td style={tdStyle}>{c.weight}%</td>
+                      <td style={tdStyle}>
+                        {Number(c.base_value ?? 0).toFixed(2)}
+                        {c.base_exact === false && ` (usato ${c.used_base_period})`}
+                      </td>
+                      <td style={tdStyle}>
+                        {Number(c.comparison_value ?? 0).toFixed(2)}
+                        {c.comparison_exact === false && ` (usato ${c.used_comparison_period})`}
+                      </td>
+                      <td style={tdStyle}>{(c.variation_percent ?? 0) >= 0 ? '+' : ''}{Number(c.variation_percent ?? 0).toFixed(4)}%</td>
+                      <td style={tdStyle}>{(c.contribution_percent !== undefined && c.contribution_percent !== null)
+                        ? `${(c.contribution_percent >= 0 ? '+' : '')}${Number(c.contribution_percent).toFixed(4)}%`
+                        : `${(((c.weight ?? 0) / 100) * (c.variation_percent ?? 0) >= 0 ? '+' : '')}${Number(((c.weight ?? 0) / 100) * (c.variation_percent ?? 0)).toFixed(4)}%`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data.calc_math && (
+              <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 8, background: 'var(--color-bg-offset)', padding: '8px 12px', borderRadius: 6 }}>
+                {data.calc_math}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -505,7 +564,26 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                   {data.formula_steps.map((step: any, idx: number) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{step.step}</td>
-                      <td style={tdStyle}>{step.description}</td>
+                      <td style={tdStyle}>
+                        {step.description}
+                        {Array.isArray(step.details?.component_details) && (
+                          <div style={{ marginTop: 8, fontSize: 11 }}>
+                            {step.details.component_details.map((c: ComponentRow, j: number) => (
+                              <div key={j} style={{ display: 'flex', gap: 12, padding: '2px 0', fontFamily: 'monospace' }}>
+                                <span style={{ minWidth: 190 }}>{c.series_id}</span>
+                                <span>{c.weight}%</span>
+                                <span>I0 {c.base_value}</span>
+                                <span>It {c.comparison_value}</span>
+                                <span>Vi {c.variation_percent}%</span>
+                                <span>→ {c.contribution_percent}%</span>
+                              </div>
+                            ))}
+                            {step.details.calculation && (
+                              <div style={{ fontFamily: 'monospace', marginTop: 6 }}>{step.details.calculation}</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>{step.result}</td>
                     </tr>
                   ))}

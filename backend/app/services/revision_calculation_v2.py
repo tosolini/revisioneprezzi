@@ -40,9 +40,45 @@ def _round(val: float, decimals: int = 2) -> float:
     d = Decimal(str(val)).quantize(Decimal(10) ** -decimals, rounding=ROUND_HALF_UP)
     return float(d)
 
+def _add_months(d: date, n: int) -> date:
+    """Somma n mesi a una data (giorno conservato; qui sempre primo del mese)."""
+    m = d.month - 1 + n
+    return date(d.year + m // 12, m % 12 + 1, d.day)
 
-def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
-    """Recupera valore indice ISTAT per serie e periodo specifico"""
+
+def _missing_months(used: date, requested: date) -> list[str]:
+    """Mesi solari non registrati tra il periodo usato e quello richiesto.
+
+    Fallback all'indietro (usato 2026-06, richiesto 2026-08) →
+    ['2026-07', '2026-08']; fallback in avanti (usato 2026-06, richiesto
+    2026-03) → ['2026-03', '2026-04', '2026-05']. Il periodo usato è escluso,
+    quello richiesto sempre incluso (è il periodo che manca)."""
+    months: list[str] = []
+    cur = used
+    direction = 1 if used <= requested else -1
+    while True:
+        cur = _add_months(cur, direction)
+        if direction > 0 and cur > requested:
+            break
+        if direction < 0 and cur < requested:
+            break
+        months.append(cur.isoformat()[:7])
+    return sorted(months)  # ordine cronologico indipendente dalla direzione del fallback
+
+
+def _get_index_observation(
+    db: Session, series_id: str, period: date
+) -> tuple[float | None, date | None, bool]:
+    """Recupera l'osservazione ISTAT per serie e periodo.
+
+    Ritorna ``(valore, periodo_usato, esatto)`` dove ``periodo_usato`` è il
+    periodo dell'osservazione effettivamente utilizzata (può differire da
+    ``period`` per fallback) ed ``esatto`` indica se esiste l'osservazione
+    definitiva nel periodo richiesto.
+
+    Strategia (coerente con il calcolo): osservazione esatta definitiva,
+    altrimenti la più vicina precedente, altrimenti la più vicina successiva.
+    """
     obs = (
         db.query(IndexObservation)
         .filter(
@@ -53,7 +89,7 @@ def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
         .first()
     )
     if obs:
-        return obs.value
+        return obs.value, obs.ref_period, True
 
     before = (
         db.query(IndexObservation)
@@ -66,7 +102,7 @@ def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
         .first()
     )
     if before:
-        return before.value
+        return before.value, before.ref_period, False
 
     after = (
         db.query(IndexObservation)
@@ -78,7 +114,159 @@ def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
         .order_by(IndexObservation.ref_period.asc())
         .first()
     )
-    return after.value if after else None
+    if after:
+        return after.value, after.ref_period, False
+    return None, None, False
+
+
+def calculate_period_coverage(
+    db: Session,
+    components: dict[str, float],
+    base_period: date,
+    comparison_period: date,
+) -> list[dict]:
+    """Copertura dei periodi richiesti per ciascuna serie componente.
+
+    Riporta, per ogni serie, l'osservazione che il calcolo utilizzerebbe
+    (periodo usato, valore ed esattezza rispetto al periodo richiesto).
+    ``satisfied`` = entrambi i periodi coperti con osservazione esatta.
+    ``missing`` = nessuna osservazione definitiva disponibile (il calcolo
+    fallirebbe per questa serie).
+    """
+    coverage = []
+    for series_id, weight in components.items():
+        base_value, used_base, base_exact = _get_index_observation(
+            db, series_id, base_period
+        )
+        comp_value, used_comp, comp_exact = _get_index_observation(
+            db, series_id, comparison_period
+        )
+        coverage.append({
+            "series_id": series_id,
+            "weight": weight,
+            "base": {
+                "requested": base_period.isoformat(),
+                "used": used_base.isoformat() if used_base else None,
+                "value": base_value,
+                "exact": base_exact,
+                "missing_months": (
+                    _missing_months(used_base, base_period)
+                    if used_base and not base_exact else []
+                ),
+            },
+            "comparison": {
+                "requested": comparison_period.isoformat(),
+                "used": used_comp.isoformat() if used_comp else None,
+                "value": comp_value,
+                "exact": comp_exact,
+                "missing_months": (
+                    _missing_months(used_comp, comparison_period)
+                    if used_comp and not comp_exact else []
+                ),
+            },
+            "satisfied": bool(base_exact and comp_exact),
+            "missing": base_value is None or comp_value is None,
+        })
+    return coverage
+
+def _get_index_observation(
+    db: Session, series_id: str, period: date
+) -> tuple[float | None, date | None, bool]:
+    """Recupera l'osservazione ISTAT per serie e periodo.
+
+    Ritorna ``(valore, periodo_usato, esatto)`` dove ``periodo_usato`` è il
+    periodo dell'osservazione effettivamente utilizzata (può differire da
+    ``period`` per fallback) ed ``esatto`` indica se esiste l'osservazione
+    definitiva nel periodo richiesto.
+    """
+    obs = (
+        db.query(IndexObservation)
+        .filter(
+            IndexObservation.series_id == series_id,
+            IndexObservation.ref_period == period,
+            IndexObservation.is_definitive.is_(True),
+        )
+        .first()
+    )
+    if obs:
+        return obs.value, obs.ref_period, True
+
+    before = (
+        db.query(IndexObservation)
+        .filter(
+            IndexObservation.series_id == series_id,
+            IndexObservation.ref_period <= period,
+            IndexObservation.is_definitive.is_(True),
+        )
+        .order_by(IndexObservation.ref_period.desc())
+        .first()
+    )
+    if before:
+        return before.value, before.ref_period, False
+
+    after = (
+        db.query(IndexObservation)
+        .filter(
+            IndexObservation.series_id == series_id,
+            IndexObservation.ref_period >= period,
+            IndexObservation.is_definitive.is_(True),
+        )
+        .order_by(IndexObservation.ref_period.asc())
+        .first()
+    )
+    if after:
+        return after.value, after.ref_period, False
+    return None, None, False
+
+
+def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
+    """Recupera valore indice ISTAT per serie e periodo specifico (con fallback)."""
+    value, _used, _exact = _get_index_observation(db, series_id, period)
+    return value
+
+def _periods_evidence(
+    db: Session, series_ids: list[str], base_period: date, comparison_period: date
+) -> dict:
+    """Evidenza aggregata sulla copertura dei periodi richiesti per un insieme
+    di serie: periodo usato (ultima osservazione disponibile considerata),
+    esattezza e mesi solari non registrati. Per il periodo di confronto la
+    segnalazione risponde a: "il calcolo non ha registrato quei mesi, quindi
+    è partito dall'osservazione di <periodo usato>"."""
+    base_used: set[str] = set()
+    comp_used: set[str] = set()
+    base_missing: set[str] = set()
+    comp_missing: set[str] = set()
+    base_exact_all = True
+    comp_exact_all = True
+    for series_id in series_ids:
+        _bv, used_base, base_exact = _get_index_observation(db, series_id, base_period)
+        _cv, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
+        if used_base:
+            base_used.add(used_base.isoformat())
+            if not base_exact:
+                base_missing.update(_missing_months(used_base, base_period))
+        if not base_exact:
+            base_exact_all = False
+        if used_comp:
+            comp_used.add(used_comp.isoformat())
+            if not comp_exact:
+                comp_missing.update(_missing_months(used_comp, comparison_period))
+        if not comp_exact:
+            comp_exact_all = False
+    return {
+        "base": {
+            "requested": base_period.isoformat(),
+            "used": sorted(base_used)[-1] if base_used else None,
+            "exact": base_exact_all,
+            "missing_months": sorted(base_missing),
+        },
+        "comparison": {
+            "requested": comparison_period.isoformat(),
+            "used": sorted(comp_used)[-1] if comp_used else None,
+            "exact": comp_exact_all,
+            "missing_months": sorted(comp_missing),
+        },
+    }
 
 
 def calculate_synthetic_index(
@@ -136,8 +324,12 @@ def calculate_weighted_variation(
     weighted_sum = 0.0
 
     for series_id, weight in components.items():
-        base_value = _get_index_value(db, series_id, base_period)
-        comp_value = _get_index_value(db, series_id, comparison_period)
+        base_value, used_base, base_exact = _get_index_observation(
+            db, series_id, base_period
+        )
+        comp_value, used_comp, comp_exact = _get_index_observation(
+            db, series_id, comparison_period
+        )
         if base_value is None or comp_value is None:
             missing = []
             if base_value is None:
@@ -148,14 +340,28 @@ def calculate_weighted_variation(
             continue
         variation = ((comp_value - base_value) / base_value) * 100
         variation = _round(variation, 4)
+        contribution = _round((weight / 100.0) * variation, 4)
         details.append({
             "series_id": series_id,
             "weight": weight,
             "base_value": base_value,
             "comparison_value": comp_value,
             "variation_percent": variation,
+            "contribution_percent": contribution,
+            "used_base_period": used_base.isoformat() if used_base else None,
+            "used_comparison_period": used_comp.isoformat() if used_comp else None,
+            "base_exact": base_exact,
+            "comparison_exact": comp_exact,
+            "missing_base_months": (
+                _missing_months(used_base, base_period)
+                if used_base and not base_exact else []
+            ),
+            "missing_comparison_months": (
+                _missing_months(used_comp, comparison_period)
+                if used_comp and not comp_exact else []
+            ),
         })
-        weighted_sum += (weight / 100.0) * variation
+        weighted_sum += contribution
 
     if errors:
         return None, details, errors
@@ -214,8 +420,8 @@ def calculate_price_revision(
 
     if index_type == "single":
         series_id = indices_config["single_series_id"]
-        base_value = _get_index_value(db, series_id, base_period)
-        comp_value = _get_index_value(db, series_id, comparison_period)
+        base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
+        comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
         
         if base_value is None or comp_value is None:
             missing_parts = []
@@ -282,14 +488,32 @@ def calculate_price_revision(
             base_value, base_errors = calculate_synthetic_index(db, components, base_period)
             comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
 
-        if base_errors or comp_errors:
-            return {
-                "error": "Errori nel calcolo indice sintetico",
-                "base_errors": base_errors,
-                "comparison_errors": comp_errors,
-            }
-        
-        
+        component_details = None
+        calculation_display = None
+        if method == "weighted_variations":
+            component_details = [
+                {
+                    "series_id": d["series_id"],
+                    "weight": d["weight"],
+                    "base_value": d["base_value"],
+                    "comparison_value": d["comparison_value"],
+                    "variation_percent": d["variation_percent"],
+                    "contribution_percent": d["contribution_percent"],
+                    "used_base_period": d["used_base_period"],
+                    "used_comparison_period": d["used_comparison_period"],
+                    "base_exact": d["base_exact"],
+                    "comparison_exact": d["comparison_exact"],
+                    "missing_base_months": d["missing_base_months"],
+                    "missing_comparison_months": d["missing_comparison_months"],
+                }
+                for d in comp_details
+            ]
+            terms = [
+                f"({d['weight'] / 100:.2f})×{d['variation_percent']:.4f}"
+                for d in component_details
+            ]
+            calculation_display = "Vt = " + " + ".join(terms) + f" = {variation_w:.4f}%"
+
         steps.append({
             "step": 1,
             "description": (
@@ -307,11 +531,26 @@ def calculate_price_revision(
                 "periodo_base": base_period.isoformat(),
                 "indice_sintetico_base": base_value,
                 "periodo_confronto": comparison_period.isoformat(),
-                "indice_sintetico_confronto": comp_value
+                "indice_sintetico_confronto": comp_value,
+                **({"component_details": component_details,
+                    "calculation": calculation_display}
+                   if method == "weighted_variations" else {}),
             },
-            "result": f"Is base: {base_value}, Is confronto: {comp_value}"
+            "result": (
+                f"Vt = {variation_w}%"
+                if method == "weighted_variations"
+                else f"Is base: {base_value}, Is confronto: {comp_value}"
+            ),
         })
     
+    # Evidenza sui periodi richiesti: mesi non registrati e periodo usato.
+    period_evidence = _periods_evidence(
+        db,
+        [series_id] if index_type == "single" else list(components.keys()),
+        base_period,
+        comparison_period,
+    )
+
     # 3. Calcola variazione percentuale
     if method == "weighted_variations":
         variation = variation_w
@@ -346,6 +585,7 @@ def calculate_price_revision(
             "comparison_value": comp_value,
             "variation_percent": variation,
             "weighted_component_variations": weighted_component_variations,
+            "period_evidence": period_evidence,
             "threshold_percent": threshold,
             "threshold_exceeded": False,
             "excess_percent": 0.0,
@@ -401,10 +641,11 @@ def calculate_price_revision(
         "indices_config": indices_config,
         "base_value": base_value,
         "comparison_value": comp_value,
-        "variation_percent": variation,
-        "weighted_component_variations": weighted_component_variations,
-        "threshold_percent": threshold,
-        "threshold_exceeded": True,
+                    "variation_percent": variation,
+            "weighted_component_variations": weighted_component_variations,
+            "period_evidence": period_evidence,
+            "threshold_percent": threshold,
+            "threshold_exceeded": True,
         "excess_percent": excess,
         "recognition_percent": coefficient,
         "revision_amount": revision_amount,

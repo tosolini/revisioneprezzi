@@ -11,6 +11,7 @@ from app.models.tabella_d import CpvTabellaDAssociation, CpvTabellaDMaster
 from app.models.family_mapping import FamilyMapping
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
+from app.models.index_import_query import IndexImportQuery, IndexImportQuerySeries
 from app.models.normative_param import NormativeParam
 from app.models.override_reason import OverrideReason
 from app.models.revision_input import RevisionInput
@@ -33,6 +34,8 @@ __all__ = [
     "CpvTabellaDMaster",
     "IndexObservation",
     "IndexSeries",
+    "IndexImportQuery",
+    "IndexImportQuerySeries",
     "NormativeParam",
     "OverrideReason",
     "RevisionInput",

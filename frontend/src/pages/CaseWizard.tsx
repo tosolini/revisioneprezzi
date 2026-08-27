@@ -6,6 +6,7 @@ import CpvSearchModal from '../components/CpvSearchModal'
 import ReportView from '../components/ReportView'
 import ReportV2View from '../components/ReportV2View'
 import IndexWeightsEditor from '../components/IndexWeightsEditor'
+import WizardTimeline from '../components/WizardTimeline'
 
 interface StepField {
   key: string
@@ -26,6 +27,25 @@ interface StepConfig {
   auto_evaluate?: boolean
   evaluation_service?: string
 }
+// Etichetta in una parola per ogni step (timeline).
+const STEP_TIMELINE_LABELS: Record<string, string> = {
+  apertura_pratica: 'Pratica',
+  inquadramento_contratto: 'Contratto',
+  classificazione_cpv: 'CPV',
+  selezione_indice: 'Indici',
+  parametri_temporali: 'Periodi',
+  calcolo: 'Calcolo',
+  report_finale: 'Report',
+}
+const MONTH_NAMES_IT = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+
+const fmtEvMonth = (ym: string): string =>
+  `${MONTH_NAMES_IT[parseInt(ym.slice(5, 7), 10)] || ''} ${ym.slice(0, 4)}`
+
+const fmtEvMonths = (months: string[]): string =>
+  months.length > 8
+    ? months.slice(0, 6).map(fmtEvMonth).join(', ') + ` … e altri ${months.length - 6} mesi`
+    : months.map(fmtEvMonth).join(', ')
 
 interface SecondaryCpv {
   code: string
@@ -589,8 +609,17 @@ export default function CaseWizard() {
     })
   }
 
-  // Blocco allo step 4: i pesi indici devono sommare a 100 prima di avanzare.
+  // Blocco step 5: il periodo base deve precedere (o coincidere con) il confronto.
   const validateStep = (): string => {
+    if (step === 5) {
+      const base = (answers['base_period'] || '').trim()
+      const comp = (answers['comparison_period'] || '').trim()
+      if (base && comp && base > comp) {
+        return 'Il periodo base (data aggiudicazione) deve essere antecedente o uguale al periodo di confronto (data rilevazione): con l\'ordine inverso la variazione risulterebbe col segno invertito. Correggi i periodi prima di continuare.'
+      }
+      return ''
+    }
+    // Blocco allo step 4: i pesi indici devono sommare a 100 prima di avanzare.
     if (step !== 4) return ''
     if (overrideActive) {
       if (!answers['selected_index_series_id']) {
@@ -636,16 +665,16 @@ export default function CaseWizard() {
       if (secondaryCpvs.length > 0) {
         allAnswers['cpv_secondary'] = secondaryCpvs.map(s => s.code).join(',')
         allAnswers['cpv_secondary_weights'] = secondaryCpvs.map(s => s.weight).join(',')
+      } else {
+        // Rimozione di tutti i CPV secondari: azzera i campi legacy, altrimenti
+        // i valori stantii già salvati verrebbero rispediti al backend e
+        // l'assegnazione CPV duplicata ricreata a ogni salvataggio.
+        allAnswers['cpv_secondary'] = ''
+        allAnswers['cpv_secondary_weights'] = ''
       }
       const answersArr = stepConfig.fields
         .filter(f => allAnswers[f.key] !== undefined)
         .map(f => ({ step, field_key: f.key, field_value: String(allAnswers[f.key] ?? '') }))
-      for (const s of secondaryCpvs) {
-        answersArr.push({ step, field_key: 'cpv_secondary', field_value: s.code })
-      }
-      if (secondaryCpvs.length > 0) {
-        answersArr.push({ step, field_key: 'cpv_secondary_weights', field_value: secondaryCpvs.map(s => s.weight).join(',') })
-      }
       if (answers['index_override'] === 'true') {
         answersArr.push({ step, field_key: 'index_override', field_value: 'true' })
       }
@@ -695,27 +724,13 @@ export default function CaseWizard() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      {/* Step indicator */}
-      <div style={{
-        display: 'flex', gap: 4, marginBottom: 24,
-        justifyContent: 'center',
-      }}>
-        {Array.from({ length: totalSteps }, (_, i) => i + 1).map(s => (
-          <button
-            key={s}
-            onClick={() => goStep(s)}
-            style={{
-              width: 36, height: 36, borderRadius: '50%', border: 'none',
-              background: s === step ? 'var(--color-primary)' : s < step ? 'var(--color-bg-success)' : 'var(--color-border-light)',
-              color: s === step ? '#fff' : s < step ? 'var(--color-text-success)' : 'var(--color-text-light)',
-              fontWeight: 700, fontSize: 14, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
+      {/* Timeline avanzamento */}
+      <WizardTimeline
+        steps={allSteps.map(sc => STEP_TIMELINE_LABELS[sc.key] || sc.title.split(' ')[0])}
+        currentStep={step}
+        onStepClick={goStep}
+        showCounter={false}
+      />
 
       {/* Step title + description */}
       <div style={{
@@ -1151,16 +1166,60 @@ export default function CaseWizard() {
                   <div style={{ marginTop: 12 }}>
                     <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Passaggi:</div>
                     {calcResult.steps.map((s, i) => (
-                      <div key={i} style={{
-                        padding: '6px 8px', marginBottom: 4, background: 'var(--color-bg-card)',
-                        borderRadius: 4, fontSize: 12, border: '1px solid var(--color-border-light)',
-                      }}>
-                        <strong>{s.description}</strong>
-                        <div style={{ color: 'var(--color-text-muted)' }}>{s.formula} = {s.result}</div>
-                      </div>
-                    ))}
+                  <div key={i} style={{
+                    padding: '6px 8px', marginBottom: 4, background: 'var(--color-bg-card)',
+                    borderRadius: 4, fontSize: 12, border: '1px solid var(--color-border-light)',
+                  }}>
+                    <strong>{s.description}</strong>
+                    <div style={{ color: 'var(--color-text-muted)' }}>{s.formula} = {s.result}</div>
+                  </div>
+                ))}
                   </div>
                 )}
+                {(() => {
+                  const ev = calcResult.period_evidence
+                  if (!ev) return null
+                  const comps = calcResult.weighted_component_variations || []
+                  const isComposite = comps.length > 0
+                  // Con più serie ogni componente può avere un periodo usato
+                  // diverso: le righe per componente sono la verità; l'aggregato
+                  // è mostrato solo per la serie singola.
+                  const issues = isComposite ? [] : [ev.base, ev.comparison].filter(p => !p.exact)
+                  const compIssues = comps.filter(c => !c.base_exact || !c.comparison_exact)
+                  if (issues.length === 0 && compIssues.length === 0) return null
+                  return (
+                    <div style={{ marginTop: 12, padding: 12, background: 'var(--color-bg-warning)', borderRadius: 8, border: '1px solid var(--color-border-warning)', fontSize: 12, lineHeight: 1.7 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--color-text-warning)' }}>
+                        ⚠ Copertura periodi: mesi non registrati
+                      </div>
+                      {issues.map(p => (
+                        <div key={p.requested} style={{ color: 'var(--color-text-warning)' }}>
+                          {p === ev.base ? 'Periodo base' : 'Periodo di confronto'} ({fmtEvMonth(p.requested.slice(0, 7))}):
+                          il calcolo non ha registrato {p.missing_months.length > 0 ? fmtEvMonths(p.missing_months) : 'il mese richiesto'};
+                          è partito dall'osservazione di {p.used ? fmtEvMonth(p.used.slice(0, 7)) : '—'}.
+                        </div>
+                      ))}
+                      {compIssues.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          {compIssues.map(c => {
+                            const bits: string[] = []
+                            if (!c.base_exact) {
+                              bits.push(`base ${ev.base.requested}: non registrato${c.missing_base_months?.length ? ` (${fmtEvMonths(c.missing_base_months)})` : ''} → usata ${c.used_base_period ? fmtEvMonth(c.used_base_period.slice(0, 7)) : '—'}`)
+                            }
+                            if (!c.comparison_exact) {
+                              bits.push(`confronto ${ev.comparison.requested}: non registrato${c.missing_comparison_months?.length ? ` (${fmtEvMonths(c.missing_comparison_months)})` : ''} → usata ${c.used_comparison_period ? fmtEvMonth(c.used_comparison_period.slice(0, 7)) : '—'}`)
+                            }
+                            return (
+                              <div key={c.series_id} style={{ color: 'var(--color-text-warning)' }}>
+                                <span style={{ fontFamily: 'monospace' }}>{c.series_id}</span> — {bits.join(' · ')}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
           </div>

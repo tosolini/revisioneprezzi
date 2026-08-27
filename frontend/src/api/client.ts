@@ -73,6 +73,30 @@ export interface CalcResult {
   is_applicable?: boolean
   result_version?: number
   result_id?: string
+  period_evidence?: { base: PeriodEvidencePeriod; comparison: PeriodEvidencePeriod }
+  weighted_component_variations?: ComponentVariationDetail[] | null
+}
+
+export interface PeriodEvidencePeriod {
+  requested: string
+  used: string | null
+  exact: boolean
+  missing_months: string[]
+}
+
+export interface ComponentVariationDetail {
+  series_id: string
+  weight: number
+  base_value: number
+  comparison_value: number
+  variation_percent: number
+  contribution_percent: number
+  used_base_period: string | null
+  used_comparison_period: string | null
+  base_exact: boolean
+  comparison_exact: boolean
+  missing_base_months?: string[]
+  missing_comparison_months?: string[]
 }
 
 export interface ReportResponse {

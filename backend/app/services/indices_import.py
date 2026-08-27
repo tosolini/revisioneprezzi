@@ -306,6 +306,7 @@ def import_sdmx_content(
         "group_key": group_key,
         "frequency": freq_param,
     }
+    touched_series: set[str] = set()
 
     row_no = 0
     for row in reader:
@@ -379,6 +380,7 @@ def import_sdmx_content(
                 db.flush()
                 if created:
                     results["series_created"] += 1
+                touched_series.add(series_id)
                 results[kind] += 1
                 results["imported_rows"] += 1
         except Exception as e:
@@ -394,4 +396,5 @@ def import_sdmx_content(
                 db.commit()
 
     db.commit()
+    results["series_ids"] = sorted(touched_series)
     return results

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.revision_calculation_v2 import (
     calculate_multi_component_revision,
+    calculate_period_coverage,
     calculate_price_revision,
 )
 
@@ -50,6 +51,13 @@ class CalculationRequest(BaseModel):
         discriminator="type",
         description="Configurazione indici (singolo o composito)"
     )
+    force_inverted_periods: bool = Field(
+        default=False,
+        description=(
+            "Override riservato (nessun controllo UI): consente base successivo "
+            "al confronto. Da non esporre; per soli allineamenti puntuali."
+        ),
+    )
 
 
 class MultiComponentRequest(BaseModel):
@@ -62,6 +70,64 @@ class MultiComponentRequest(BaseModel):
         min_length=2,
         description="Lista componenti con amount, indices_config, description"
     )
+    force_inverted_periods: bool = Field(
+        default=False,
+        description=(
+            "Override riservato (nessun controllo UI): consente base successivo "
+            "al confronto. Da non esporre; per soli allineamenti puntuali."
+        ),
+    )
+
+
+def _raise_inverted_periods(base_period: date, comparison_period: date) -> None:
+    """Blocca l'inversione base/confronto: invertire cambierebbe il segno della
+    variazione (un aumento diventerebbe una decurtazione)."""
+    if base_period > comparison_period:
+        raise HTTPException(
+            422,
+            "Il periodo base (data aggiudicazione) deve essere antecedente o "
+            "uguale al periodo di confronto (data rilevazione): con il base "
+            "posteriore al confronto la variazione risulterebbe col segno "
+            "invertito. Correggi i periodi prima di calcolare.",
+        )
+
+
+def _check_period_order(base_period: date, comparison_period: date, force: bool) -> None:
+    if not force:
+        _raise_inverted_periods(base_period, comparison_period)
+
+
+
+class CoverageRequest(BaseModel):
+    """Richiesta verifica copertura periodi per le serie componenti."""
+    components: dict[str, float] = Field(
+        ...,
+        description="Mappa series_id: peso_percentuale"
+    )
+    base_period: date
+    comparison_period: date
+
+
+@router.post("/coverage")
+def period_coverage(
+    request: CoverageRequest,
+    db: Session = Depends(get_db)
+) -> dict:
+    """Copertura dei periodi richiesti per ciascuna serie componente.
+
+    Indica, per ogni serie, l'osservazione che il calcolo utilizzerebbe per
+    il periodo base e di confronto (periodo usato, valore, esattezza rispetto
+    al periodo richiesto) così l'utente può capire se i periodi che sta
+    cercando di confrontare esistono o vengono soddisfatti per fallback.
+    """
+    coverage = calculate_period_coverage(
+        db, request.components, request.base_period, request.comparison_period
+    )
+    return {
+        "base_period": request.base_period.isoformat(),
+        "comparison_period": request.comparison_period.isoformat(),
+        "series": coverage,
+    }
 
 
 @router.post("/calculate")
@@ -79,6 +145,9 @@ def calculate(
     Returns:
         Risultato calcolo con tutti i passaggi, soglia superata, importo revisionale
     """
+    _check_period_order(
+        request.base_period, request.comparison_period, request.force_inverted_periods
+    )
     try:
         # Prepara config indici
         if request.indices_config.type == "single":
@@ -103,7 +172,11 @@ def calculate(
         )
         
         if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
+            detail = result["error"]
+            for key in ("comparison_errors", "base_errors"):
+                if result.get(key):
+                    detail = detail + "\n" + "\n".join(result[key])
+            raise HTTPException(status_code=400, detail=detail)
         
         return result
     
@@ -124,6 +197,9 @@ def calculate_multi_component(
     Applicabile a contratti con prestazioni di natura diversa (CPV diversi)
     La clausola si attiva solo se la variazione complessiva supera la soglia
     """
+    _check_period_order(
+        request.base_period, request.comparison_period, request.force_inverted_periods
+    )
     try:
         result = calculate_multi_component_revision(
             db=db,
@@ -134,7 +210,11 @@ def calculate_multi_component(
         )
         
         if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
+            detail = result["error"]
+            for key in ("comparison_errors", "base_errors"):
+                if result.get(key):
+                    detail = detail + "\n" + "\n".join(result[key])
+            raise HTTPException(status_code=400, detail=detail)
         
         return result
     

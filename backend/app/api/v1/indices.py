@@ -1,6 +1,8 @@
 import re
 import time
 import urllib.parse
+import uuid
+from datetime import datetime, timezone
 from math import ceil
 
 import httpx
@@ -10,6 +12,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.index_import_query import IndexImportQuery, IndexImportQuerySeries
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
 from app.services.indices_import import import_sdmx_content
@@ -64,6 +67,7 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
     if group:
         query = query.filter(IndexSeries.classification_ref == group)
     series = query.order_by(IndexSeries.name).limit(100).all()
+    saved_by_series = _latest_saved_queries(db, [s.id for s in series])
     return [
         {
             "id": s.id,
@@ -72,6 +76,7 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
             "normative_category": s.normative_category,
             "classification_ref": s.classification_ref,
             "frequency": s.frequency,
+            "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
         }
         for s in series
     ]
@@ -136,6 +141,91 @@ def _validate_sdmx_url(raw: str) -> tuple[str, str, str]:
         (parsed.scheme, parsed.netloc, parsed.path, urllib.parse.urlencode(params), "")
     )
     return normalized, dataflow_id, key_part
+
+
+def _saved_query_payload(
+    q: IndexImportQuery | None, series_count: int | None = None
+) -> dict | None:
+    """Payload della query salvata: forma breve per le serie, completa per il CRUD.
+
+    None per serie senza query salvata."""
+    if q is None:
+        return None
+    payload = {
+        "id": str(q.id),
+        "url": q.url,
+        "dataflow_id": q.dataflow_id,
+        "key_part": q.key_part,
+        "created_at": q.created_at.isoformat() if q.created_at else None,
+    }
+    if series_count is not None:
+        payload["last_run_at"] = q.last_run_at.isoformat() if q.last_run_at else None
+        payload["series_count"] = series_count
+    return payload
+
+
+def _save_import_query(
+    db: Session, url: str, dataflow_id: str, key_part: str, series_ids: list[str]
+) -> None:
+    """Salva (o aggiorna) la query SDMX appena importata e i link alle serie.
+
+    Una riga per URL normalizzata: i run successivi riusano la stessa riga
+    aggiornando `last_run_at`. Idempotente: stessa query → stessi link
+    (delete + reinsert). Il parser committa già da solo; qui un solo commit."""
+    now = datetime.now(timezone.utc)
+    q = db.query(IndexImportQuery).filter(IndexImportQuery.url == url).first()
+    if q is None:
+        q = IndexImportQuery(
+            url=url,
+            dataflow_id=dataflow_id,
+            key_part=key_part,
+            updated_at=now,
+            last_run_at=now,
+        )
+        db.add(q)
+        db.flush()
+    else:
+        q.updated_at = now
+        q.last_run_at = now
+    db.query(IndexImportQuerySeries).filter(
+        IndexImportQuerySeries.query_id == q.id
+    ).delete(synchronize_session=False)
+    for series_id in series_ids:
+        db.add(IndexImportQuerySeries(query_id=q.id, series_id=series_id))
+    db.commit()
+
+
+def _get_saved_query_or_404(db: Session, query_id: str) -> IndexImportQuery:
+    try:
+        qid = uuid.UUID(query_id)
+    except ValueError:
+        raise HTTPException(404, "Query SDMX salvata non trovata")
+    q = db.query(IndexImportQuery).filter(IndexImportQuery.id == qid).first()
+    if q is None:
+        raise HTTPException(404, "Query SDMX salvata non trovata")
+    return q
+
+
+def _latest_saved_queries(
+    db: Session, series_ids: list[str]
+) -> dict[str, IndexImportQuery]:
+    """Per ogni serie il link più recente verso una query salvata (no N+1)."""
+    if not series_ids:
+        return {}
+    links = (
+        db.query(IndexImportQuerySeries, IndexImportQuery)
+        .join(IndexImportQuery, IndexImportQuerySeries.query_id == IndexImportQuery.id)
+        .filter(IndexImportQuerySeries.series_id.in_(series_ids))
+        .order_by(
+            IndexImportQuery.created_at.desc(),
+            IndexImportQuery.last_run_at.desc(),
+        )
+        .all()
+    )
+    latest: dict[str, IndexImportQuery] = {}
+    for link, q in links:
+        latest.setdefault(link.series_id, q)
+    return latest
 
 
 def _retry_after_seconds(resp) -> float | None:
@@ -411,6 +501,8 @@ def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db) -> dict:
                 )
             details = import_sdmx_content(content, db)
             details["frequency_adjusted"] = f"{'+'.join(original_freqs)}→{freq}"
+            if details.get("series_ids"):
+                _save_import_query(db, fixed_url, dataflow_id, key_part, details["series_ids"])
             return {
                 "message": "Importazione completata",
                 "dataflow_id": dataflow_id,
@@ -422,6 +514,8 @@ def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db) -> dict:
         )
 
     details = import_sdmx_content(content, db)
+    if details.get("series_ids"):
+        _save_import_query(db, url, dataflow_id, key_part, details["series_ids"])
     return {
         "message": "Importazione completata",
         "dataflow_id": dataflow_id,
@@ -472,6 +566,72 @@ def import_job_status(job_id: str):
     return job
 
 
+class SavedQueryUpdate(BaseModel):
+    url: str
+
+
+@router.get("/saved-queries/{query_id}")
+def get_saved_query(query_id: str, db: Session = Depends(get_db)):
+    q = _get_saved_query_or_404(db, query_id)
+    series_count = (
+        db.query(IndexImportQuerySeries)
+        .filter(IndexImportQuerySeries.query_id == q.id)
+        .count()
+    )
+    return _saved_query_payload(q, series_count)
+
+
+@router.post("/saved-queries/{query_id}/run", status_code=202)
+def run_saved_query(query_id: str, db: Session = Depends(get_db)):
+    """Riesegue una query salvata: ri-valida l'URL (protegge da dati corrotti
+    in DB) e riusa il job store in-memory. Il salvataggio automatico di
+    _execute_sdmx_import aggiorna last_run_at sulla stessa riga."""
+    q = _get_saved_query_or_404(db, query_id)
+    url, dataflow_id, key_part = _validate_sdmx_url(q.url)
+    job = sdmx_import_jobs.submit(
+        url=url,
+        runner=lambda: _run_sdmx_import_job(url, dataflow_id, key_part),
+    )
+    return {"job_id": job["id"], "status": job["status"], "url": url}
+
+
+@router.put("/saved-queries/{query_id}")
+def update_saved_query(
+    query_id: str, payload: SavedQueryUpdate, db: Session = Depends(get_db)
+):
+    q = _get_saved_query_or_404(db, query_id)
+    url, dataflow_id, key_part = _validate_sdmx_url(payload.url)
+    q.url = url
+    q.dataflow_id = dataflow_id
+    q.key_part = key_part
+    q.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(q)
+    series_count = (
+        db.query(IndexImportQuerySeries)
+        .filter(IndexImportQuerySeries.query_id == q.id)
+        .count()
+    )
+    return _saved_query_payload(q, series_count)
+
+
+@router.delete("/saved-queries/{query_id}", status_code=200)
+def delete_saved_query(query_id: str, db: Session = Depends(get_db)):
+    q = _get_saved_query_or_404(db, query_id)
+    db.query(IndexImportQuerySeries).filter(
+        IndexImportQuerySeries.query_id == q.id
+    ).delete(synchronize_session=False)
+    db.delete(q)
+    log_event(
+        db,
+        "indices.delete_import_query",
+        payload={"query_id": str(q.id), "url": q.url, "dataflow_id": q.dataflow_id},
+        motivation="Eliminazione query SDMX da interfaccia Indici ISTAT",
+    )
+    db.commit()
+    return {"deleted": True, "query_id": str(q.id)}
+
+
 @router.get("/groups")
 def list_groups(db: Session = Depends(get_db)):
     rows = db.query(IndexSeries.classification_ref).distinct().all()
@@ -498,6 +658,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
         .order_by(IndexSeries.id)
         .all()
     )
+    saved_by_series = _latest_saved_queries(db, [s.id for s in series_list])
     result = []
     for s in series_list:
         obs = (
@@ -512,6 +673,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
             "frequency": s.frequency,
             "normative_category": s.normative_category,
             "observation_count": len(obs),
+            "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
             "observations": [
                 {
                     "period": o.ref_period.isoformat(),

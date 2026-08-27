@@ -135,11 +135,11 @@ steps:
     description: "Inserire il periodo base e il periodo di confronto"
     fields:
       - key: base_period
-        label: "Periodo base (AAAA-MM)"
+        label: "Periodo base (AAAA-MM) — deve precedere il periodo di confronto"
         type: month
         required: true
       - key: comparison_period
-        label: "Periodo di confronto (AAAA-MM)"
+        label: "Periodo di confronto (AAAA-MM) — deve seguire il periodo base"
         type: month
         required: true
       - key: amount_subject_to_revision

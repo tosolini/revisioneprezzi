@@ -59,6 +59,13 @@ function renderMarkdown(md: string, query = ''): string {
 
   function flushTable() {
     if (!tableRows.length) return
+    if (isFormulaTable(tableHeaders, tableRows)) {
+      html.push(renderFormulaTable(tableHeaders, tableRows))
+      tableRows = []
+      tableHeaders = []
+      tableAligns = []
+      return
+    }
     html.push('<table><thead><tr>')
     for (let i = 0; i < tableHeaders.length; i++) {
       const align = tableAligns[i]?.trim()
@@ -84,10 +91,74 @@ function renderMarkdown(md: string, query = ''): string {
 
   function inlineFormat(text: string): string {
     let t = escapeHtml(text)
+    for (const [from, to] of FORMULA_MOJIBAKE) t = t.split(from).join(to)
+    // Gli asterischi escape (\*) sono marcatori/footnote: li si protegge con
+    // un sentinella senza asterisco (prima di bold/em) e li si ripristina.
+    const ESC = '\u0001'
+    t = t.replace(/\\\*/g, ESC + 'A')
     t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     t = t.replace(/\*(.+?)\*/g, '<em>$1</em>')
+    t = t.split(ESC + 'A').join('*')
     t = t.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     return t
+  }
+  // Sostituzioni per il rendering delle formule (Allegato II.2-bis).
+  const FORMULA_MOJIBAKE: Array<[string, string]> = [
+    ['â‹¯', '…'],
+    ['ð‘‰', 'V'],
+    ['ð‘¤', 'w'],
+  ]
+  const FORMULA_SUBSCRIPTS: Array<[string, string]> = [
+    ['ISSALpx', 'ISSAL<sub>px</sub>'],
+    ['ISSALmo', 'ISSAL<sub>mo</sub>'],
+    ['SALrpx', 'SAL<sub>rpx</sub>'],
+    ['SALcpx', 'SAL<sub>cpx</sub>'],
+    ['ISpx', 'IS<sub>px</sub>'],
+    ['ISmo', 'IS<sub>mo</sub>'],
+    ['ITOLi', 'ITOL<sub>i</sub>'],
+  ]
+
+  function formulaHtml(text: string): string {
+    let t = escapeHtml(text)
+    for (const [from, to] of FORMULA_MOJIBAKE) t = t.split(from).join(to)
+    // Negli escape e nei contesti aritmetici \* significa "per"
+    t = t.replace(/\\\*/g, '×')
+    for (const [tok, sub] of FORMULA_SUBSCRIPTS) t = t.split(tok).join(sub)
+    return t
+  }
+
+  function isEquationLine(text: string): boolean {
+    // Righe di footnotes (\*, \*\*): non sono equazioni
+    if (/^(?:\\\*){1,2}\s/.test(text.trim())) return false
+    if (/\\\*/.test(text)) return true
+    if (/∑/.test(text)) return true
+    if (/=/.test(text) && (/\b(?:Is|SAL\w*|Vt)\s*=/.test(text) || /\(\(IS/.test(text))) return true
+    return false
+  }
+
+  function isFormulaTable(headers: string[], rows: string[]): boolean {
+    const joined = [...headers, ...rows].join(' ')
+    if (/∑/.test(joined) && /Is\s*=/.test(joined)) return true
+    if (/\\\*/.test(joined) && /Vt|It-Io|Io/.test(joined)) return true
+    if (rows.length <= 2 && joined.includes('=') && joined.trim().length < 90) return true
+    return false
+  }
+
+  function renderFormulaTable(headers: string[], rows: string[]): string {
+    const joined = [...headers, ...rows].join(' ').replace(/\s+/g, ' ').trim()
+    if (/∑/.test(joined)) {
+      // Is = (Σ_{i=1}^{i=n} p_i × ITOL_i) / (Σ p_i)
+      return '<div class="formula">Is = <span class="frac">' +
+        '<span class="num"><span class="sigma">Σ<sup>i=n</sup><sub>i=1</sub></span> p<sub>i</sub> × ITOL<sub>i</sub></span>' +
+        '<span class="den">Σ p<sub>i</sub></span></span></div>'
+    }
+    if (/\\\*/.test(joined)) {
+      // Vt = (I_t − I_o) × 100 / I_o
+      return '<div class="formula">Vt = <span class="frac">' +
+        '<span class="num">(I<sub>t</sub> − I<sub>o</sub>) × 100</span>' +
+        '<span class="den">I<sub>o</sub></span></span></div>'
+    }
+    return `<div class="formula">${formulaHtml(joined)}</div>`
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -155,6 +226,11 @@ function renderMarkdown(md: string, query = ''): string {
     if (line.trim().startsWith('```')) {
       continue
     }
+    // Formule/equazioni: blocco dedicato
+    if (isEquationLine(line)) {
+      html.push(`<div class="formula">${formulaHtml(line.trim())}</div>`)
+      continue
+    }
 
     const renderedText = query.trim() ? highlightHtmlText(inlineFormat(line), query) : inlineFormat(line)
     html.push(`<p style="margin:0.4em 0;line-height:1.8;color:var(--color-text-secondary);font-size:13px">${renderedText}</p>`)
@@ -216,7 +292,14 @@ export default function Dlgs36Page() {
         .search-button { border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
         .search-summary { margin-bottom: 14px; color: var(--color-text-secondary); font-size: 13px; }
         .search-snippets { display: grid; gap: 10px; margin-bottom: 20px; }
-        .search-snippet { background: var(--color-bg-page); border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; }
+        .formula { text-align: center; margin: 0.8em 0; padding: 12px 18px; background: var(--color-bg-offset); border: 1px solid var(--color-border-light); border-radius: 10px; font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 15px; color: var(--color-text-primary); line-height: 1.6; }
+        .formula .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 6px; }
+        .formula .num { padding: 0 10px 4px; border-bottom: 1.5px solid var(--color-text-primary); }
+        .formula .den { padding: 4px 10px 0; }
+        .formula .sigma { position: relative; display: inline-block; margin-right: 0.5em; font-size: 1.35em; line-height: 1; }
+        .formula .sigma sup { position: absolute; top: -0.7em; left: 0.35em; font-size: 0.55em; font-style: normal; }
+        .formula .sigma sub { position: absolute; bottom: -0.7em; left: 0.35em; font-size: 0.55em; font-style: normal; }
+        .formula sub, .formula sup { font-style: normal; }
       `}</style>
 
       <div className="search-shell">

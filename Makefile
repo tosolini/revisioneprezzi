@@ -58,13 +58,14 @@ trivy-scan:
 			-v $$HOME/.cache/trivy:/root/.cache \
 			ghcr.io/aquasecurity/trivy:latest \
 			image --severity HIGH,CRITICAL --exit-code 1 \
-			revprezzi-$$service 2>&1 | tee $(TRIVY_OUTPUT)/$$service.txt; \
+			revprezzi-$$service > $(TRIVY_OUTPUT)/$$service.txt 2>&1; \
 		code=$$?; \
 		if [ $$code -ne 0 ]; then \
-			echo "⚠️  revprezzi-$$service: vulnerabilità trovate — vedi $(TRIVY_OUTPUT)/$$service.txt" >&2; \
+			echo "⚠️  revprezzi-$$service: vulnerabilità HIGH/CRITICAL trovate"; \
 		else \
 			echo "✅ revprezzi-$$service: nessuna vulnerabilità HIGH/CRITICAL"; \
 		fi; \
+		tail -n 20 "$(TRIVY_OUTPUT)/$$service.txt"; \
 	done; \
 	echo "=== Report salvati in $(TRIVY_OUTPUT)/ ==="
 
