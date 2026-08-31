@@ -44,6 +44,15 @@ CONFIG_MIXED_CSV = (
     "IT1:145_376_DF_DCSC_PREZPRODSERV_1_7(1.0),Q,IT,SERV_PRIC2_2021,N,49,23,"
     "2024-Q1,112.0,\n"
 )
+CSV_DATA_TYPE_FIXTURE = (
+    "DATAFLOW,FREQ,REF_AREA,DATA_TYPE,ECON_ACTIVITY_NACE_2007,"
+    "TIME_PERIOD,OBS_VALUE,OBS_STATUS\n"
+    "IT1:145_376_DF_DCSC_PREZPRODSERV_1_7(1.0),Q,IT,N,49,"
+    "2024-Q1,111.7,\n"
+    "IT1:145_376_DF_DCSC_PREZPRODSERV_1_7(1.0),Q,IT,R,49,"
+    "2024-Q1,112.0,\n"
+)
+
 
 MULTI_FREQ_URL = (
     "https://esploradati.istat.it/SDMXWS/rest/data/"
@@ -335,6 +344,8 @@ def test_import_sdmx_multi_frequency_imports_as_is(client, db, monkeypatch, tmp_
 def test_import_sdmx_rejects_unfiltered_dimensions(client, db, monkeypatch, tmp_path):
     """Dimensione extra variabile (es. PROF_STATUS_EMP) mescolerebbe popolazioni
     nella stessa serie: import rifiutato con messaggio che la nomina."""
+    import json
+
     from app.api.v1 import indices
 
     _point_import_config(monkeypatch, tmp_path)
@@ -346,6 +357,18 @@ def test_import_sdmx_rejects_unfiltered_dimensions(client, db, monkeypatch, tmp_
     job = _start_and_poll(client, SDMX_DATA_URL)
     assert job["status"] == "error"
     assert "PROF_STATUS_EMP" in job["error"]
+    # Verifica payload strutturato: unfiltered_dimensions contiene valori distinti
+    err_text = job["error"]
+    try:
+        payload = json.loads(err_text)
+        assert isinstance(payload, dict)
+        assert "unfiltered_dimensions" in payload
+        assert "PROF_STATUS_EMP" in payload["unfiltered_dimensions"]
+        vals = payload["unfiltered_dimensions"]["PROF_STATUS_EMP"]
+        assert sorted(vals) == ["10", "23"]
+        assert "message" in payload
+    except json.JSONDecodeError:
+        pytest.fail(f"job error non è JSON strutturato: {err_text}")
 
 
 def test_import_sdmx_404_autofix_single_frequency(client, db, monkeypatch, tmp_path):
@@ -501,6 +524,23 @@ def test_import_sdmx_content_rejects_mixed_frequencies(db, monkeypatch, tmp_path
         )
     assert exc.value.status_code == 422
     assert "frequenze" in exc.value.detail
+
+def test_import_sdmx_content_rejects_data_type_with_details(db, monkeypatch, tmp_path):
+    """CSV con DATA_TYPE non filtrata (N vs R) deve fallire con detail strutturato
+    contenente unfiltered_dimensions. Verifica il caso 155_358 (retribuzioni ATECO)."""
+    from app.services.indices_import import import_sdmx_content
+
+    _point_import_config(monkeypatch, tmp_path)
+    with pytest.raises(HTTPException) as exc:
+        import_sdmx_content(CSV_DATA_TYPE_FIXTURE, db)
+    assert exc.value.status_code == 422
+    detail = exc.value.detail
+    assert isinstance(detail, dict), f"detail non è dict: {detail}"
+    assert "unfiltered_dimensions" in detail
+    assert "DATA_TYPE" in detail["unfiltered_dimensions"]
+    assert sorted(detail["unfiltered_dimensions"]["DATA_TYPE"]) == ["N", "R"]
+    assert "message" in detail
+    assert "DATA_TYPE" in detail["message"]
 
 
 def test_import_sdmx_content_unknown_dataflow(db, monkeypatch, tmp_path):

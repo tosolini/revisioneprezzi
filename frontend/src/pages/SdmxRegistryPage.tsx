@@ -8,6 +8,7 @@ interface SavedQuery {
   key_part?: string
   created_at?: string | null
   end_period_strategy?: "fixed" | "last_month_end" | "today"
+  start_period_strategy?: "fixed" | "earliest" | "expand_1y" | "expand_5y"
   last_run_at?: string | null
   series_count?: number
 }
@@ -59,6 +60,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
 }) {
   const [url, setUrl] = useState(query.url)
   const [strategy, setStrategy] = useState<"fixed" | "last_month_end" | "today">(query.end_period_strategy || "last_month_end")
+  const [startStrategy, setStartStrategy] = useState<"fixed" | "earliest" | "expand_1y" | "expand_5y">(query.start_period_strategy || "fixed")
   const [step, setStep] = useState<1 | 2>(1)
   const [understood, setUnderstood] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -84,7 +86,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
       const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(query.id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), end_period_strategy: strategy }),
+        body: JSON.stringify({ url: url.trim(), end_period_strategy: strategy, start_period_strategy: startStrategy }),
       })
       if (!res.ok) throw new Error(await parseErrorDetail(res))
       onSaved()
@@ -119,14 +121,15 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1100,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--color-overlay)',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+      background: 'var(--color-overlay)', overflowY: 'auto', padding: '24px 16px',
     }}>
       <div style={{
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 480,
-        maxWidth: 620, boxShadow: '0 4px 24px var(--color-shadow-heavy)',
+        maxWidth: 620, width: '100%', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 4px 24px var(--color-shadow-heavy)', margin: 'auto',
       }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 18, color: 'var(--color-text-primary)' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 18, color: 'var(--color-text-primary)', flexShrink: 0, position: 'sticky', top: 0, background: 'var(--color-bg-card)', zIndex: 1, paddingBottom: 8 } }>
           {step === 1 ? 'Query SDMX salvata' : 'Conferma eliminazione'}
         </h3>
 
@@ -150,7 +153,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
               }}
             />
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Strategia date</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Strategia endPeriod</div>
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
                 <input type="radio" name="strategy2" checked={strategy === "fixed"} onChange={() => setStrategy("fixed")} />
                 <span>Fissa (usa date salvate)</span>
@@ -164,6 +167,48 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
                 <span>Automatica: oggi</span>
               </label>
             </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Strategia startPeriod (inizio più vecchio)</div>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+                <input type="radio" name="startStrategy" checked={startStrategy === "fixed"} onChange={() => setStartStrategy("fixed")} />
+                <span>Fissa (usa date salvate)</span>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+                <input type="radio" name="startStrategy" checked={startStrategy === "earliest"} onChange={() => setStartStrategy("earliest")} />
+                <span>Inizio più vecchio (2000)</span>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+                <input type="radio" name="startStrategy" checked={startStrategy === "expand_1y"} onChange={() => setStartStrategy("expand_1y")} />
+                <span>Espandi di 1 anno</span>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="startStrategy" checked={startStrategy === "expand_5y"} onChange={() => setStartStrategy("expand_5y")} />
+                <span>Espandi di 5 anni</span>
+              </label>
+            </div>
+            {(() => {
+              try {
+                const u = new URL(url)
+                const sp = u.searchParams.get("startPeriod")
+                if (!sp) return <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>La query non ha startPeriod: nessuna riscrittura inizio</div>
+                if (startStrategy === "fixed") return null
+                let preview = sp
+                if (startStrategy === "earliest") {
+                  if (/^\d{4}$/.test(sp)) preview = "2000"
+                  else if (/^\d{4}-\d{2}$/.test(sp)) preview = "2000-01"
+                  else if (/^\d{4}-\d{2}-\d{2}$/.test(sp)) preview = "2000-01-01"
+                  else if (/^\d{4}-Q[1-4]$/.test(sp)) preview = "2000-Q1"
+                  else preview = "2000-01-01"
+                } else if (startStrategy === "expand_1y") {
+                  const y = parseInt(sp.slice(0,4), 10)
+                  if (!isNaN(y)) preview = `${y - 1}${sp.slice(4)}`
+                } else if (startStrategy === "expand_5y") {
+                  const y = parseInt(sp.slice(0,4), 10)
+                  if (!isNaN(y)) preview = `${y - 5}${sp.slice(4)}`
+                }
+                return <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>Anteprima riscrittura: startPeriod={preview} ({startStrategy})</div>
+              } catch { return null }
+            })()}
             {(() => {
               try {
                 const u = new URL(url)
@@ -194,7 +239,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
         )}
 
         {error && <div style={{ padding: '8px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{error}</div>}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexShrink: 0, position: 'sticky', bottom: 0, background: 'var(--color-bg-card)', zIndex: 1, paddingTop: 12, borderTop: '1px solid var(--color-border)', marginTop: 12 }}>
           <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Annulla</button>
           {step === 1 ? (
             <>
@@ -224,7 +269,37 @@ export default function SdmxRegistryPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
   const [runState, setRunState] = useState<{ id: string; status: 'running' | 'done' | 'error'; message?: string } | null>(null)
+  const [structuredRunError, setStructuredRunError] = useState<{ unfiltered_dimensions?: Record<string, string[]>; example_url?: string } | null>(null)
   const [manageTarget, setManageTarget] = useState<SavedQuery | null>(null)
+
+  const tryParseStructured = (text: string): { message: string; unfiltered_dimensions?: Record<string, string[]>; example_url?: string; suggestion?: string } | null => {
+    try {
+      const obj: unknown = JSON.parse(text)
+      if (obj && typeof obj === 'object') {
+        const o = obj as Record<string, unknown>
+        if (typeof o.message === 'string' && o.unfiltered_dimensions && typeof o.unfiltered_dimensions === 'object') {
+          return o as { message: string; unfiltered_dimensions: Record<string, string[]>; example_url?: string; suggestion?: string }
+        }
+        if (o.detail && typeof o.detail === 'object') {
+          const d = o.detail as Record<string, unknown>
+          if (typeof d.message === 'string' && d.unfiltered_dimensions) {
+            return d as { message: string; unfiltered_dimensions: Record<string, string[]>; example_url?: string; suggestion?: string }
+          }
+        }
+      }
+    } catch { }
+    return null
+  }
+
+  const formatStructuredMessage = (s: { message: string; unfiltered_dimensions?: Record<string, string[]>; example_url?: string }): string => {
+    let msg = s.message
+    if (s.unfiltered_dimensions) {
+      const dims = Object.entries(s.unfiltered_dimensions).map(([k, v]) => `${k} = [${(v as string[]).join(', ')}]`).join('; ')
+      msg += `\nDimensioni non filtrate: ${dims}`
+    }
+    if (s.example_url) msg += `\nEsempio URL filtrato: ${s.example_url}`
+    return msg
+  }
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -245,6 +320,7 @@ export default function SdmxRegistryPage() {
   const handleRun = async (q: SavedQuery) => {
     if (runState?.status === 'running' && runState.id === q.id) return
     setRunState({ id: q.id, status: 'running' })
+    setStructuredRunError(null)
     try {
       const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(q.id)}/run`, { method: 'POST' })
       if (!res.ok) {
@@ -270,7 +346,14 @@ export default function SdmxRegistryPage() {
       setRunState({ id: q.id, status: 'done', message: `Riscaricata "${q.dataflow_id}": ${d.added} aggiunte, ${d.updated} aggiornate. ${suffix}` })
       setReloadKey(k => k + 1)
     } catch (e: unknown) {
-      setRunState({ id: q.id, status: 'error', message: e instanceof Error ? e.message : String(e) })
+      const msg = e instanceof Error ? e.message : String(e)
+      const structured = tryParseStructured(msg)
+      if (structured) {
+        setStructuredRunError({ unfiltered_dimensions: structured.unfiltered_dimensions, example_url: structured.example_url })
+        setRunState({ id: q.id, status: 'error', message: formatStructuredMessage(structured) })
+      } else {
+        setRunState({ id: q.id, status: 'error', message: msg })
+      }
     }
   }
 
@@ -307,8 +390,38 @@ export default function SdmxRegistryPage() {
           padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13,
           background: runState.status === 'done' ? 'var(--color-bg-success)' : runState.status === 'error' ? 'var(--color-bg-error)' : 'var(--color-bg-offset)',
           color: runState.status === 'done' ? 'var(--color-text-success)' : runState.status === 'error' ? 'var(--color-text-error)' : 'var(--color-text-secondary)',
+          whiteSpace: 'pre-wrap',
         }}>
           {runState.status === 'running' ? `Riscaricamento query ${runState.id} in corso — Istat può impiegare 5-10 minuti.` : runState.message}
+        </div>
+      )}
+      {structuredRunError?.unfiltered_dimensions && runState?.status === 'error' && (
+        <div style={{ padding: '10px 12px', background: 'var(--color-bg-error)', color: 'var(--color-text-error)', borderRadius: 8, marginBottom: 12, fontSize: 12, border: '1px dashed var(--color-text-error)', lineHeight: 1.5 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Query troppo ampia: filtri mancanti</div>
+          <div style={{ marginBottom: 8, fontSize: 12 }}>
+            ISTAT ha restituito dati con più valori per le dimensioni elencate. Questi dati verrebbero salvati nella stessa serie nel database, sovrascrivendosi e mescolando popolazioni diverse con la serie già presente.
+          </div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Dimensioni da filtrare (un solo valore ciascuna):</div>
+          {Object.entries(structuredRunError.unfiltered_dimensions).map(([dim, vals]) => (
+            <div key={dim} style={{ marginBottom: 4 }}>
+              <span style={{ fontWeight: 600 }}>{dim}</span> = [{(vals as string[]).join(', ')}]
+            </div>
+          ))}
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Apri il databrowser ISTAT, filtra ciascuna dimensione a un singolo valore (es. DATA_TYPE=N) e ricopia l'URL Data. Senza filtro i dati si mescolerebbero nella stessa serie esistente. Se ISTAT per quel filtro restituisce “NULL”, non c'è dato per quella combinazione.
+          </div>
+          {structuredRunError.example_url && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Esempio URL filtrato (verifica nel databrowser):</div>
+              <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: 11, background: 'var(--color-bg-card)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                {structuredRunError.example_url}
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(structuredRunError.example_url || ''); }}
+                style={{ marginTop: 6, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 11 }}
+              >Copia URL</button>
+            </div>
+          )}
         </div>
       )}
 

@@ -187,6 +187,13 @@ dataflows:
       series_code: "ECON_ACTIVITY_NACE_2007"
       value: "OBS_VALUE"
       period: "TIME_PERIOD"
+    # Dimensioni extra non mappate: DATA_TYPE, PROF_STATUS_EMP, SEX, ecc.
+    # Devono essere filtrate a singolo valore nel databrowser, altrimenti
+    # l'import rifiuta con 422 "dimensioni non filtrate" e riporta i valori
+    # distinti osservati (es. DATA_TYPE = N / R). Non aggiungere qui
+    # dimension_map extra: il check avviene in indices_import._reject_unfiltered_dimensions.
+    # Valori DATA_TYPE noti: N = valore nominale (coerente con retribuzione),
+    # R = altro tipo (se presente, filtra a N nel databrowser).
     series:
       - code: "0010"
         name: "Retribuzione oraria - totale ATECO"

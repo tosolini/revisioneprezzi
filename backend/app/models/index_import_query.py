@@ -34,7 +34,9 @@ class IndexImportQuery(Base):
     end_period_strategy: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="last_month_end", default="last_month_end"
     )
-
+    start_period_strategy: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="fixed", default="fixed"
+    )
 
 class IndexImportQuerySeries(Base):
     """Link N-N tra query salvata e serie toccate dall'import."""

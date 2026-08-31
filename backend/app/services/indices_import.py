@@ -150,22 +150,84 @@ def _reject_unfiltered_dimensions(reader: csv.DictReader, mapping: dict,
                                   series_code_cols: list[str]) -> None:
     """Rifiuta query che lasciano dimensioni non filtrate in un dataflow
     configurato: piu' valori della stessa dimensione verrebbero mescolati
-    nella stessa serie (es. PROF_STATUS_EMP, DATA_TYPE nelle retribuzioni)."""
+    nella stessa serie (es. PROF_STATUS_EMP, DATA_TYPE nelle retribuzioni).
+
+    Solleva HTTPException(422) con payload strutturato:
+      detail = {
+        "message": str,
+        "unfiltered_dimensions": {dim: [valori_distinti_sorted]},
+        "suggestion": str
+      }
+    -- il caller puo' arricchire con example_url.
+    Non auto-filtra: resta 422. Le dimensioni extra restano rilevate via
+    _dimension_candidates (DATA_TYPE non e' in dimension_map, quindi e'
+    candidato al controllo). Probe HTTP per ogni dimensione sarebbe costoso,
+    quindi si riportano solo i valori osservati nel CSV.
+    """
     candidates = _dimension_candidates(reader.fieldnames, mapping, series_code_cols)
     if not candidates:
         return
     distinct = _distinct_counts(reader, candidates)
     unfiltered = sorted(c for c in candidates if len(distinct[c]) > 1)
     if unfiltered:
-        raise HTTPException(
-            422,
+        details: dict[str, list[str]] = {
+            dim: sorted(distinct[dim]) for dim in unfiltered
+        }
+        # Etichette leggibili per le dimensioni più comuni (fallback al codice)
+        _DIM_LABELS = {
+            "DATA_TYPE": "Tipo dato",
+            "SEX": "Sesso",
+            "PROF_STATUS_EMP": "Posizione professionale",
+            "REF_AREA": "Area geografica",
+            "ADJUSTMENT": "Aggiustamento",
+            "SECTOR": "Settore",
+            "AGE_CLASS": "Classe di età",
+            "NACE": "ATECO",
+            "ECON_ACTIVITY_NACE_2007": "ATECO",
+        }
+        # Costruisce messaggio più esplicativo: spiega che ISTAT ha restituito
+        # righe con più valori per quelle dimensioni e che verrebbero salvate
+        # tutte sotto lo stesso ID serie (basato su series_code), mescolando.
+        serie_label = series_code_cols[0] if series_code_cols else "serie"
+        # Mantiene compatibilità con test che cercano "dimensioni non filtrate" e il nome dimensione
+        base_msg = (
             "La query lascia dimensioni non filtrate ("
             + ", ".join(unfiltered)
             + "): si mescolerebbero più valori nella stessa serie. "
             "Filtra queste dimensioni nel databrowser (una sola frequenza/codice) "
-            "e riprova.",
+            "e riprova."
         )
-
+        # Dettaglio esteso per l'utente: spiega il mescolamento con la serie già nel DB
+        dim_desc = "; ".join(
+            f"{dim} ({_DIM_LABELS.get(dim, dim)}) = [{', '.join(vals[:5])}{' …' if len(vals) > 5 else ''}]"
+            for dim, vals in details.items()
+        )
+        extended_msg = (
+            f"ISTAT ha restituito dati con più valori per: {dim_desc}. "
+            f"Tutti questi dati verrebbero salvati come serie '{serie_label}' con lo stesso codice (es. per ATECO 95.1), "
+            f"sovrascrivendosi a vicenda e mescolando popolazioni diverse nella serie già presente nel database. "
+            f"Per evitarlo, apri il databrowser ISTAT, filtra ciascuna dimensione a un singolo valore (es. DATA_TYPE=N) "
+            f"e ricopia l'URL Data. "
+            f"{base_msg}"
+        )
+        suggestion = (
+            "Filtra queste dimensioni nel databrowser (una sola frequenza/codice) "
+            "e riprova. Valori osservati: "
+            + ", ".join(f"{k}={v}" for k, v in details.items())
+            + f". La serie nel database è identificata da '{serie_label}'; i valori multipli sopra verrebbero tutti scritti lì."
+        )
+        truncated_details = {
+            k: (v[:5] + ["…"] if len(v) > 5 else v) for k, v in details.items()
+        }
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": extended_msg,
+                "unfiltered_dimensions": details,
+                "suggestion": suggestion,
+                "truncated_values": truncated_details,
+            },
+        )
 
 def _reject_mixed_frequencies(reader: csv.DictReader, mapping: dict) -> None:
     """Rifiuta CSV che mescolano frequenze (es. query A+M con dati sia annuali

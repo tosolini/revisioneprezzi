@@ -2,6 +2,8 @@
 
 Preserva la granularità di `endPeriod` (YYYY, YYYY-MM, YYYY-MM-DD, YYYY-Qn)
 quando si sostituisce il valore con la data target (last_month_end o today).
+Gestisce anche `startPeriod` con strategie per renderlo più vecchio:
+fixed (nessuna riscrittura), earliest (2000...), expand_1y/expand_5y.
 """
 
 from __future__ import annotations
@@ -89,6 +91,111 @@ def _format_like(original: str, target: date) -> str:
         return f"{year}-Q{q}"
     # fallback non riconosciuto → isoformat
     return target.isoformat()
+
+
+def _earliest_like(original: str) -> str:
+    """Ritorna la data più vecchia possibile preservando granularità (anno 2000)."""
+    original = original.strip()
+    if _RE_YEAR.match(original):
+        return "2000"
+    if _RE_YM.match(original):
+        return "2000-01"
+    if _RE_YMD.match(original):
+        return "2000-01-01"
+    if _RE_Q.match(original):
+        return "2000-Q1"
+    return "2000-01-01"
+
+
+def _shift_start_like(original: str, years_back: int) -> str:
+    """Sposta startPeriod indietro di N anni preservando granularità."""
+    original = original.strip()
+    try:
+        if _RE_YEAR.match(original):
+            y = int(original)
+            return str(y - years_back)
+        if _RE_YM.match(original):
+            y = int(original[:4])
+            m = original[5:7]
+            return f"{y - years_back:04d}-{m}"
+        if _RE_YMD.match(original):
+            y = int(original[:4])
+            # preserva mese/giorno
+            rest = original[4:]  # -MM-DD
+            return f"{y - years_back:04d}{rest}"
+        if _RE_Q.match(original):
+            y = int(original[:4])
+            q = int(original[6])
+            # sottrai N anni = N*4 trimestri
+            total_q = (y * 4 + (q - 1)) - years_back * 4
+            new_y = total_q // 4
+            new_q = total_q % 4 + 1
+            return f"{new_y:04d}-Q{new_q}"
+    except Exception:
+        pass
+    # fallback: ritorna earliest
+    return _earliest_like(original)
+
+
+def resolve_sdmx_url_start_period(
+    url: str, strategy: str, today: date | None = None
+) -> tuple[str, dict]:
+    """Riscrive `startPeriod` in `url` secondo `strategy`.
+
+    strategy in ("fixed","earliest","expand_1y","expand_5y").
+    Se fixed o startPeriod assente → ritorna url invariata.
+    Ritorna (resolved_url, meta) dove meta = {"startPeriod": ..., "original_startPeriod": ...}
+    Nessuna eccezione verso chiamante.
+    """
+    try:
+        if strategy == "fixed" or not strategy:
+            return url, {}
+        parsed = urlsplit(url)
+        if not parsed.query:
+            return url, {}
+        params_list = parse_qsl(parsed.query, keep_blank_values=True)
+        params = dict(params_list)
+        if "startPeriod" not in params:
+            return url, {}
+        original_start = params.get("startPeriod", "")
+        if not original_start or not original_start.strip():
+            return url, {}
+        # determina nuovo valore
+        if strategy == "earliest":
+            resolved_value = _earliest_like(original_start)
+        elif strategy == "expand_1y":
+            resolved_value = _shift_start_like(original_start, 1)
+        elif strategy == "expand_5y":
+            resolved_value = _shift_start_like(original_start, 5)
+        else:
+            # strategia sconosciuta → no-op
+            return url, {}
+        # evita di rendere startPeriod più recente dell'originale (sicurezza)
+        # se per errore il calcolo lo rendesse più recente, mantieni originale
+        # confronta lessicograficamente solo se stesso formato; altrimenti fida
+        params["startPeriod"] = resolved_value
+        resolved_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(params), ""))
+        meta = {
+            "startPeriod": resolved_value,
+            "original_startPeriod": original_start,
+        }
+        return resolved_url, meta
+    except Exception:
+        return url, {}
+
+
+def resolve_sdmx_url_dates_both(
+    url: str, end_strategy: str, start_strategy: str, today: date | None = None
+) -> tuple[str, dict]:
+    """Applica sia endPeriod che startPeriod; non modifica endPeriod."""
+    # Applica endPeriod prima (preserva granularità end)
+    resolved, meta_end = resolve_sdmx_url_dates(url, end_strategy, today=today)
+    resolved2, meta_start = resolve_sdmx_url_start_period(resolved, start_strategy, today=today)
+    # unisci meta
+    meta = {}
+    meta.update(meta_end)
+    meta.update(meta_start)
+    return resolved2, meta
 
 
 def resolve_sdmx_url_dates(
