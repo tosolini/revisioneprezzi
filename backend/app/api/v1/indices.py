@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 import urllib.parse
@@ -7,8 +8,8 @@ from math import ceil
 
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
-from sqlalchemy import or_
+from pydantic import BaseModel, field_validator
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -19,7 +20,7 @@ from app.services.indices_import import import_sdmx_content
 from app.services.sdmx_rate_limit import RateLimitTimeout, wait_for_slot
 from app.services import sdmx_import_jobs
 from app.services.audit_service import log_event
-
+from app.services.sdmx_url_utils import resolve_sdmx_url_dates
 router = APIRouter(prefix="/indices", tags=["indices"])
 
 SDMX_ALLOWED_HOST = "esploradati.istat.it"
@@ -104,10 +105,9 @@ def add_observation(payload: ObservationCreate, db: Session = Depends(get_db)):
     db.refresh(obs)
     return obs
 
-
 class SdmxImportRequest(BaseModel):
     url: str
-
+    end_period_strategy: str | None = None
 
 def _validate_sdmx_url(raw: str) -> tuple[str, str, str]:
     """Valida un URL dati SDMX Istat e ritorna (url normalizzato, dataflow_id,
@@ -157,15 +157,18 @@ def _saved_query_payload(
         "dataflow_id": q.dataflow_id,
         "key_part": q.key_part,
         "created_at": q.created_at.isoformat() if q.created_at else None,
+        "end_period_strategy": getattr(q, "end_period_strategy", "last_month_end") or "last_month_end",
     }
     if series_count is not None:
         payload["last_run_at"] = q.last_run_at.isoformat() if q.last_run_at else None
         payload["series_count"] = series_count
+    else:
+        # per CRUD completo includi last_run_at anche senza count
+        payload["last_run_at"] = q.last_run_at.isoformat() if q.last_run_at else None
     return payload
 
-
 def _save_import_query(
-    db: Session, url: str, dataflow_id: str, key_part: str, series_ids: list[str]
+    db: Session, url: str, dataflow_id: str, key_part: str, series_ids: list[str], end_period_strategy: str | None = None
 ) -> None:
     """Salva (o aggiorna) la query SDMX appena importata e i link alle serie.
 
@@ -173,6 +176,9 @@ def _save_import_query(
     aggiornando `last_run_at`. Idempotente: stessa query → stessi link
     (delete + reinsert). Il parser committa già da solo; qui un solo commit."""
     now = datetime.now(timezone.utc)
+    # valida/normalizza strategia
+    allowed = {"fixed", "last_month_end", "today"}
+    strat = end_period_strategy if end_period_strategy in allowed else "last_month_end"
     q = db.query(IndexImportQuery).filter(IndexImportQuery.url == url).first()
     if q is None:
         q = IndexImportQuery(
@@ -181,12 +187,16 @@ def _save_import_query(
             key_part=key_part,
             updated_at=now,
             last_run_at=now,
+            end_period_strategy=strat,
         )
         db.add(q)
         db.flush()
     else:
         q.updated_at = now
         q.last_run_at = now
+        # preserva preferenza utente: non sovrascrivere strategia esistente
+        if not getattr(q, "end_period_strategy", None):
+            q.end_period_strategy = strat
     db.query(IndexImportQuerySeries).filter(
         IndexImportQuerySeries.query_id == q.id
     ).delete(synchronize_session=False)
@@ -472,14 +482,18 @@ def import_csv(
     return {"message": "Importazione completata", "details": details}
 
 
-def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db) -> dict:
+def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db, end_period_strategy: str | None = None) -> dict:
     """Scarica, parsa e importa i dati SDMX. Chiamata dentro il job (thread)."""
     original_freqs = [c for c in key_part.split(".")[0].split("+") if c]
+    # per preservare strategia su frequency-adjusted, cerca query esistente (se any)
+    existing_q = db.query(IndexImportQuery).filter(IndexImportQuery.url == url).first()
+    if existing_q is None:
+        existing_q = db.query(IndexImportQuery).filter(IndexImportQuery.dataflow_id == dataflow_id, IndexImportQuery.key_part == key_part).order_by(IndexImportQuery.updated_at.desc()).first()
+    # priorità: param esplicito > esistente > default
+    existing_strategy = end_period_strategy or (getattr(existing_q, "end_period_strategy", None) if existing_q else None)
     try:
         content = _fetch_sdmx_csv(url)
     except SdmxNoRecordsError:
-        # La frequenza/e scelta non ha dati: scopri le alternative con mini
-        # query e, se una sola risponde, importa automaticamente con quella.
         if len(original_freqs) > 1:
             verdicts = _probe_frequencies(url, original_freqs)
         else:
@@ -502,7 +516,7 @@ def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db) -> dict:
             details = import_sdmx_content(content, db)
             details["frequency_adjusted"] = f"{'+'.join(original_freqs)}→{freq}"
             if details.get("series_ids"):
-                _save_import_query(db, fixed_url, dataflow_id, key_part, details["series_ids"])
+                _save_import_query(db, fixed_url, dataflow_id, key_part, details["series_ids"], end_period_strategy=existing_strategy)
             return {
                 "message": "Importazione completata",
                 "dataflow_id": dataflow_id,
@@ -515,7 +529,7 @@ def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db) -> dict:
 
     details = import_sdmx_content(content, db)
     if details.get("series_ids"):
-        _save_import_query(db, url, dataflow_id, key_part, details["series_ids"])
+        _save_import_query(db, url, dataflow_id, key_part, details["series_ids"], end_period_strategy=existing_strategy)
     return {
         "message": "Importazione completata",
         "dataflow_id": dataflow_id,
@@ -524,16 +538,14 @@ def _execute_sdmx_import(url: str, dataflow_id: str, key_part: str, db) -> dict:
     }
 
 
-def _run_sdmx_import_job(url: str, dataflow_id: str, key_part: str) -> dict:
+def _run_sdmx_import_job(url: str, dataflow_id: str, key_part: str, end_period_strategy: str | None = None) -> dict:
     """Runner del job: sessione DB propria (il thread non ha quella della
     richiesta) e errori HTTP trasformati in messaggio per l'utente."""
-    import logging
-
     from app.core.database import SessionLocal
 
     db = SessionLocal()
     try:
-        return _execute_sdmx_import(url, dataflow_id, key_part, db)
+        return _execute_sdmx_import(url, dataflow_id, key_part, db, end_period_strategy=end_period_strategy)
     except HTTPException as e:
         raise RuntimeError(e.detail)
     except Exception:
@@ -547,13 +559,15 @@ def _run_sdmx_import_job(url: str, dataflow_id: str, key_part: str) -> dict:
 def import_sdmx(payload: SdmxImportRequest):
     """Avvia l'import in background (Istat può impiegare 5-10 minuti) e
     ritorna subito il job_id: la UI fa polling su GET /import-jobs/{id}."""
+    allowed = {"fixed", "last_month_end", "today"}
+    strategy = payload.end_period_strategy if payload.end_period_strategy in allowed else "last_month_end"
     url, dataflow_id, key_part = _validate_sdmx_url(payload.url)
+    # se chiamata con strategia esplicita, passala al job via closure; _execute gestirà creazione
     job = sdmx_import_jobs.submit(
         url=url,
-        runner=lambda: _run_sdmx_import_job(url, dataflow_id, key_part),
+        runner=lambda s=strategy: _run_sdmx_import_job(url, dataflow_id, key_part, end_period_strategy=s),
     )
     return {"job_id": job["id"], "status": job["status"], "url": url}
-
 
 @router.get("/import-jobs/{job_id}")
 def import_job_status(job_id: str):
@@ -568,6 +582,33 @@ def import_job_status(job_id: str):
 
 class SavedQueryUpdate(BaseModel):
     url: str
+    end_period_strategy: str | None = None
+
+    @field_validator("end_period_strategy")
+    @classmethod
+    def validate_strategy(cls, v):
+        if v is None:
+            return v
+        allowed = {"fixed", "last_month_end", "today"}
+        if v not in allowed:
+            raise ValueError(f"strategia non valida: {v}")
+        return v
+
+
+@router.get("/saved-queries")
+def list_saved_queries(q: str | None = None, db: Session = Depends(get_db)):
+    query = db.query(IndexImportQuery).order_by(IndexImportQuery.updated_at.desc())
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(IndexImportQuery.dataflow_id.ilike(like), IndexImportQuery.url.ilike(like)))
+    rows = query.all()
+    # aggregate counts
+    counts = dict(
+        db.query(IndexImportQuerySeries.query_id, func.count(IndexImportQuerySeries.series_id))
+        .group_by(IndexImportQuerySeries.query_id)
+        .all()
+    )
+    return [_saved_query_payload(r, counts.get(r.id, 0)) for r in rows]
 
 
 @router.get("/saved-queries/{query_id}")
@@ -584,15 +625,23 @@ def get_saved_query(query_id: str, db: Session = Depends(get_db)):
 @router.post("/saved-queries/{query_id}/run", status_code=202)
 def run_saved_query(query_id: str, db: Session = Depends(get_db)):
     """Riesegue una query salvata: ri-valida l'URL (protegge da dati corrotti
-    in DB) e riusa il job store in-memory. Il salvataggio automatico di
-    _execute_sdmx_import aggiorna last_run_at sulla stessa riga."""
+    in DB) e riusa il job store in-memory. Applica auto-date se strategia != fixed."""
     q = _get_saved_query_or_404(db, query_id)
     url, dataflow_id, key_part = _validate_sdmx_url(q.url)
+    strategy = getattr(q, "end_period_strategy", "last_month_end") or "last_month_end"
+    try:
+        resolved_url, meta = resolve_sdmx_url_dates(url, strategy)
+    except Exception:
+        resolved_url, meta = url, {}
+        logging.getLogger("indices").warning("resolve_sdmx_url_dates fallita, uso url originale", exc_info=True)
+    if strategy != "fixed" and meta.get("endPeriod"):
+        logging.getLogger("indices").info("SDMX auto-date %s -> %s strategy=%s", meta.get("original_endPeriod"), meta.get("endPeriod"), strategy)
+    # usa resolved_url per fetch; dataflow_id/key_part restano quelli validati
     job = sdmx_import_jobs.submit(
-        url=url,
-        runner=lambda: _run_sdmx_import_job(url, dataflow_id, key_part),
+        url=resolved_url,
+        runner=lambda: _run_sdmx_import_job(resolved_url, dataflow_id, key_part, end_period_strategy=strategy),
     )
-    return {"job_id": job["id"], "status": job["status"], "url": url}
+    return {"job_id": job["id"], "status": job["status"], "url": resolved_url, "original_url": url, "resolved_meta": meta}
 
 
 @router.put("/saved-queries/{query_id}")
@@ -604,6 +653,8 @@ def update_saved_query(
     q.url = url
     q.dataflow_id = dataflow_id
     q.key_part = key_part
+    if payload.end_period_strategy is not None:
+        q.end_period_strategy = payload.end_period_strategy
     q.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(q)

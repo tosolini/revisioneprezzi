@@ -31,6 +31,9 @@ class IndexImportQuery(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    end_period_strategy: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="last_month_end", default="last_month_end"
+    )
 
 
 class IndexImportQuerySeries(Base):

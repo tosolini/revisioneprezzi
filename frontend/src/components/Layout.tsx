@@ -45,6 +45,9 @@ export default function Layout({ children }: { children: ReactNode }) {
         <Link to="/catalogs/istat" className={isActive('/catalogs/istat')} style={{ color: 'var(--color-text-nav)', textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
           Indici ISTAT
         </Link>
+        <Link to="/catalogs/sdmx-queries" className={isActive('/catalogs/sdmx-queries')} style={{ color: 'var(--color-text-nav)', textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
+          Registro SDMX
+        </Link>
         <Link to="/catalogs/tol" className={isActive('/catalogs/tol')} style={{ color: 'var(--color-text-nav)', textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
           Tabelle TOL
         </Link>

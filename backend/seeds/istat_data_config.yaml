@@ -181,7 +181,7 @@ dataflows:
   - dataflow_id: "155_358_DF_DCSC_RETRATECO1_7"
     description: "Retribuzioni orarie per settore ATECO (base 2021)"
     contract_type: "services"
-    frequency: "annual"
+    frequency: "monthly"
     group_key: "wages_ateco"
     dimension_map:
       series_code: "ECON_ACTIVITY_NACE_2007"

@@ -18,6 +18,9 @@ interface SavedQuery {
   dataflow_id: string
   key_part?: string
   created_at?: string | null
+  end_period_strategy?: "fixed" | "last_month_end" | "today"
+  last_run_at?: string | null
+  series_count?: number
 }
 
 interface Series {
@@ -126,15 +129,30 @@ const FREQ_OPTIONS = [
 ]
 
 function SdmxChip({ query }: { query: SavedQuery }) {
+  const strat = query.end_period_strategy || "last_month_end"
+  const badge = strat === "last_month_end" ? { label: "◷", title: "Auto: fine mese precedente", bg: "var(--color-bg-success)", color: "var(--color-text-success)" }
+    : strat === "today" ? { label: "◷", title: "Auto: oggi", bg: "var(--color-bg-info)", color: "var(--color-text-info)" }
+    : null
   return (
-    <span
-      title={query.dataflow_id}
-      style={{
-        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6,
-        background: 'var(--color-bg-info)', color: 'var(--color-text-info)',
-        marginLeft: 6, verticalAlign: 'middle', whiteSpace: 'nowrap',
-      }}
-    >SDMX</span>
+    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 6, verticalAlign: 'middle' }}>
+      <span
+        title={query.dataflow_id}
+        style={{
+          fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6,
+          background: 'var(--color-bg-info)', color: 'var(--color-text-info)',
+          whiteSpace: 'nowrap',
+        }}
+      >SDMX</span>
+      {badge && (
+        <span
+          title={badge.title}
+          style={{
+            fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6,
+            background: badge.bg, color: badge.color, whiteSpace: 'nowrap',
+          }}
+        >{badge.label}</span>
+      )}
+    </span>
   )
 }
 
@@ -264,6 +282,7 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
 
 function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const [url, setUrl] = useState('')
+  const [strategy, setStrategy] = useState<"fixed" | "last_month_end" | "today">("last_month_end")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<string | null>(null)
@@ -306,7 +325,7 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
       const res = await fetch('/api/v1/indices/import-sdmx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), end_period_strategy: strategy }),
       })
       if (!res.ok) throw new Error(await parseErrorDetail(res))
       const data = await res.json()
@@ -319,7 +338,6 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
       setLoading(false)
     }
   }
-
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
@@ -367,6 +385,22 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
             resize: 'vertical', boxSizing: 'border-box', marginBottom: 16,
           }}
         />
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Strategia date (endPeriod)</div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+            <input type="radio" name="sdmx-strategy" checked={strategy === "last_month_end"} onChange={() => setStrategy("last_month_end")} />
+            <span>Automatica: fine mese precedente (consigliata)</span>
+          </label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+            <input type="radio" name="sdmx-strategy" checked={strategy === "today"} onChange={() => setStrategy("today")} />
+            <span>Automatica: oggi</span>
+          </label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}>
+            <input type="radio" name="sdmx-strategy" checked={strategy === "fixed"} onChange={() => setStrategy("fixed")} />
+            <span>Fissa (usa date salvate)</span>
+          </label>
+        </div>
 
         {loading && (
           <div style={{
@@ -496,6 +530,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
   onDeleted: () => void
 }) {
   const [url, setUrl] = useState(query.url)
+  const [strategy, setStrategy] = useState<"fixed" | "last_month_end" | "today">(query.end_period_strategy || "last_month_end")
   const [step, setStep] = useState<1 | 2>(1)
   const [understood, setUnderstood] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -521,7 +556,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
       const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(query.id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), end_period_strategy: strategy }),
       })
       if (!res.ok) throw new Error(await parseErrorDetail(res))
       onSaved()
@@ -586,6 +621,33 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
                 resize: 'vertical', boxSizing: 'border-box', marginBottom: 16,
               }}
             />
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Strategia date</div>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+                <input type="radio" name="strategy" checked={strategy === "fixed"} onChange={() => setStrategy("fixed")} />
+                <span>Fissa (usa date salvate)</span>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6, cursor: 'pointer' }}>
+                <input type="radio" name="strategy" checked={strategy === "last_month_end"} onChange={() => setStrategy("last_month_end")} />
+                <span>Automatica: fine mese precedente (consigliata)</span>
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="strategy" checked={strategy === "today"} onChange={() => setStrategy("today")} />
+                <span>Automatica: oggi</span>
+              </label>
+            </div>
+            {(() => {
+              try {
+                const u = new URL(url)
+                const ep = u.searchParams.get("endPeriod")
+                if (!ep) return <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>La query non ha endPeriod: nessuna riscrittura</div>
+                if (strategy === "fixed") return null
+                const lm = new Date()
+                lm.setDate(0)
+                const preview = lm.toISOString().slice(0,10)
+                return <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>Anteprima riscrittura: endPeriod={preview} {strategy === "today" ? "(oggi)" : "(fine mese precedente)"}</div>
+              } catch { return null }
+            })()}
             <div style={{ fontSize: 12, color: 'var(--color-text-warning)', marginBottom: 16, lineHeight: 1.5 }}>
               "Aggiorna" salva solo l'URL — per ri-scaricare i dati usa il pulsante ⟳ sulla riga.
               Istat consente 5 query/minuto per IP.
@@ -672,10 +734,15 @@ export default function IstatCatalog() {
       const job = await pollImportJob(data.job_id)
       const d = job.result?.details
       if (!d) throw new Error('Risultato import mancante')
+      let suffix = ""
+      if (data && typeof data === "object" && "resolved_meta" in data && data.resolved_meta && typeof data.resolved_meta === "object" && "endPeriod" in data.resolved_meta) {
+        const ep = data.resolved_meta.endPeriod
+        if (typeof ep === "string" && ep && data.url !== data.original_url) suffix = ` (endPeriod aggiornato a ${ep})`
+      }
       setRunState({
         query,
         status: 'done',
-        message: `Riscaricata "${query.dataflow_id}": ${d.added} aggiunte, ${d.updated} aggiornate, ${d.skipped} saltate, ${d.errors} errori. ${d.series_created} nuove serie create.`,
+        message: `Riscaricata "${query.dataflow_id}": ${d.added} aggiunte, ${d.updated} aggiornate, ${d.skipped} saltate, ${d.errors} errori. ${d.series_created} nuove serie create.${suffix}`,
       })
       setReloadKey(k => k + 1)
     } catch (e: unknown) {
@@ -754,15 +821,18 @@ export default function IstatCatalog() {
           <div>
             <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Indici ISTAT</h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>Serie storiche indici ISTAT per la revisione prezzi</p>
+            <p style={{ margin: '8px 0 0', fontSize: 13 }}>
+              <a href="/catalogs/sdmx-queries" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Cerchi tutte le query salvate? Vai al Registro SDMX →</a>
+            </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setShowSdmx(true)} style={{
-              padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-primary)',
-              background: 'var(--color-bg-card)', color: 'var(--color-primary)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-            }}>Importa Query SDMX</button>
-            <button onClick={() => setShowImport(true)} style={{
               padding: '10px 20px', borderRadius: 8, border: 'none',
               background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+            }}>Importa Query SDMX</button>
+            <button onClick={() => setShowImport(true)} style={{
+              padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-primary)',
+              background: 'var(--color-bg-card)', color: 'var(--color-primary)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
             }}>Importa CSV</button>
           </div>
         </div>

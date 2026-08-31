@@ -7,6 +7,7 @@ import ReportView from './pages/ReportView'
 import CpvCatalog from './pages/CpvCatalog'
 import AtecoCatalog from './pages/AtecoCatalog'
 import IstatCatalog from './pages/IstatCatalog'
+import SdmxRegistryPage from './pages/SdmxRegistryPage'
 import TolCatalog from './pages/TolCatalog'
 import Dlgs36Page from './pages/Dlgs36Page'
 import SettingsPage from './pages/SettingsPage'
@@ -24,10 +25,10 @@ export default function App() {
         <Route path="/catalogs/cpv" element={<CpvCatalog />} />
         <Route path="/catalogs/ateco" element={<AtecoCatalog />} />
         <Route path="/catalogs/istat" element={<IstatCatalog />} />
+        <Route path="/catalogs/sdmx-queries" element={<SdmxRegistryPage />} />
         <Route path="/catalogs/tol" element={<TolCatalog />} />
         <Route path="/dlgs36" element={<Dlgs36Page />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
   )
