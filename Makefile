@@ -1,5 +1,9 @@
-.PHONY: build up down shell migrate seed test lint logs setup
+.PHONY: build up down rebuild shell migrate seed test lint logs setup
 
+rebuild:
+	docker compose -f docker-compose-build.yml build
+	docker compose down
+	docker compose up -d
 build:
 	docker compose -f docker-compose-build.yml build
 
