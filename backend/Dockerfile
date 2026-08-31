@@ -9,8 +9,8 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends && \
     echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 && \
     rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir -r requirements.txt
-
+RUN pip install --no-cache-dir --upgrade pip setuptools>=83.0.0 && \
+    pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8000

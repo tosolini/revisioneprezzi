@@ -246,8 +246,7 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
                     if val is not None:
                         indices_data[key] = val
                 except ValueError:
-                    pass
-
+                    pass  # malformed period string: omit synthetic index for this period
     sections.append(ReportSection(title="Indici ISTAT", data=indices_data, order=4))
 
     # Sezione 5: Parametri Normativi

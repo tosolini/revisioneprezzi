@@ -91,8 +91,8 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
             parsed = json.loads(saved.field_value)
             state = WizardV2State(**parsed)
         except Exception:
-            pass
-
+            _LOG.debug("wizard_v2_state parse failed, falling back to default", exc_info=True)
+            pass  # intentionally ignore corrupt saved state: reconstruct from contract/tol/cpv
     if not saved:
         contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
         if contract:

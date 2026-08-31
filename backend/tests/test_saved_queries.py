@@ -305,13 +305,14 @@ def test_saved_query_delete(client, db):
 
 def test_saved_query_404(client, db):
     missing = str(uuid.uuid4())
-    assert client.get(f"/api/v1/indices/saved-queries/{missing}").status_code == 404
-    assert (
-        client.put(
-            f"/api/v1/indices/saved-queries/{missing}", json={"url": SDMX_DATA_URL}
-        ).status_code
-        == 404
+    resp = client.get(f"/api/v1/indices/saved-queries/{missing}")
+    assert resp.status_code == 404
+    resp = client.put(
+        f"/api/v1/indices/saved-queries/{missing}", json={"url": SDMX_DATA_URL}
     )
-    assert client.delete(f"/api/v1/indices/saved-queries/{missing}").status_code == 404
+    assert resp.status_code == 404
+    resp = client.delete(f"/api/v1/indices/saved-queries/{missing}")
+    assert resp.status_code == 404
     # id malformato: 404, non 500
-    assert client.get("/api/v1/indices/saved-queries/non-un-uuid").status_code == 404
+    resp = client.get("/api/v1/indices/saved-queries/non-un-uuid")
+    assert resp.status_code == 404

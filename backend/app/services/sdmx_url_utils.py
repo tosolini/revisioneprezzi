@@ -109,18 +109,12 @@ def _earliest_like(original: str) -> str:
 
 def _shift_start_like(original: str, years_back: int) -> str:
     """Sposta startPeriod indietro di N anni preservando granularità."""
-    original = original.strip()
     try:
         if _RE_YEAR.match(original):
-            y = int(original)
-            return str(y - years_back)
-        if _RE_YM.match(original):
             y = int(original[:4])
-            m = original[5:7]
-            return f"{y - years_back:04d}-{m}"
+            return f"{y - years_back:04d}"
         if _RE_YMD.match(original):
             y = int(original[:4])
-            # preserva mese/giorno
             rest = original[4:]  # -MM-DD
             return f"{y - years_back:04d}{rest}"
         if _RE_Q.match(original):
@@ -132,10 +126,9 @@ def _shift_start_like(original: str, years_back: int) -> str:
             new_q = total_q % 4 + 1
             return f"{new_y:04d}-Q{new_q}"
     except Exception:
-        pass
+        pass  # unexpected format/value: fall through to earliest fallback
     # fallback: ritorna earliest
     return _earliest_like(original)
-
 
 def resolve_sdmx_url_start_period(
     url: str, strategy: str, today: date | None = None
