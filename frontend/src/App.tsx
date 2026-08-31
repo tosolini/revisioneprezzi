@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router'
+import { Routes, Route } from 'react-router'
 import Dashboard from './pages/Dashboard'
 import CaseWizard from './pages/CaseWizard'
 import CaseWizardV2 from './pages/CaseWizardV2'

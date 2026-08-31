@@ -70,7 +70,7 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
     let detail = await res.text()
     try {
       const j: unknown = JSON.parse(detail)
-      if (j && typeof j === 'object' && j !== null && 'detail' in j) {
+      if (j !== null && typeof j === 'object' && 'detail' in (j as Record<string, unknown>)) {
         const raw = (j as { detail?: unknown }).detail
         if (typeof raw === 'string' && raw) detail = raw
       }
@@ -327,7 +327,7 @@ export default function SdmxRegistryPage() {
         let detail = await res.text()
         try {
           const j: unknown = JSON.parse(detail)
-          if (j && typeof j === 'object' && j !== null && 'detail' in j) {
+          if (j !== null && typeof j === 'object' && 'detail' in (j as Record<string, unknown>)) {
             const raw = (j as { detail?: unknown }).detail
             if (typeof raw === 'string' && raw) detail = raw
           }

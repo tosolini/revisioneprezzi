@@ -10,16 +10,13 @@ normalizzata (index_import_query) e i link verso le serie toccate
 rimuove i link in cascata; le osservazioni restano.
 """
 from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
-
 revision: str = '9b3c7a1d4e20'
 down_revision: Union[str, None] = '5dedb114c3db'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+# Alembic requires module-level revision variables; CodeQL flags as unused - mark as intentionally used
+__all__ = ["revision", "down_revision", "branch_labels", "depends_on", "upgrade", "downgrade"]
 
 
 def upgrade() -> None:

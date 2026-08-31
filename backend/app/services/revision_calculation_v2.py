@@ -421,6 +421,13 @@ def calculate_price_revision(
 
     method = indices_config.get("method", "weighted_values")
     weighted_component_variations = None
+    # Pre-inizializza per CodeQL e per gestire correttamente entrambi i rami single/composite
+    series_id: str | None = indices_config.get("single_series_id")  # valorizzato solo se single
+    components: dict[str, float] = {}
+    variation_w: float | None = None
+    comp_details: list[dict] = []
+    base_value: float | None = None
+    comp_value: float | None = None
 
     if index_type == "single":
         series_id = indices_config["single_series_id"]
@@ -472,7 +479,7 @@ def calculate_price_revision(
         )
 
     else:  # composite
-        components = indices_config["components"]
+        components = indices_config["components"] or {}
 
         method = indices_config.get("method", "weighted_values")
         weighted_component_variations = None
@@ -493,7 +500,6 @@ def calculate_price_revision(
         else:
             base_value, base_errors = calculate_synthetic_index(db, components, base_period)
             comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
-
         component_details = None
         calculation_display = None
         if method == "weighted_variations":
@@ -551,19 +557,21 @@ def calculate_price_revision(
                 ),
             }
         )
-
     # Evidenza sui periodi richiesti: mesi non registrati e periodo usato.
     period_evidence = _periods_evidence(
         db,
-        [series_id] if index_type == "single" else list(components.keys()),
+        [series_id] if index_type == "single" and series_id else list(components.keys()),
         base_period,
         comparison_period,
     )
 
     # 3. Calcola variazione percentuale
     if method == "weighted_variations":
+        # variation_w è definito solo in ramo composite+weighted_variations; fallback difensivo
+        assert variation_w is not None, "variation_w deve essere calcolata per weighted_variations"
         variation = variation_w
     else:
+        assert base_value is not None and comp_value is not None and base_value != 0
         variation = ((comp_value - base_value) / base_value) * 100
         variation = _round(variation, 4)
 
@@ -576,7 +584,6 @@ def calculate_price_revision(
             "result": f"{variation}%",
         }
     )
-
     # 4. Verifica superamento soglia
     is_threshold_exceeded = abs(variation) > threshold
 

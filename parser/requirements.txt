@@ -7,3 +7,4 @@ cryptography>=50.0.0
 pydantic==2.10.4
 httpx==0.28.1
 python-multipart==0.0.31
+setuptools>=83.0.0  # CVE-2025-47273 / CVE-2026-59890

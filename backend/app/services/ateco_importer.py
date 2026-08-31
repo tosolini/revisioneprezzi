@@ -105,7 +105,7 @@ def _read_cache(agency: str, cand: str, version: str, ttl_seconds: int) -> Any |
             return None
         return obj.get("payload")
     except Exception:
-        return None
+        return None  # corrupt/expired cache: treat as miss
 
 
 def _write_cache(agency: str, cand: str, version: str, payload: Any) -> None:
@@ -114,8 +114,7 @@ def _write_cache(agency: str, cand: str, version: str, payload: Any) -> None:
         with p.open("w", encoding="utf-8") as f:
             json.dump({"fetched_at": int(time.time()), "payload": payload}, f)
     except Exception:
-        pass
-
+        pass  # best-effort cache write: silence I/O or serialization errors
 
 def _fetch_payload(
     agency: str,

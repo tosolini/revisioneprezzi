@@ -74,7 +74,7 @@ def _write_last_request(f, ts: float) -> None:
     try:
         f.seek(0)
         f.truncate()
-        json.dump({"last_request": ts}, f)
+        f.write(json.dumps({"last_request": ts}))
         f.flush()
         if hasattr(f, "fileno"):
             os.fsync(f.fileno())
@@ -88,7 +88,7 @@ def _acquire_file_lock(f):
 
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
     except (ImportError, OSError):
-        pass
+        pass  # flock unavailable (Windows) or fd invalid: keep in-process lock only
 
 
 def _release_file_lock(f):
@@ -97,7 +97,7 @@ def _release_file_lock(f):
 
         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except (ImportError, OSError):
-        pass
+        pass  # flock unavailable or fd already closed
 
 
 class _LockedFile:
@@ -111,7 +111,7 @@ class _LockedFile:
         try:
             self._f.flush()
         except OSError:
-            pass
+            pass  # flush may fail on closed/invalid fd
         _release_file_lock(self._f)
         self._f.close()
         return False
