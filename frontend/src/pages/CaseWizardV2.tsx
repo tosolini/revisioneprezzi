@@ -287,12 +287,26 @@ export default function CaseWizardV2() {
   }
 
   // ----- Step 2: gestione CPV e ATECO -----
+  // Invalida stato derivato (step 4) quando cambia la classificazione
+  const invalidateDerivedForClassificationChange = () => {
+    setMappings({})
+    setPeriodCoverage(null)
+    setReportData(null)
+    setData(prev => {
+      if (prev.indices_config || prev.result) {
+        return { ...prev, indices_config: undefined, result: null }
+      }
+      return prev
+    })
+  }
+
   const addCpv = (code: string, description: string) => {
     setData(prev => {
       if (prev.cpv_selections.some(sel => sel.cpv_code === code)) return prev
       const list = [...prev.cpv_selections, { cpv_code: code, description, weight: undefined }]
-      return { ...prev, cpv_selections: list, cpv_code: list[0].cpv_code, cpv_description: list[0].description }
+      return { ...prev, cpv_selections: list, cpv_code: list[0].cpv_code, cpv_description: list[0].description, indices_config: undefined, result: null }
     })
+    invalidateDerivedForClassificationChange()
     setCpvModalOpen(false)
   }
 
@@ -304,22 +318,26 @@ export default function CaseWizardV2() {
         cpv_selections: list,
         cpv_code: list[0]?.cpv_code || '',
         cpv_description: list[0]?.description || '',
+        indices_config: undefined,
+        result: null,
       }
     })
+    invalidateDerivedForClassificationChange()
   }
 
   const updateCpvWeight = (atIndex: number, weight: number | undefined) => {
     setData(prev => {
       const list = prev.cpv_selections.map((sel, i) => i === atIndex ? { ...sel, weight } : sel)
-      return { ...prev, cpv_selections: list }
+      return { ...prev, cpv_selections: list, result: null }
     })
+    setReportData(null)
   }
 
   const onAtecoInput = (atIndex: number, value: string) => {
     setAtecoInputs(prev => ({ ...prev, [String(atIndex)]: value }))
     setData(prev => {
       const list = prev.ateco_selections.map((sel, i) => i === atIndex ? { ...sel, ateco_code: value } : sel)
-      return { ...prev, ateco_selections: list }
+      return { ...prev, ateco_selections: list, result: null }
     })
     if (!value.trim()) {
       setAtecoSuggestions([])
@@ -332,36 +350,44 @@ export default function CaseWizardV2() {
         description: String(r['description'] ?? ''),
       })) : []))
       .catch(() => setAtecoSuggestions([]))
+    // ATECO influisce sui pesi in step 4 (Tabella D punto 7): invalida mapping
+    invalidateDerivedForClassificationChange()
   }
 
   const pickAteco = (atIndex: number, code: string, description: string) => {
     setData(prev => {
       const list = prev.ateco_selections.map((sel, i) => i === atIndex ? { ...sel, ateco_code: code } : sel)
-      return { ...prev, ateco_selections: list }
+      return { ...prev, ateco_selections: list, result: null }
     })
     setAtecoInputs(prev => ({ ...prev, [String(atIndex)]: `${code} — ${description}` }))
     setAtecoSuggestions([])
+    invalidateDerivedForClassificationChange()
   }
 
   const addAteco = () => {
     setData(prev => ({
       ...prev,
       ateco_selections: [...prev.ateco_selections, { ateco_code: '', weight: 0 }],
+      result: null,
     }))
+    invalidateDerivedForClassificationChange()
   }
 
   const removeAteco = (atIndex: number) => {
     setData(prev => ({
       ...prev,
       ateco_selections: prev.ateco_selections.filter((_, i) => i !== atIndex),
+      result: null,
     }))
+    invalidateDerivedForClassificationChange()
   }
 
   const updateAtecoWeight = (atIndex: number, weight: number) => {
     setData(prev => {
       const list = prev.ateco_selections.map((sel, i) => i === atIndex ? { ...sel, weight } : sel)
-      return { ...prev, ateco_selections: list }
+      return { ...prev, ateco_selections: list, result: null }
     })
+    invalidateDerivedForClassificationChange()
   }
 
   // ----- Step 4: mapping Tabella D -----
@@ -422,7 +448,9 @@ export default function CaseWizardV2() {
   }
 
   const fetchMappings = useCallback(async (cpvSelections: CpvSelection[], atecoSelections: AtecoSelection[]) => {
+    // Mostra subito lo stato di caricamento e pulisce la copertura periodo stantia
     setMappingLoading(true)
+    setPeriodCoverage(null)
     const next: Record<string, CpvMapping> = {}
     await Promise.all(cpvSelections.map(async sel => {
       try {
@@ -464,10 +492,10 @@ export default function CaseWizardV2() {
 
   useEffect(() => {
     if (currentStep === 4) {
+      // Ricarica mapping quando si entra nello step 4 o quando cambia la classificazione mentre si è nello step 4
       fetchMappings(data.cpv_selections, data.ateco_selections)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep])
+  }, [currentStep, data.cpv_selections, data.ateco_selections, fetchMappings])
 
   // Copertura periodi: mostra chiaramente se i periodi richiesti esistono
   // nelle serie selezionate o vengono soddisfatti per fallback.
@@ -629,6 +657,10 @@ export default function CaseWizardV2() {
     setLoading(true)
     setError('')
 
+    // Conserva l'indices_config effettivamente usato per il calcolo (non quello stantio in data)
+    let calcIndicesConfig: IndicesConfig | null = null
+    let calcComponents: Array<{ amount: number; indices_config: IndicesConfig; description: string }> | null = null
+
     try {
       let response: Response
       if (data.contract_type === 'works' && data.tol_selections && data.tol_selections.length > 0) {
@@ -642,6 +674,7 @@ export default function CaseWizardV2() {
         } else {
           indicesConfig = { type: 'single', single_series_id: resolved[0].seriesId }
         }
+        calcIndicesConfig = indicesConfig
         response = await fetch('/api/v1/calculation/v2/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -662,6 +695,7 @@ export default function CaseWizardV2() {
           const sel = data.cpv_selections[0]
           const indicesConfig = buildIndicesConfig(sel)
           if (!indicesConfig) throw new Error('Impossibile determinare gli indici ISTAT per il CPV selezionato')
+          calcIndicesConfig = indicesConfig
           response = await fetch('/api/v1/calculation/v2/calculate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -686,6 +720,9 @@ export default function CaseWizardV2() {
               description: sel.description || sel.cpv_code,
             })
           }
+          calcComponents = components
+          // Per persistenza wizard, salva il primo componente come rappresentativo (wizard state è single)
+          calcIndicesConfig = components[0]?.indices_config ?? null
           response = await fetch('/api/v1/calculation/v2/calculate/multi-component', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -709,8 +746,12 @@ export default function CaseWizardV2() {
 
       const result = await response.json()
       setDataField('result', isRecord(result) ? result as unknown as CalcResultLike : { is_multi_component: true })
+      // Aggiorna anche indices_config nello stato locale per evitare staleness al prossimo giro
+      if (calcIndicesConfig) {
+        setData(prev => ({ ...prev, indices_config: calcIndicesConfig!, result: isRecord(result) ? result as unknown as CalcResultLike : { is_multi_component: true } }))
+      }
 
-      // Persistenza (incluso indices_config risolto)
+      // Persistenza (usa l'indices_config effettivamente calcolato, non quello stantio)
       if (id) {
         await fetch(`/api/v1/cases/${id}/wizard-v2`, {
           method: 'PUT',
@@ -726,12 +767,11 @@ export default function CaseWizardV2() {
             amount: data.amount,
             base_period: data.base_period || null,
             comparison_period: data.comparison_period || null,
-            indices_config: data.indices_config || null,
+            indices_config: calcIndicesConfig,
             result,
           })
         })
       }
-
       // Carica il report completo (result esplicito: evita closure stantia)
       await loadReport(result)
 
