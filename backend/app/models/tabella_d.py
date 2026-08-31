@@ -26,9 +26,7 @@ class CpvTabellaDAssociation(Base):
 
     __tablename__ = "cpv_tabella_d_association"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     #: Codice CPV della riga delle tabelle D.1/D.2/D.3 (normalizzato come nel
     #: sorgente). Nessuna FK a cpv_tabella_d_master: nel file sorgente i codici
     #: divergono (es. master "85110000" vs D.3 "85111000").
@@ -43,6 +41,4 @@ class CpvTabellaDAssociation(Base):
     #: anche codici composti (es. `691_692-702`): 20 caratteri bastano.
     ateco_code: Mapped[str] = mapped_column(String(20))
     index_description: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

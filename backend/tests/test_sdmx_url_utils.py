@@ -93,6 +93,8 @@ def test_resolve_no_query():
 
 
 def test_resolve_empty_endPeriod():
-    url = "https://esploradati.istat.it/SDMXWS/rest/data/IT1,DF,1.0/M.IT/ALL/?endPeriod=&detail=full"
+    url = (
+        "https://esploradati.istat.it/SDMXWS/rest/data/IT1,DF,1.0/M.IT/ALL/?endPeriod=&detail=full"
+    )
     resolved, meta = resolve_sdmx_url_dates(url, "last_month_end", today=date(2026, 7, 31))
     assert resolved == url

@@ -174,7 +174,9 @@ def resolve_sdmx_url_start_period(
         # se per errore il calcolo lo rendesse più recente, mantieni originale
         # confronta lessicograficamente solo se stesso formato; altrimenti fida
         params["startPeriod"] = resolved_value
-        resolved_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(params), ""))
+        resolved_url = urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path, urlencode(params), "")
+        )
         meta = {
             "startPeriod": resolved_value,
             "original_startPeriod": original_start,
@@ -198,14 +200,13 @@ def resolve_sdmx_url_dates_both(
     return resolved2, meta
 
 
-def resolve_sdmx_url_dates(
-    url: str, strategy: str, today: date | None = None
-) -> tuple[str, dict]:
+def resolve_sdmx_url_dates(url: str, strategy: str, today: date | None = None) -> tuple[str, dict]:
     """Riscrive `endPeriod` in `url` secondo `strategy`.
 
     strategy in ("fixed","last_month_end","today").
     Se fixed o endPeriod assente → ritorna url invariata.
-    Ritorna (resolved_url, meta) dove meta = {"endPeriod": ..., "original_endPeriod": ..., "target_date": ...}
+    Ritorna (resolved_url, meta) dove meta contiene
+        `endPeriod`, `original_endPeriod` e `target_date`.
     Nessuna eccezione verso chiamante.
     """
     try:
@@ -224,7 +225,9 @@ def resolve_sdmx_url_dates(
             return url, {}
         # determina target
         if strategy == "last_month_end":
-            target = last_month_end(today if today is not None else datetime.now(timezone.utc).date())
+            target = last_month_end(
+                today if today is not None else datetime.now(timezone.utc).date()
+            )
         elif strategy == "today":
             if today is not None:
                 target = today
@@ -236,7 +239,9 @@ def resolve_sdmx_url_dates(
         resolved_value = _format_like(original_end, target)
         # Ricostruisce params preservando ordine? dict mantiene ordine parse_qsl
         params["endPeriod"] = resolved_value
-        resolved_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(params), ""))
+        resolved_url = urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path, urlencode(params), "")
+        )
         meta = {
             "endPeriod": resolved_value,
             "original_endPeriod": original_end,

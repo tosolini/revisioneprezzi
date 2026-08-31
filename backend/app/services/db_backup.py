@@ -10,9 +10,9 @@ def _parse_db_url() -> dict:
     url = settings.database_url
     rest = url
     if rest.startswith("postgresql://"):
-        rest = rest[len("postgresql://"):]
+        rest = rest[len("postgresql://") :]
     elif rest.startswith("postgres://"):
-        rest = rest[len("postgres://"):]
+        rest = rest[len("postgres://") :]
     else:
         raise ValueError(f"Unsupported DATABASE_URL scheme: {url}")
 
@@ -32,10 +32,14 @@ def _parse_db_url() -> dict:
 
 def _pg_args(db_info: dict) -> list[str]:
     return [
-        "--host", db_info["host"],
-        "--port", db_info["port"],
-        "--username", db_info["user"],
-        "--dbname", db_info["dbname"],
+        "--host",
+        db_info["host"],
+        "--port",
+        db_info["port"],
+        "--username",
+        db_info["user"],
+        "--dbname",
+        db_info["dbname"],
     ]
 
 

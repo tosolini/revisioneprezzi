@@ -63,12 +63,7 @@ def search_ateco(q: str = Query("", min_length=1), db: Session = Depends(get_db)
         .limit(50)
         .all()
     )
-    return {
-        "results": [
-            {"code": r.ateco_code, "description": r.description}
-            for r in results
-        ]
-    }
+    return {"results": [{"code": r.ateco_code, "description": r.description} for r in results]}
 
 
 @router.post("/import")
@@ -100,7 +95,10 @@ def import_ateco(
             ttl_seconds=ttl_seconds,
         )
     except ProgrammingError as e:
-        raise HTTPException(status_code=500, detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}")  # noqa: E501
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}",  # noqa: E501
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore durante import: {e}")
     return {"imported": imported, "tried": tried}
@@ -113,15 +111,19 @@ def import_ateco_zip(file: UploadFile = File(...), db: Session = Depends(get_db)
     """
     from app.services.ateco_importer import import_from_zip
 
-    if not file.filename or not file.filename.lower().endswith('.zip'):
+    if not file.filename or not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Il file deve essere un archivio ZIP")
 
     try:
         from app.core.uploads import read_upload_limited
+
         contents = read_upload_limited(file)
         imported = import_from_zip(db, contents)
     except ProgrammingError as e:
-        raise HTTPException(status_code=500, detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}")  # noqa: E501
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore database: tabella ateco_catalog non trovata. Eseguire 'alembic upgrade head'. {e}",  # noqa: E501
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -132,8 +134,8 @@ def import_ateco_zip(file: UploadFile = File(...), db: Session = Depends(get_db)
     return {"imported": imported, "source": file.filename}
 
 
-@router.get('/cache_status')
-def cache_status(agency: str = 'IT1', version: str = '1.0'):
+@router.get("/cache_status")
+def cache_status(agency: str = "IT1", version: str = "1.0"):
     """Return cache metadata for known ATECO candidates (fetched_at or null)."""
     import json
     from pathlib import Path
@@ -146,22 +148,22 @@ def cache_status(agency: str = 'IT1', version: str = '1.0'):
         "CL_ATECO",
         "ACT",
     ]  # primary first, then fallbacks
-    cache_dir = Path(__file__).resolve().parents[1] / 'data' / 'sdmx_cache'
+    cache_dir = Path(__file__).resolve().parents[1] / "data" / "sdmx_cache"
     out = []
     for cand in candidates:
-        safe_name = f"{agency}_{cand}_{version}".replace('/', '_')
+        safe_name = f"{agency}_{cand}_{version}".replace("/", "_")
         p = cache_dir / f"{safe_name}.json"
         info = None
         if p.exists():
             try:
-                with p.open('r', encoding='utf-8') as f:
+                with p.open("r", encoding="utf-8") as f:
                     obj = json.load(f)
-                fetched = obj.get('fetched_at')
+                fetched = obj.get("fetched_at")
                 info = fetched
             except Exception:
                 info = None
-        out.append({'id': cand, 'fetched_at': info})
-    return {'candidates': out}
+        out.append({"id": cand, "fetched_at": info})
+    return {"candidates": out}
 
 
 @router.get("/last-import")
@@ -178,4 +180,3 @@ def get_ateco(code: str, db: Session = Depends(get_db)):
     if not entry:
         return {"code": code, "description": None}
     return {"code": entry.ateco_code, "description": entry.description}
-

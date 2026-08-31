@@ -99,18 +99,15 @@ def _point_import_config(monkeypatch, tmp_path):
 
 def _cleanup(db, group: str):
     ids = [
-        s.id for s in db.query(IndexSeries).filter(
-            IndexSeries.classification_ref == group
-        ).all()
+        s.id for s in db.query(IndexSeries).filter(IndexSeries.classification_ref == group).all()
     ]
     if ids:
-        db.query(IndexObservation).filter(
-            IndexObservation.series_id.in_(ids)
-        ).delete(synchronize_session=False)
-        db.query(IndexSeries).filter(IndexSeries.id.in_(ids)).delete(
+        db.query(IndexObservation).filter(IndexObservation.series_id.in_(ids)).delete(
             synchronize_session=False
         )
+        db.query(IndexSeries).filter(IndexSeries.id.in_(ids)).delete(synchronize_session=False)
         db.commit()
+
 
 def _start_and_poll(client, url: str, timeout: float = 10.0) -> dict:
     """POST (202) + polling del job fino a done/error."""
@@ -294,13 +291,16 @@ def test_fetch_sdmx_read_timeout_504(monkeypatch, tmp_path):
 # ── Validazione URL endpoint ────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("url", [
-    "http://esploradati.istat.it/SDMXWS/rest/data/IT1,145_376_DF_DCSC_PREZPRODSERV_1_7,1.0/Q..../ALL/",
-    "https://evil.example.com/SDMXWS/rest/data/IT1,145_376_DF_DCSC_PREZPRODSERV_1_7,1.0/Q..../ALL/",
-    "https://esploradati.istat.it/SDMXWS/rest/structure/dataflow/IT1/145_376_DF_DCSC_PREZPRODSERV_1_7/1.0/",
-    "https://esploradati.istat.it/SDMXWS/rest/data/IT1,X,1.0/Q..../ALL/",
-    "notaurl",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://esploradati.istat.it/SDMXWS/rest/data/IT1,145_376_DF_DCSC_PREZPRODSERV_1_7,1.0/Q..../ALL/",
+        "https://evil.example.com/SDMXWS/rest/data/IT1,145_376_DF_DCSC_PREZPRODSERV_1_7,1.0/Q..../ALL/",
+        "https://esploradati.istat.it/SDMXWS/rest/structure/dataflow/IT1/145_376_DF_DCSC_PREZPRODSERV_1_7/1.0/",
+        "https://esploradati.istat.it/SDMXWS/rest/data/IT1,X,1.0/Q..../ALL/",
+        "notaurl",
+    ],
+)
 def test_import_sdmx_rejects_bad_urls(client, url):
     resp = client.post("/api/v1/indices/import-sdmx", json={"url": url})
     assert resp.status_code == 422
@@ -334,9 +334,9 @@ def test_import_sdmx_multi_frequency_imports_as_is(client, db, monkeypatch, tmp_
     assert "/A+M....." in data["url"]
     assert len(called) == 1  # la query richiesta, una volta sola
     try:
-        assert db.query(IndexSeries).filter(
-            IndexSeries.id == "ISTAT_TEST_SDMX_49"
-        ).first() is not None
+        assert (
+            db.query(IndexSeries).filter(IndexSeries.id == "ISTAT_TEST_SDMX_49").first() is not None
+        )
     finally:
         _cleanup(db, "test_sdmx")
 
@@ -391,9 +391,9 @@ def test_import_sdmx_404_autofix_single_frequency(client, db, monkeypatch, tmp_p
     assert data["details"]["frequency_adjusted"] == "Q→M"
     assert "/M...." in data["url"]
     try:
-        assert db.query(IndexSeries).filter(
-            IndexSeries.id == "ISTAT_TEST_SDMX_49"
-        ).first() is not None
+        assert (
+            db.query(IndexSeries).filter(IndexSeries.id == "ISTAT_TEST_SDMX_49").first() is not None
+        )
     finally:
         _cleanup(db, "test_sdmx")
 
@@ -487,9 +487,10 @@ def test_import_sdmx_endpoint_flow(client, db, monkeypatch, tmp_path):
         assert s49.name == "Serie test 49"
         assert s49.frequency == "quarterly"
         obs = {
-            o.ref_period: o for o in db.query(IndexObservation).filter(
-                IndexObservation.series_id == "ISTAT_TEST_SDMX_49"
-            ).all()
+            o.ref_period: o
+            for o in db.query(IndexObservation)
+            .filter(IndexObservation.series_id == "ISTAT_TEST_SDMX_49")
+            .all()
         }
         assert obs[date(2024, 1, 1)].value == 111.7
         assert obs[date(2024, 1, 1)].is_definitive is True
@@ -504,9 +505,11 @@ def test_import_sdmx_endpoint_flow(client, db, monkeypatch, tmp_path):
         assert d2["updated"] == 3
         assert d2["series_created"] == 0
 
-        count = db.query(IndexObservation).filter(
-            IndexObservation.series_id == "ISTAT_TEST_SDMX_49"
-        ).count()
+        count = (
+            db.query(IndexObservation)
+            .filter(IndexObservation.series_id == "ISTAT_TEST_SDMX_49")
+            .count()
+        )
         assert count == 2
     finally:
         _cleanup(db, "test_sdmx")
@@ -519,11 +522,10 @@ def test_import_sdmx_content_rejects_mixed_frequencies(db, monkeypatch, tmp_path
 
     _point_import_config(monkeypatch, tmp_path)
     with pytest.raises(HTTPException) as exc:
-        import_sdmx_content(
-            MIXED_FREQ_CSV, db, group_key="test_sdmx", freq_param="quarterly"
-        )
+        import_sdmx_content(MIXED_FREQ_CSV, db, group_key="test_sdmx", freq_param="quarterly")
     assert exc.value.status_code == 422
     assert "frequenze" in exc.value.detail
+
 
 def test_import_sdmx_content_rejects_data_type_with_details(db, monkeypatch, tmp_path):
     """CSV con DATA_TYPE non filtrata (N vs R) deve fallire con detail strutturato
@@ -560,9 +562,11 @@ def test_import_sdmx_content_unknown_dataflow(db, monkeypatch, tmp_path):
         assert s is not None
         # FREQ=Q della colonna vince sul fallback
         assert s.frequency == "quarterly"
-        obs = db.query(IndexObservation).filter(
-            IndexObservation.series_id == "ISTAT_TEST_UNKNOWN_AAA"
-        ).first()
+        obs = (
+            db.query(IndexObservation)
+            .filter(IndexObservation.series_id == "ISTAT_TEST_UNKNOWN_AAA")
+            .first()
+        )
         assert obs.value == 100.0
         assert obs.is_definitive is True
     finally:
@@ -606,15 +610,17 @@ def test_clear_series_observations(client, db):
     from app.models.audit_log import AuditLog
 
     sid = f"TST_CLEAR_{_uuid.uuid4().hex[:6]}"
-    db.add(IndexSeries(
-        id=sid, name="Svuota Test", source="TEST", classification_ref="test_clear"
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2024, 1, 1), value=100.0, is_definitive=True
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2024, 4, 1), value=101.0, is_definitive=True
-    ))
+    db.add(IndexSeries(id=sid, name="Svuota Test", source="TEST", classification_ref="test_clear"))
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2024, 1, 1), value=100.0, is_definitive=True
+        )
+    )
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2024, 4, 1), value=101.0, is_definitive=True
+        )
+    )
     db.commit()
     try:
         resp = client.delete(f"/api/v1/indices/{sid}/observations")
@@ -635,12 +641,10 @@ def test_clear_series_observations(client, db):
         assert len(audit) >= 1
         assert audit[-1].payload_json is not None
     finally:
-        db.query(IndexObservation).filter(
-            IndexObservation.series_id == sid
-        ).delete(synchronize_session=False)
-        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(
+        db.query(IndexObservation).filter(IndexObservation.series_id == sid).delete(
             synchronize_session=False
         )
+        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(synchronize_session=False)
         db.commit()
 
 

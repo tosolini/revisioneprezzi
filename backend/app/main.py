@@ -64,5 +64,5 @@ def get_features():
     """
     return {
         "use_wizard_v2": settings.use_wizard_v2,
-        "wizard_v2_route": "/cases/{id}/wizard-v2" if settings.use_wizard_v2 else None
+        "wizard_v2_route": "/cases/{id}/wizard-v2" if settings.use_wizard_v2 else None,
     }

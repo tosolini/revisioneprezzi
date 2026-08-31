@@ -90,9 +90,7 @@ def calculate(payload: FullCalcRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/composite")
-def calculate_composite_endpoint(
-    payload: CompositeCalcRequest, db: Session = Depends(get_db)
-):
+def calculate_composite_endpoint(payload: CompositeCalcRequest, db: Session = Depends(get_db)):
     result = calculate_composite(
         db=db,
         components=[c.model_dump() for c in payload.components],

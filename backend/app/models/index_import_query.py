@@ -18,18 +18,12 @@ class IndexImportQuery(Base):
 
     __tablename__ = "index_import_query"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     url: Mapped[str] = mapped_column(Text)
     dataflow_id: Mapped[str] = mapped_column(String(100))
     key_part: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_period_strategy: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="last_month_end", default="last_month_end"
@@ -38,13 +32,12 @@ class IndexImportQuery(Base):
         String(20), nullable=False, server_default="fixed", default="fixed"
     )
 
+
 class IndexImportQuerySeries(Base):
     """Link N-N tra query salvata e serie toccate dall'import."""
 
     __tablename__ = "index_import_query_series"
-    __table_args__ = (
-        UniqueConstraint("query_id", "series_id", name="uq_query_series"),
-    )
+    __table_args__ = (UniqueConstraint("query_id", "series_id", name="uq_query_series"),)
 
     query_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

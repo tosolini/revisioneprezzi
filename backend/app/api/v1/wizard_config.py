@@ -15,5 +15,6 @@ def wizard_step_config(step: int):
     config = get_step_config(step)
     if not config:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Step not found")
     return config

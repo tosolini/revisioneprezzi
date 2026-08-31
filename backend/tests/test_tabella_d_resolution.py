@@ -48,30 +48,22 @@ def test_resolve_unknown(db):
 
 
 def test_resolve_series_ppi(db):
-    detail = resolve_series(
-        {"index_type": "PPI", "ateco_code": "263"}, db
-    )
+    detail = resolve_series({"index_type": "PPI", "ateco_code": "263"}, db)
     assert detail["series_id"] == "ISTAT_PPI_263_D"
 
 
 def test_resolve_series_ir(db):
-    detail = resolve_series(
-        {"index_type": "IR", "ateco_code": "951"}, db
-    )
+    detail = resolve_series({"index_type": "IR", "ateco_code": "951"}, db)
     assert detail["series_id"] == "ISTAT_RCO_SETT_S"
 
 
 def test_resolve_series_ir_section_letter(db):
-    detail = resolve_series(
-        {"index_type": "IR", "ateco_code": "A"}, db
-    )
+    detail = resolve_series({"index_type": "IR", "ateco_code": "A"}, db)
     assert detail["series_id"] == "ISTAT_RCO_SETT_A"
 
 
 def test_resolve_series_pps_fallback(db):
-    detail = resolve_series(
-        {"index_type": "PPS", "ateco_code": "999"}, db
-    )
+    detail = resolve_series({"index_type": "PPS", "ateco_code": "999"}, db)
     assert detail["series_id"] == "ISTAT_PS_BTOB_TOT"
 
 

@@ -16,12 +16,8 @@ class IndexSeries(Base):
     classification_ref: Mapped[str | None] = mapped_column(
         String(100), comment="ATECO/ECOICOP reference"
     )
-    frequency: Mapped[str | None] = mapped_column(
-        String(20), comment="monthly|quarterly|yearly"
-    )
+    frequency: Mapped[str | None] = mapped_column(String(20), comment="monthly|quarterly|yearly")
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     observations = relationship("IndexObservation", back_populates="series")

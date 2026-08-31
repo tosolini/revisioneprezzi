@@ -96,11 +96,13 @@ def cpv_index_mapping(payload: CpvIndexMappingRequest, db: Session = Depends(get
     associations = []
     for assoc in result["associations"]:
         series = resolve_series(assoc, db)
-        associations.append({
-            **assoc,
-            "series_id": series["series_id"],
-            "available": series["available"],
-        })
+        associations.append(
+            {
+                **assoc,
+                "series_id": series["series_id"],
+                "available": series["available"],
+            }
+        )
     return {
         "cpv_code": result["cpv_code"],
         "resolved_cpv_code": result["resolved_cpv_code"],

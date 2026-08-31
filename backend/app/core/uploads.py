@@ -32,4 +32,3 @@ def read_upload_limited(file: UploadFile, max_bytes: int = MAX_UPLOAD_BYTES) -> 
             )
         chunks.append(chunk)
     return b"".join(chunks)
-

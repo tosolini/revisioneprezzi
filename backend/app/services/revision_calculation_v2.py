@@ -2,6 +2,7 @@
 Servizio di calcolo revisione prezzi semplificato secondo D.lgs 36/2023 Allegato II.2-bis
 Supporta sia LAVORI (TOL) che SERVIZI/FORNITURE (CPV)
 """
+
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, getcontext
 from typing import Any, Literal
@@ -20,18 +21,18 @@ NORMATIVE_PARAMS = {
     "works": {
         "threshold_percent": 3.0,
         "recognition_rate_percent": 90.0,
-        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Lavori"
+        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Lavori",
     },
     "services": {
         "threshold_percent": 5.0,
         "recognition_rate_percent": 80.0,
-        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Servizi"
+        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Servizi",
     },
     "supplies": {
         "threshold_percent": 5.0,
         "recognition_rate_percent": 80.0,
-        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Forniture"
-    }
+        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Forniture",
+    },
 }
 
 
@@ -39,6 +40,7 @@ def _round(val: float, decimals: int = 2) -> float:
     """Arrotonda un valore con precisione specificata"""
     d = Decimal(str(val)).quantize(Decimal(10) ** -decimals, rounding=ROUND_HALF_UP)
     return float(d)
+
 
 def _add_months(d: date, n: int) -> date:
     """Somma n mesi a una data (giorno conservato; qui sempre primo del mese)."""
@@ -135,39 +137,40 @@ def calculate_period_coverage(
     """
     coverage = []
     for series_id, weight in components.items():
-        base_value, used_base, base_exact = _get_index_observation(
-            db, series_id, base_period
+        base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
+        comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
+        coverage.append(
+            {
+                "series_id": series_id,
+                "weight": weight,
+                "base": {
+                    "requested": base_period.isoformat(),
+                    "used": used_base.isoformat() if used_base else None,
+                    "value": base_value,
+                    "exact": base_exact,
+                    "missing_months": (
+                        _missing_months(used_base, base_period)
+                        if used_base and not base_exact
+                        else []
+                    ),
+                },
+                "comparison": {
+                    "requested": comparison_period.isoformat(),
+                    "used": used_comp.isoformat() if used_comp else None,
+                    "value": comp_value,
+                    "exact": comp_exact,
+                    "missing_months": (
+                        _missing_months(used_comp, comparison_period)
+                        if used_comp and not comp_exact
+                        else []
+                    ),
+                },
+                "satisfied": bool(base_exact and comp_exact),
+                "missing": base_value is None or comp_value is None,
+            }
         )
-        comp_value, used_comp, comp_exact = _get_index_observation(
-            db, series_id, comparison_period
-        )
-        coverage.append({
-            "series_id": series_id,
-            "weight": weight,
-            "base": {
-                "requested": base_period.isoformat(),
-                "used": used_base.isoformat() if used_base else None,
-                "value": base_value,
-                "exact": base_exact,
-                "missing_months": (
-                    _missing_months(used_base, base_period)
-                    if used_base and not base_exact else []
-                ),
-            },
-            "comparison": {
-                "requested": comparison_period.isoformat(),
-                "used": used_comp.isoformat() if used_comp else None,
-                "value": comp_value,
-                "exact": comp_exact,
-                "missing_months": (
-                    _missing_months(used_comp, comparison_period)
-                    if used_comp and not comp_exact else []
-                ),
-            },
-            "satisfied": bool(base_exact and comp_exact),
-            "missing": base_value is None or comp_value is None,
-        })
     return coverage
+
 
 def _get_index_observation(
     db: Session, series_id: str, period: date
@@ -224,6 +227,7 @@ def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
     value, _used, _exact = _get_index_observation(db, series_id, period)
     return value
 
+
 def _periods_evidence(
     db: Session, series_ids: list[str], base_period: date, comparison_period: date
 ) -> dict:
@@ -272,30 +276,30 @@ def _periods_evidence(
 def calculate_synthetic_index(
     db: Session,
     indices: dict[str, float],  # {series_id: weight_percent}
-    period: date
+    period: date,
 ) -> tuple[float | None, list[str]]:
     """
     Calcola indice sintetico ponderato (per LAVORI multi-TOL o SERVIZI/FORNITURE multi-indice)
-    
+
     Formula: Is = Σ(pi × ITOLi) dove pi è il peso percentuale
-    
+
     Returns:
         (indice_sintetico, errori)
     """
     total_weight = sum(indices.values())
     if abs(total_weight - 100.0) > 0.01:
         return None, [f"I pesi devono sommarsi a 100% (attuale: {total_weight}%)"]
-    
+
     errors = []
     synthetic = 0.0
-    
+
     for series_id, weight in indices.items():
         value = _get_index_value(db, series_id, period)
         if value is None:
             errors.append(f"Indice {series_id} non trovato per {period}")
             continue
         synthetic += (weight / 100.0) * value
-    
+
     return _round(synthetic, 4), []
 
 
@@ -324,12 +328,8 @@ def calculate_weighted_variation(
     weighted_sum = 0.0
 
     for series_id, weight in components.items():
-        base_value, used_base, base_exact = _get_index_observation(
-            db, series_id, base_period
-        )
-        comp_value, used_comp, comp_exact = _get_index_observation(
-            db, series_id, comparison_period
-        )
+        base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
+        comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
         if base_value is None or comp_value is None:
             missing = []
             if base_value is None:
@@ -341,26 +341,28 @@ def calculate_weighted_variation(
         variation = ((comp_value - base_value) / base_value) * 100
         variation = _round(variation, 4)
         contribution = _round((weight / 100.0) * variation, 4)
-        details.append({
-            "series_id": series_id,
-            "weight": weight,
-            "base_value": base_value,
-            "comparison_value": comp_value,
-            "variation_percent": variation,
-            "contribution_percent": contribution,
-            "used_base_period": used_base.isoformat() if used_base else None,
-            "used_comparison_period": used_comp.isoformat() if used_comp else None,
-            "base_exact": base_exact,
-            "comparison_exact": comp_exact,
-            "missing_base_months": (
-                _missing_months(used_base, base_period)
-                if used_base and not base_exact else []
-            ),
-            "missing_comparison_months": (
-                _missing_months(used_comp, comparison_period)
-                if used_comp and not comp_exact else []
-            ),
-        })
+        details.append(
+            {
+                "series_id": series_id,
+                "weight": weight,
+                "base_value": base_value,
+                "comparison_value": comp_value,
+                "variation_percent": variation,
+                "contribution_percent": contribution,
+                "used_base_period": used_base.isoformat() if used_base else None,
+                "used_comparison_period": used_comp.isoformat() if used_comp else None,
+                "base_exact": base_exact,
+                "comparison_exact": comp_exact,
+                "missing_base_months": (
+                    _missing_months(used_base, base_period) if used_base and not base_exact else []
+                ),
+                "missing_comparison_months": (
+                    _missing_months(used_comp, comparison_period)
+                    if used_comp and not comp_exact
+                    else []
+                ),
+            }
+        )
         weighted_sum += contribution
 
     if errors:
@@ -379,7 +381,7 @@ def calculate_price_revision(
 ) -> dict[str, Any]:
     """
     Calcola revisione prezzi secondo il nuovo schema semplificato
-    
+
     Args:
         contract_type: 'works', 'services' o 'supplies'
         amount: importo assoggettabile a revisione
@@ -390,7 +392,7 @@ def calculate_price_revision(
             'single_series_id': str (se type='single'),
             'components': {series_id: weight_percent} (se type='composite')
         }
-    
+
     Returns:
         Dizionario con risultato calcolo completo
     """
@@ -398,23 +400,25 @@ def calculate_price_revision(
     params = NORMATIVE_PARAMS[contract_type]
     threshold = params["threshold_percent"]
     coefficient = params["recognition_rate_percent"]
-    
+
     steps = []
-    steps.append({
-        "step": 0,
-        "description": "Parametri normativi applicabili",
-        "details": {
-            "tipo_contratto": contract_type,
-            "soglia_attivazione": f"{threshold}%",
-            "coefficiente_riconoscimento": f"{coefficient}%",
-            "riferimento": params["reference"]
-        },
-        "result": f"Soglia {threshold}%, Coefficiente {coefficient}%"
-    })
-    
+    steps.append(
+        {
+            "step": 0,
+            "description": "Parametri normativi applicabili",
+            "details": {
+                "tipo_contratto": contract_type,
+                "soglia_attivazione": f"{threshold}%",
+                "coefficiente_riconoscimento": f"{coefficient}%",
+                "riferimento": params["reference"],
+            },
+            "result": f"Soglia {threshold}%, Coefficiente {coefficient}%",
+        }
+    )
+
     # 2. Calcola indici base e confronto
     index_type = indices_config.get("type", "single")
-    
+
     method = indices_config.get("method", "weighted_values")
     weighted_component_variations = None
 
@@ -422,7 +426,7 @@ def calculate_price_revision(
         series_id = indices_config["single_series_id"]
         base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
         comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
-        
+
         if base_value is None or comp_value is None:
             missing_parts = []
             if base_value is None:
@@ -451,23 +455,25 @@ def calculate_price_revision(
                 "base_period": base_period.isoformat(),
                 "comparison_period": comparison_period.isoformat(),
             }
-        
-        steps.append({
-            "step": 1,
-            "description": "Recupero indici ISTAT",
-            "details": {
-                "serie": series_id,
-                "periodo_base": base_period.isoformat(),
-                "valore_base": base_value,
-                "periodo_confronto": comparison_period.isoformat(),
-                "valore_confronto": comp_value
-            },
-            "result": f"Indice base: {base_value}, Indice confronto: {comp_value}"
-        })
-    
+
+        steps.append(
+            {
+                "step": 1,
+                "description": "Recupero indici ISTAT",
+                "details": {
+                    "serie": series_id,
+                    "periodo_base": base_period.isoformat(),
+                    "valore_base": base_value,
+                    "periodo_confronto": comparison_period.isoformat(),
+                    "valore_confronto": comp_value,
+                },
+                "result": f"Indice base: {base_value}, Indice confronto: {comp_value}",
+            }
+        )
+
     else:  # composite
         components = indices_config["components"]
-        
+
         method = indices_config.get("method", "weighted_values")
         weighted_component_variations = None
 
@@ -509,40 +515,43 @@ def calculate_price_revision(
                 for d in comp_details
             ]
             terms = [
-                f"({d['weight'] / 100:.2f})×{d['variation_percent']:.4f}"
-                for d in component_details
+                f"({d['weight'] / 100:.2f})×{d['variation_percent']:.4f}" for d in component_details
             ]
             calculation_display = "Vt = " + " + ".join(terms) + f" = {variation_w:.4f}%"
 
-        steps.append({
-            "step": 1,
-            "description": (
-                "Calcolo media ponderata delle variazioni"
-                if method == "weighted_variations"
-                else "Calcolo indice sintetico ponderato"
-            ),
-            "details": {
-                "componenti": components,
-                "formula": (
-                    "Vt = Σ(wi/100)·Vt(i), Vt(i) = ((Ii_confronto − Ii_base)/Ii_base) × 100"
+        steps.append(
+            {
+                "step": 1,
+                "description": (
+                    "Calcolo media ponderata delle variazioni"
                     if method == "weighted_variations"
-                    else "Is = Σ(pi × Ii) dove pi è il peso percentuale"
+                    else "Calcolo indice sintetico ponderato"
                 ),
-                "periodo_base": base_period.isoformat(),
-                "indice_sintetico_base": base_value,
-                "periodo_confronto": comparison_period.isoformat(),
-                "indice_sintetico_confronto": comp_value,
-                **({"component_details": component_details,
-                    "calculation": calculation_display}
-                   if method == "weighted_variations" else {}),
-            },
-            "result": (
-                f"Vt = {variation_w}%"
-                if method == "weighted_variations"
-                else f"Is base: {base_value}, Is confronto: {comp_value}"
-            ),
-        })
-    
+                "details": {
+                    "componenti": components,
+                    "formula": (
+                        "Vt = Σ(wi/100)·Vt(i), Vt(i) = ((Ii_confronto − Ii_base)/Ii_base) × 100"
+                        if method == "weighted_variations"
+                        else "Is = Σ(pi × Ii) dove pi è il peso percentuale"
+                    ),
+                    "periodo_base": base_period.isoformat(),
+                    "indice_sintetico_base": base_value,
+                    "periodo_confronto": comparison_period.isoformat(),
+                    "indice_sintetico_confronto": comp_value,
+                    **(
+                        {"component_details": component_details, "calculation": calculation_display}
+                        if method == "weighted_variations"
+                        else {}
+                    ),
+                },
+                "result": (
+                    f"Vt = {variation_w}%"
+                    if method == "weighted_variations"
+                    else f"Is base: {base_value}, Is confronto: {comp_value}"
+                ),
+            }
+        )
+
     # Evidenza sui periodi richiesti: mesi non registrati e periodo usato.
     period_evidence = _periods_evidence(
         db,
@@ -557,26 +566,30 @@ def calculate_price_revision(
     else:
         variation = ((comp_value - base_value) / base_value) * 100
         variation = _round(variation, 4)
-    
-    steps.append({
-        "step": 2,
-        "description": "Calcolo variazione percentuale",
-        "formula": "((I_confronto - I_base) / I_base) × 100",
-        "calculation": f"(({comp_value} - {base_value}) / {base_value}) × 100",
-        "result": f"{variation}%"
-    })
-    
+
+    steps.append(
+        {
+            "step": 2,
+            "description": "Calcolo variazione percentuale",
+            "formula": "((I_confronto - I_base) / I_base) × 100",
+            "calculation": f"(({comp_value} - {base_value}) / {base_value}) × 100",
+            "result": f"{variation}%",
+        }
+    )
+
     # 4. Verifica superamento soglia
     is_threshold_exceeded = abs(variation) > threshold
-    
-    steps.append({
-        "step": 3,
-        "description": "Verifica soglia di attivazione",
-        "formula": "|Variazione%| > Soglia%",
-        "calculation": f"|{variation}%| > {threshold}%",
-        "result": "SOGLIA SUPERATA" if is_threshold_exceeded else "SOGLIA NON SUPERATA"
-    })
-    
+
+    steps.append(
+        {
+            "step": 3,
+            "description": "Verifica soglia di attivazione",
+            "formula": "|Variazione%| > Soglia%",
+            "calculation": f"|{variation}%| > {threshold}%",
+            "result": "SOGLIA SUPERATA" if is_threshold_exceeded else "SOGLIA NON SUPERATA",
+        }
+    )
+
     if not is_threshold_exceeded:
         return {
             "contract_type": contract_type,
@@ -592,68 +605,68 @@ def calculate_price_revision(
             "recognition_percent": coefficient,
             "revision_amount": 0.0,
             "formula_detail": "\n".join(
-                f"Passo {s['step']}: {s['description']} — {s['result']}" 
-                for s in steps
+                f"Passo {s['step']}: {s['description']} — {s['result']}" for s in steps
             ),
             "steps": steps,
             "is_applicable": False,
-            "summary": f"Nessuna revisione: variazione {variation}% entro soglia {threshold}%"
+            "summary": f"Nessuna revisione: variazione {variation}% entro soglia {threshold}%",
         }
-    
+
     # 5. Calcola eccedenza rispetto alla soglia
     # Mantiene il segno della variazione (positivo = aumento, negativo = diminuzione)
     if variation > 0:
         excess = variation - threshold
     else:
         excess = variation + threshold
-    
+
     excess = _round(excess, 4)
-    
-    steps.append({
-        "step": 4,
-        "description": "Calcolo quota eccedente la soglia",
-        "formula": "Variazione% - Soglia% (se positiva) o Variazione% + Soglia% (se negativa)",
-        "calculation": f"{variation}% {'−' if variation > 0 else '+'} {threshold}% = {excess}%",
-        "result": f"Eccedenza: {excess}%"
-    })
-    
+
+    steps.append(
+        {
+            "step": 4,
+            "description": "Calcolo quota eccedente la soglia",
+            "formula": "Variazione% - Soglia% (se positiva) o Variazione% + Soglia% (se negativa)",
+            "calculation": f"{variation}% {'−' if variation > 0 else '+'} {threshold}% = {excess}%",
+            "result": f"Eccedenza: {excess}%",
+        }
+    )
+
     # 6. Applicazione coefficiente di riconoscimento
     revision_amount = amount * (excess / 100.0) * (coefficient / 100.0)
     revision_amount = _round(revision_amount, 2)
-    
-    steps.append({
-        "step": 5,
-        "description": "Applicazione coefficiente di riconoscimento",
-        "formula": "Importo × (Eccedenza% / 100) × (Coefficiente% / 100)",
-        "calculation": f"€ {amount:,.2f} × ({excess} / 100) × ({coefficient} / 100)",
-        "result": f"€ {revision_amount:,.2f}"
-    })
-    
+
+    steps.append(
+        {
+            "step": 5,
+            "description": "Applicazione coefficiente di riconoscimento",
+            "formula": "Importo × (Eccedenza% / 100) × (Coefficiente% / 100)",
+            "calculation": f"€ {amount:,.2f} × ({excess} / 100) × ({coefficient} / 100)",
+            "result": f"€ {revision_amount:,.2f}",
+        }
+    )
+
     # 7. Determina tipologia (aumento/diminuzione)
     revision_type = (
-        "aumento" if revision_amount > 0
-        else "diminuzione" if revision_amount < 0
-        else "nulla"
+        "aumento" if revision_amount > 0 else "diminuzione" if revision_amount < 0 else "nulla"
     )
-    
+
     return {
         "contract_type": contract_type,
         "indices_config": indices_config,
         "base_value": base_value,
         "comparison_value": comp_value,
-                    "variation_percent": variation,
-            "weighted_component_variations": weighted_component_variations,
-            "period_evidence": period_evidence,
-            "threshold_percent": threshold,
-            "threshold_exceeded": True,
+        "variation_percent": variation,
+        "weighted_component_variations": weighted_component_variations,
+        "period_evidence": period_evidence,
+        "threshold_percent": threshold,
+        "threshold_exceeded": True,
         "excess_percent": excess,
         "recognition_percent": coefficient,
         "revision_amount": revision_amount,
         "revision_amount_abs": abs(revision_amount),
         "revision_type": revision_type,
         "formula_detail": "\n".join(
-            f"Passo {s['step']}: {s['description']} — {s['result']}" 
-            for s in steps
+            f"Passo {s['step']}: {s['description']} — {s['result']}" for s in steps
         ),
         "steps": steps,
         "is_applicable": True,
@@ -663,7 +676,7 @@ def calculate_price_revision(
             f"(variazione {variation}%, eccedenza {excess}%, "
             f"coefficiente {coefficient}%)"
         ),
-        "normative_reference": params["reference"]
+        "normative_reference": params["reference"],
     }
 
 
@@ -676,20 +689,20 @@ def calculate_multi_component_revision(
 ) -> dict[str, Any]:
     """
     Calcolo revisione per contratti multi-componente (Art. 13 - Appalti multi-oggetto)
-    
+
     Applicabile a:
     - Contratti con prestazioni di natura diversa (CPV diversi)
     - Ogni componente può avere indici diversi
-    
+
     La clausola si attiva solo se la variazione complessiva supera il 5%
     """
     params = NORMATIVE_PARAMS[contract_type]
     threshold = params["threshold_percent"]
-    
+
     component_results = []
     total_amount = 0.0
     weighted_revision = 0.0
-    
+
     for i, comp in enumerate(components):
         result = calculate_price_revision(
             db=db,
@@ -697,9 +710,9 @@ def calculate_multi_component_revision(
             amount=comp["amount"],
             base_period=base_period,
             comparison_period=comparison_period,
-            indices_config=comp["indices_config"]
+            indices_config=comp["indices_config"],
         )
-        
+
         if "error" in result:
             return {
                 "error": (
@@ -707,23 +720,25 @@ def calculate_multi_component_revision(
                     f"{result['error']}"
                 ),
             }
-        
-        component_results.append({
-            "component_index": i + 1,
-            "description": comp.get("description", f"Componente {i+1}"),
-            "amount": comp["amount"],
-            "result": result
-        })
-        
+
+        component_results.append(
+            {
+                "component_index": i + 1,
+                "description": comp.get("description", f"Componente {i + 1}"),
+                "amount": comp["amount"],
+                "result": result,
+            }
+        )
+
         total_amount += comp["amount"]
         weighted_revision += result["revision_amount"]
-    
+
     # Calcola variazione percentuale complessiva
     overall_variation = (weighted_revision / total_amount) * 100 if total_amount > 0 else 0
     overall_variation = _round(overall_variation, 4)
-    
+
     is_threshold_exceeded = abs(overall_variation) > threshold
-    
+
     return {
         "is_multi_component": True,
         "contract_type": contract_type,
@@ -740,5 +755,5 @@ def calculate_multi_component_revision(
             f"{'Soglia SUPERATA' if is_threshold_exceeded else 'Soglia NON superata'}. "
             f"Revisione: € {abs(weighted_revision) if is_threshold_exceeded else 0:,.2f}"
         ),
-        "normative_reference": f"{params['reference']}, Art. 13 - Appalti multi-oggetto"
+        "normative_reference": f"{params['reference']}, Art. 13 - Appalti multi-oggetto",
     }

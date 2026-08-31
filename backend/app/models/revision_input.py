@@ -11,9 +11,7 @@ from app.core.database import Base
 class RevisionInput(Base):
     __tablename__ = "revision_input"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     case_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("case_file.id"), unique=True
     )
@@ -26,8 +24,6 @@ class RevisionInput(Base):
         Text, comment="JSON weights for multi-index"
     )
     notes: Mapped[str | None] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     case_file = relationship("CaseFile", back_populates="revision_input")

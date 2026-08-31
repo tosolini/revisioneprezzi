@@ -15,12 +15,16 @@ def _make_series(db):
 
 def test_single_index_above_threshold(db):
     sid = _make_series(db)
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
-    ))
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
+        )
+    )
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
+        )
+    )
     db.commit()
 
     result = calculate_single(db, sid, date(2023, 1, 1), date(2025, 1, 1), 100000.0, 5.0, 80.0)
@@ -33,12 +37,16 @@ def test_single_index_above_threshold(db):
 
 def test_single_index_below_threshold(db):
     sid = _make_series(db)
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2024, 1, 1), value=100.0, is_definitive=True
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2025, 1, 1), value=103.0, is_definitive=True
-    ))
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2024, 1, 1), value=100.0, is_definitive=True
+        )
+    )
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2025, 1, 1), value=103.0, is_definitive=True
+        )
+    )
     db.commit()
 
     result = calculate_single(db, sid, date(2024, 1, 1), date(2025, 1, 1), 100000.0, 5.0, 80.0)

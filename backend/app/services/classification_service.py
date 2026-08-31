@@ -21,30 +21,32 @@ def _match_cpv_pattern(cpv: str, pattern: str) -> bool:
     return cpv.startswith(pattern)
 
 
-def classify(cpv_primary: str, db: Session, contract_type: str | None = None,
-             labour_intensive: bool | None = None,
-             instant_execution: bool | None = None) -> dict[str, Any]:
+def classify(
+    cpv_primary: str,
+    db: Session,
+    contract_type: str | None = None,
+    labour_intensive: bool | None = None,
+    instant_execution: bool | None = None,
+) -> dict[str, Any]:
     candidates = []
     questions = []
     warnings = []
 
     # 1. Cerca mapping nel DB (caricati da CSV seed)
-    mappings = (
-        db.query(FamilyMapping)
-        .filter(FamilyMapping.cpv_pattern.isnot(None))
-        .all()
-    )
+    mappings = db.query(FamilyMapping).filter(FamilyMapping.cpv_pattern.isnot(None)).all()
     for m in mappings:
         if cpv_primary.startswith(m.cpv_pattern):
             family_info = _get_family_info(m.family)
             strength_map = {"strong": "high", "medium": "medium", "weak": "low"}
-            candidates.append({
-                "family": m.family,
-                "label": family_info.get("label", m.family) if family_info else m.family,
-                "confidence": strength_map.get(m.strength, m.strength),
-                "source": "cpv_mapping",
-                "note": m.mapping_note,
-            })
+            candidates.append(
+                {
+                    "family": m.family,
+                    "label": family_info.get("label", m.family) if family_info else m.family,
+                    "confidence": strength_map.get(m.strength, m.strength),
+                    "source": "cpv_mapping",
+                    "note": m.mapping_note,
+                }
+            )
 
     # 2. Cerca descrizione CPV nel catalogo
     cpv_entry = db.query(CpvCatalog).filter(CpvCatalog.cpv_code == cpv_primary).first()
@@ -76,13 +78,15 @@ def classify(cpv_primary: str, db: Session, contract_type: str | None = None,
             family = then.get("family")
             if family:
                 family_info = _get_family_info(family)
-                candidates.append({
-                    "family": family,
-                    "label": family_info.get("label", family) if family_info else family,
-                    "confidence": then.get("confidence", "low"),
-                    "source": "rule_engine",
-                    "note": then.get("note", ""),
-                })
+                candidates.append(
+                    {
+                        "family": family,
+                        "label": family_info.get("label", family) if family_info else family,
+                        "confidence": then.get("confidence", "low"),
+                        "source": "rule_engine",
+                        "note": then.get("note", ""),
+                    }
+                )
 
             if "follow_up_questions" in rule:
                 questions.extend(rule["follow_up_questions"])
@@ -99,15 +103,19 @@ def classify(cpv_primary: str, db: Session, contract_type: str | None = None,
 
     # 5. Se non ci sono candidati, mostra tutte le famiglie per scelta manuale
     if not candidates:
-        warnings.append("Nessuna famiglia automatica trovata per il CPV specificato. Selezionare manualmente la famiglia revisionale appropriata tra quelle elencate.")  # noqa: E501
+        warnings.append(
+            "Nessuna famiglia automatica trovata per il CPV specificato. Selezionare manualmente la famiglia revisionale appropriata tra quelle elencate."  # noqa: E501
+        )
         for f in RULES.get("families", []):
-            candidates.append({
-                "family": f["id"],
-                "label": f["label"],
-                "confidence": "low",
-                "source": "manual",
-                "note": f.get("description", ""),
-            })
+            candidates.append(
+                {
+                    "family": f["id"],
+                    "label": f["label"],
+                    "confidence": "low",
+                    "source": "manual",
+                    "note": f.get("description", ""),
+                }
+            )
 
     # 6. Determina confidenza complessiva
     max_conf = max((_confidence_rank(c["confidence"]) for c in candidates), default=0)

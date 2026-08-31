@@ -18,7 +18,7 @@ HTTP_TIMEOUT = {
     "write": 120.0,
     "pool": 120.0,
 }
-RATE_LIMIT_DELAY = 12       # ISTAT max 5 req/min → at least 12s between requests
+RATE_LIMIT_DELAY = 12  # ISTAT max 5 req/min → at least 12s between requests
 
 CACHE_DIR = Path(__file__).resolve().parents[1] / "data" / "sdmx_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -89,7 +89,7 @@ def _extract_codes_from_obj(obj: Any) -> List[Dict[str, str]]:
 
 
 def _cache_path(agency: str, cand: str, version: str) -> Path:
-    safe_name = f"{agency}_{cand}_{version}".replace('/', '_')
+    safe_name = f"{agency}_{cand}_{version}".replace("/", "_")
     return CACHE_DIR / f"{safe_name}.json"
 
 
@@ -98,7 +98,7 @@ def _read_cache(agency: str, cand: str, version: str, ttl_seconds: int) -> Any |
     if not p.exists():
         return None
     try:
-        with p.open('r', encoding='utf-8') as f:
+        with p.open("r", encoding="utf-8") as f:
             obj = json.load(f)
         fetched = obj.get("fetched_at", 0)
         if time.time() - fetched > ttl_seconds:
@@ -111,7 +111,7 @@ def _read_cache(agency: str, cand: str, version: str, ttl_seconds: int) -> Any |
 def _write_cache(agency: str, cand: str, version: str, payload: Any) -> None:
     p = _cache_path(agency, cand, version)
     try:
-        with p.open('w', encoding='utf-8') as f:
+        with p.open("w", encoding="utf-8") as f:
             json.dump({"fetched_at": int(time.time()), "payload": payload}, f)
     except Exception:
         pass
@@ -151,6 +151,7 @@ def _fetch_payload(
 
 def _upsert_codes(db: Session, codes: List[Dict[str, str]]) -> int:
     from datetime import datetime, timezone
+
     now = datetime.now(timezone.utc)
     imported = 0
     for item in codes:
@@ -249,43 +250,43 @@ def import_from_zip(db: Session, zip_bytes: bytes) -> int:
     codes: List[Dict[str, str]] = []
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
-        xml_names = [n for n in zf.namelist() if n.lower().endswith('.xml')]
+        xml_names = [n for n in zf.namelist() if n.lower().endswith(".xml")]
         if not xml_names:
             raise ValueError("Nessun file XML trovato nel ZIP")
         xml_content = zf.read(xml_names[0])
         root = safe_fromstring(xml_content)
 
     def _text(el):
-        return el.text.strip() if el is not None and el.text else ''
+        return el.text.strip() if el is not None and el.text else ""
 
-    for sezione in root.findall('Sezione'):
-        sez_code = _text(sezione.find('Codice'))
-        sez_title = _text(sezione.find('Titolo'))
+    for sezione in root.findall("Sezione"):
+        sez_code = _text(sezione.find("Codice"))
+        sez_title = _text(sezione.find("Titolo"))
         codes.append({"code": sez_code, "description": sez_title})
 
-        for div in sezione.findall('Divisione'):
-            div_code = _text(div.find('Codice'))
-            div_title = _text(div.find('Titolo'))
+        for div in sezione.findall("Divisione"):
+            div_code = _text(div.find("Codice"))
+            div_title = _text(div.find("Titolo"))
             codes.append({"code": div_code, "description": div_title})
 
-            for grp in div.findall('Gruppo'):
-                grp_code = div_code + _text(grp.find('Codice'))
-                grp_title = _text(grp.find('Titolo'))
+            for grp in div.findall("Gruppo"):
+                grp_code = div_code + _text(grp.find("Codice"))
+                grp_title = _text(grp.find("Titolo"))
                 codes.append({"code": grp_code, "description": grp_title})
 
-                for cls in grp.findall('Classe'):
-                    cls_code = grp_code + _text(cls.find('Codice'))
-                    cls_title = _text(cls.find('Titolo'))
+                for cls in grp.findall("Classe"):
+                    cls_code = grp_code + _text(cls.find("Codice"))
+                    cls_title = _text(cls.find("Titolo"))
                     codes.append({"code": cls_code, "description": cls_title})
 
-                    for cat in cls.findall('Categoria'):
-                        cat_code = cls_code + _text(cat.find('Codice'))
-                        cat_title = _text(cat.find('Titolo'))
+                    for cat in cls.findall("Categoria"):
+                        cat_code = cls_code + _text(cat.find("Codice"))
+                        cat_title = _text(cat.find("Titolo"))
                         codes.append({"code": cat_code, "description": cat_title})
 
-                        for sub in cat.findall('Sottocategoria'):
-                            sub_code = cat_code + _text(sub.find('Codice'))
-                            sub_title = _text(sub.find('Titolo'))
+                        for sub in cat.findall("Sottocategoria"):
+                            sub_code = cat_code + _text(sub.find("Codice"))
+                            sub_title = _text(sub.find("Titolo"))
                             codes.append({"code": sub_code, "description": sub_title})
 
     return _upsert_codes(db, codes)

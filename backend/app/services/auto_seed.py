@@ -74,21 +74,25 @@ def _seed_family_mappings(db: Session) -> None:
         for row in reader:
             existing = db.query(FamilyMapping).filter_by(cpv_pattern=row["cpv_pattern"]).first()
             if existing:
-                if (existing.family != row["family"]
-                        or existing.strength != row["strength"]
-                        or existing.mapping_note != row.get("mapping_note")):
+                if (
+                    existing.family != row["family"]
+                    or existing.strength != row["strength"]
+                    or existing.mapping_note != row.get("mapping_note")
+                ):
                     existing.family = row["family"]
                     existing.strength = row["strength"]
                     existing.mapping_note = row.get("mapping_note")
                     changes += 1
             else:
-                db.add(FamilyMapping(
-                    id=row["cpv_pattern"],
-                    cpv_pattern=row["cpv_pattern"],
-                    family=row["family"],
-                    strength=row["strength"],
-                    mapping_note=row.get("mapping_note"),
-                ))
+                db.add(
+                    FamilyMapping(
+                        id=row["cpv_pattern"],
+                        cpv_pattern=row["cpv_pattern"],
+                        family=row["family"],
+                        strength=row["strength"],
+                        mapping_note=row.get("mapping_note"),
+                    )
+                )
                 changes += 1
     if changes:
         db.commit()
@@ -116,8 +120,12 @@ def _seed_normative_params(db: Session) -> None:
     for p in params:
         existing = db.query(NormativeParam).filter_by(id=p.id).first()
         if existing:
-            if (existing.value != p.value or existing.unit != p.unit
-                    or existing.description != p.description or existing.source != p.source):
+            if (
+                existing.value != p.value
+                or existing.unit != p.unit
+                or existing.description != p.description
+                or existing.source != p.source
+            ):
                 existing.value = p.value
                 existing.unit = p.unit
                 existing.description = p.description
@@ -142,14 +150,16 @@ def _seed_index_series(db: Session) -> None:
         for row in reader:
             existing = db.query(IndexSeries).filter_by(id=row["id"]).first()
             if not existing:
-                db.add(IndexSeries(
-                    id=row["id"],
-                    name=row["name"],
-                    source=row["source"],
-                    normative_category=row.get("normative_category"),
-                    classification_ref=row.get("classification_ref"),
-                    frequency=row.get("frequency"),
-                ))
+                db.add(
+                    IndexSeries(
+                        id=row["id"],
+                        name=row["name"],
+                        source=row["source"],
+                        normative_category=row.get("normative_category"),
+                        classification_ref=row.get("classification_ref"),
+                        frequency=row.get("frequency"),
+                    )
+                )
                 changes += 1
     if changes:
         db.commit()
@@ -179,13 +189,15 @@ def _seed_observations(db: Session) -> None:
                 .first()
             )
             if not existing:
-                db.add(IndexObservation(
-                    series_id=series_id,
-                    ref_period=ref_period,
-                    value=float(row["value"]),
-                    is_definitive=row["is_definitive"].strip().lower() in ("true", "1"),
-                    notes=row.get("notes", "").strip() or None,
-                ))
+                db.add(
+                    IndexObservation(
+                        series_id=series_id,
+                        ref_period=ref_period,
+                        value=float(row["value"]),
+                        is_definitive=row["is_definitive"].strip().lower() in ("true", "1"),
+                        notes=row.get("notes", "").strip() or None,
+                    )
+                )
                 changes += 1
     if changes:
         db.commit()

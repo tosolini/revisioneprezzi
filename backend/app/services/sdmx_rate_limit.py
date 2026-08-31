@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 MIN_INTERVAL = 12.0  # 60s / 5 query al minuto
-JITTER_MAX = 2.0     # margine anti-jitter aggiunto al minimo
+JITTER_MAX = 2.0  # margine anti-jitter aggiunto al minimo
 DEFAULT_MAX_WAIT = 45.0
 
 _STATE_PATH = Path(__file__).resolve().parents[2] / "seeds" / ".sdmx_rate_limit.json"
@@ -28,9 +28,7 @@ class RateLimitTimeout(Exception):
 
     def __init__(self, wait_seconds: float):
         self.wait_seconds = wait_seconds
-        super().__init__(
-            f"Istat consente 5 query/minuto per IP: riprova tra {wait_seconds:.0f}s"
-        )
+        super().__init__(f"Istat consente 5 query/minuto per IP: riprova tra {wait_seconds:.0f}s")
 
 
 def wait_for_slot(max_wait: float = DEFAULT_MAX_WAIT) -> float:

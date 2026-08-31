@@ -24,6 +24,7 @@ class TolSelectionSchema(BaseModel):
 
 class WizardCpvSelection(BaseModel):
     """Selezione CPV singola (servizi/forniture, Art. 13 multi-CPV)."""
+
     cpv_code: str
     description: str | None = None
     weight: float | None = None
@@ -31,6 +32,7 @@ class WizardCpvSelection(BaseModel):
 
 class WizardAtecoSelection(BaseModel):
     """Codice ATECO dal testo contrattuale (pesi di conferma, Art. 11.3)."""
+
     ateco_code: str
     weight: float
 
@@ -85,40 +87,43 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
     if saved and saved.field_value:
         try:
             import json
+
             parsed = json.loads(saved.field_value)
             state = WizardV2State(**parsed)
         except Exception:
             pass
 
     if not saved:
-        contract = db.query(ContractContext).filter(
-            ContractContext.case_id == case_id
-        ).first()
+        contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
         if contract:
             state.contract_type = contract.contract_type or ""
             if contract.amount_subject_to_revision:
                 state.amount = contract.amount_subject_to_revision
 
-        tol_asgn = db.query(TolAssignment).filter(
-            TolAssignment.case_id == case_id
-        ).all()
+        tol_asgn = db.query(TolAssignment).filter(TolAssignment.case_id == case_id).all()
         if tol_asgn:
             state.tol_selections = [
-                TolSelectionSchema(code=t.code, weight=t.weight_percent)
-                for t in tol_asgn
+                TolSelectionSchema(code=t.code, weight=t.weight_percent) for t in tol_asgn
             ]
 
-        cpv_primary = db.query(CpvAssignment).filter(
-            CpvAssignment.case_id == case_id,
-            CpvAssignment.is_primary.is_(True),
-        ).first()
+        cpv_primary = (
+            db.query(CpvAssignment)
+            .filter(
+                CpvAssignment.case_id == case_id,
+                CpvAssignment.is_primary.is_(True),
+            )
+            .first()
+        )
         if cpv_primary:
             state.cpv_code = cpv_primary.cpv_code
             state.cpv_description = cpv_primary.description
 
-        all_cpv = db.query(CpvAssignment).filter(
-            CpvAssignment.case_id == case_id
-        ).order_by(CpvAssignment.is_primary.desc()).all()
+        all_cpv = (
+            db.query(CpvAssignment)
+            .filter(CpvAssignment.case_id == case_id)
+            .order_by(CpvAssignment.is_primary.desc())
+            .all()
+        )
         if all_cpv:
             state.cpv_selections = [
                 WizardCpvSelection(
@@ -131,10 +136,12 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
 
         step_answers = {
             a.field_key: a.field_value
-            for a in db.query(WizardAnswer).filter(
+            for a in db.query(WizardAnswer)
+            .filter(
                 WizardAnswer.case_id == case_id,
                 WizardAnswer.step == 3,
-            ).all()
+            )
+            .all()
         }
         if step_answers.get("contract_type"):
             state.contract_type = step_answers["contract_type"]
@@ -181,9 +188,12 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
     # Sincronizzazione retro-compat: cpv_selections ↔ cpv_code/description.
     if state.contract_type in ("services", "supplies"):
         if not state.cpv_selections:
-            all_cpv = db.query(CpvAssignment).filter(
-                CpvAssignment.case_id == case_id
-            ).order_by(CpvAssignment.is_primary.desc()).all()
+            all_cpv = (
+                db.query(CpvAssignment)
+                .filter(CpvAssignment.case_id == case_id)
+                .order_by(CpvAssignment.is_primary.desc())
+                .all()
+            )
             if all_cpv:
                 state.cpv_selections = [
                     WizardCpvSelection(
@@ -194,10 +204,12 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
                     for c in all_cpv
                 ]
             elif state.cpv_code:
-                state.cpv_selections = [WizardCpvSelection(
-                    cpv_code=state.cpv_code,
-                    description=state.cpv_description,
-                )]
+                state.cpv_selections = [
+                    WizardCpvSelection(
+                        cpv_code=state.cpv_code,
+                        description=state.cpv_description,
+                    )
+                ]
         elif not state.cpv_code:
             state.cpv_code = state.cpv_selections[0].cpv_code
             state.cpv_description = state.cpv_selections[0].description
@@ -229,19 +241,17 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
     if existing:
         existing.field_value = json.dumps(payload.model_dump())
     else:
-        db.add(WizardAnswer(
-            case_id=case_id,
-            step=0,
-            field_key="wizard_v2_state",
-            field_value=json.dumps(payload.model_dump()),
-        ))
+        db.add(
+            WizardAnswer(
+                case_id=case_id,
+                step=0,
+                field_key="wizard_v2_state",
+                field_value=json.dumps(payload.model_dump()),
+            )
+        )
 
     if payload.contract_type:
-        contract = (
-            db.query(ContractContext)
-            .filter(ContractContext.case_id == case_id)
-            .first()
-        )
+        contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
         if not contract:
             contract = ContractContext(case_id=case_id)
             db.add(contract)
@@ -252,11 +262,13 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
     if payload.contract_type == "works" and payload.tol_selections:
         db.query(TolAssignment).filter(TolAssignment.case_id == case_id).delete()
         for sel in payload.tol_selections:
-            db.add(TolAssignment(
-                case_id=case_id,
-                tol_code=sel.code,
-                weight_percent=sel.weight,
-            ))
+            db.add(
+                TolAssignment(
+                    case_id=case_id,
+                    tol_code=sel.code,
+                    weight_percent=sel.weight,
+                )
+            )
 
     if payload.contract_type in ("services", "supplies") and (
         payload.cpv_selections or payload.cpv_code
@@ -264,21 +276,23 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
         db.query(CpvAssignment).filter(CpvAssignment.case_id == case_id).delete()
         selections = list(payload.cpv_selections)
         if not selections and payload.cpv_code:
-            selections = [WizardCpvSelection(
-                cpv_code=payload.cpv_code,
-                description=payload.cpv_description,
-            )]
+            selections = [
+                WizardCpvSelection(
+                    cpv_code=payload.cpv_code,
+                    description=payload.cpv_description,
+                )
+            ]
         for i, sel in enumerate(selections):
-            cat = db.query(CpvCatalog).filter(
-                CpvCatalog.cpv_code == sel.cpv_code
-            ).first()
-            db.add(CpvAssignment(
-                case_id=case_id,
-                cpv_code=sel.cpv_code,
-                is_primary=i == 0,
-                weight_percent=sel.weight,
-                description=cat.description if cat else sel.description,
-            ))
+            cat = db.query(CpvCatalog).filter(CpvCatalog.cpv_code == sel.cpv_code).first()
+            db.add(
+                CpvAssignment(
+                    case_id=case_id,
+                    cpv_code=sel.cpv_code,
+                    is_primary=i == 0,
+                    weight_percent=sel.weight,
+                    description=cat.description if cat else sel.description,
+                )
+            )
 
     case.current_step = payload.current_step
 

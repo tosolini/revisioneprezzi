@@ -46,11 +46,7 @@ def save_wizard_step(
 def _sync_contract_context(case_id: UUID, answers: list, db: Session) -> None:
     vals = {a.field_key: a.field_value for a in answers}
 
-    contract = (
-        db.query(ContractContext)
-        .filter(ContractContext.case_id == case_id)
-        .first()
-    )
+    contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
     if not contract:
         contract = ContractContext(case_id=case_id)
         db.add(contract)
@@ -97,10 +93,15 @@ def _sync_cpv_assignments(case_id: UUID, answers: list, db: Session) -> None:
 
     db.query(CpvAssignment).filter(CpvAssignment.case_id == case_id).delete()
 
-    db.add(CpvAssignment(
-        case_id=case_id, cpv_code=primary_code, is_primary=True,
-        weight_percent=None, description=description,
-    ))
+    db.add(
+        CpvAssignment(
+            case_id=case_id,
+            cpv_code=primary_code,
+            is_primary=True,
+            weight_percent=None,
+            description=description,
+        )
+    )
 
     for i, code in enumerate(secondary_codes):
         w = weights[i] if i < len(weights) else None
@@ -108,16 +109,19 @@ def _sync_cpv_assignments(case_id: UUID, answers: list, db: Session) -> None:
         cat = db.query(CpvCatalog).filter(CpvCatalog.cpv_code == code).first()
         if cat:
             sec_desc = cat.description
-        db.add(CpvAssignment(
-            case_id=case_id, cpv_code=code, is_primary=False,
-            weight_percent=w, description=sec_desc,
-        ))
+        db.add(
+            CpvAssignment(
+                case_id=case_id,
+                cpv_code=code,
+                is_primary=False,
+                weight_percent=w,
+                description=sec_desc,
+            )
+        )
 
 
 @router.get("/{step}", response_model=list[WizardAnswerResponse])
-def get_wizard_step(
-    case_id: UUID, step: int, db: Session = Depends(get_db)
-):
+def get_wizard_step(case_id: UUID, step: int, db: Session = Depends(get_db)):
     case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")

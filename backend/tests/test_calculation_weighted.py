@@ -11,19 +11,19 @@ from app.services.revision_calculation_v2 import calculate_price_revision
 def _make_series(db, base=100.0, comp=110.0):
     sid = f"WV_{uuid.uuid4().hex[:8]}"
     db.add(IndexSeries(id=sid, name="Test", source="TEST"))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2025, 4, 1), value=base, is_definitive=True
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2026, 4, 1), value=comp, is_definitive=True
-    ))
+    db.add(
+        IndexObservation(series_id=sid, ref_period=date(2025, 4, 1), value=base, is_definitive=True)
+    )
+    db.add(
+        IndexObservation(series_id=sid, ref_period=date(2026, 4, 1), value=comp, is_definitive=True)
+    )
     db.flush()
     return sid
 
 
 def test_weighted_variation(db):
-    s1 = _make_series(db, base=100.0, comp=110.0)   # +10%
-    s2 = _make_series(db, base=200.0, comp=220.0)   # +10%
+    s1 = _make_series(db, base=100.0, comp=110.0)  # +10%
+    s2 = _make_series(db, base=200.0, comp=220.0)  # +10%
     db.commit()
 
     result = calculate_price_revision(
@@ -50,8 +50,8 @@ def test_weighted_variation(db):
 
 
 def test_weighted_variation_mixed(db):
-    s1 = _make_series(db, base=100.0, comp=110.0)   # +10%
-    s2 = _make_series(db, base=100.0, comp=120.0)   # +20%
+    s1 = _make_series(db, base=100.0, comp=110.0)  # +10%
+    s2 = _make_series(db, base=100.0, comp=120.0)  # +20%
     db.commit()
 
     result = calculate_price_revision(
@@ -109,6 +109,7 @@ def test_default_method_backward_compat(db):
     assert result["variation_percent"] == 10.0
     assert result["weighted_component_variations"] is None
 
+
 # ── Evidenza mesi non registrati (fallback per periodi senza dato) ──────────
 
 
@@ -133,7 +134,10 @@ def test_period_evidence_missing_months_single(db):
     assert pe["comparison"]["exact"] is False
     assert pe["comparison"]["used"] == "2026-04-01"
     assert pe["comparison"]["missing_months"] == [
-        "2026-05", "2026-06", "2026-07", "2026-08",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
     ]
 
 
@@ -162,12 +166,18 @@ def test_period_evidence_missing_months_composite(db):
     assert pe["comparison"]["exact"] is False
     assert pe["comparison"]["used"] == "2026-04-01"
     assert pe["comparison"]["missing_months"] == [
-        "2026-05", "2026-06", "2026-07", "2026-08",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
     ]
     d1 = next(d for d in result["weighted_component_variations"] if d["series_id"] == s1)
     assert d1["comparison_exact"] is False
     assert d1["missing_comparison_months"] == [
-        "2026-05", "2026-06", "2026-07", "2026-08",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
     ]
     assert d1["missing_base_months"] == []
 
@@ -177,15 +187,16 @@ def test_period_coverage_missing_months(db):
 
     s1 = _make_series(db)
     db.commit()
-    coverage = calculate_period_coverage(
-        db, {s1: 100.0}, date(2025, 4, 1), date(2026, 8, 1)
-    )
+    coverage = calculate_period_coverage(db, {s1: 100.0}, date(2025, 4, 1), date(2026, 8, 1))
     row = coverage[0]
     assert row["satisfied"] is False
     assert row["base"]["exact"] is True
     assert row["comparison"]["exact"] is False
     assert row["comparison"]["missing_months"] == [
-        "2026-05", "2026-06", "2026-07", "2026-08",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
     ]
 
 
@@ -194,9 +205,11 @@ def test_missing_months_forward_fallback(db):
     avanti e i mesi mancanti partono dal mese richiesto."""
     sid = f"WV_{uuid.uuid4().hex[:8]}"
     db.add(IndexSeries(id=sid, name="Test", source="TEST"))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2026, 4, 1), value=100.0, is_definitive=True
-    ))
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2026, 4, 1), value=100.0, is_definitive=True
+        )
+    )
     db.commit()
 
     result = calculate_price_revision(

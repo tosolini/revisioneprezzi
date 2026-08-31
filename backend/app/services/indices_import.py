@@ -22,9 +22,7 @@ from sqlalchemy.orm import Session
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
 
-CONFIG_PATH = (
-    Path(__file__).resolve().parents[2] / "seeds" / "istat_data_config.yaml"
-)
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "seeds" / "istat_data_config.yaml"
 
 _DATAFLOW_CONFIG_CACHE = None
 
@@ -33,9 +31,23 @@ _DATAFLOW_CONFIG_CACHE = None
 COMMIT_EVERY = 200
 
 _NON_DIMENSION_COLUMNS = {
-    "DATAFLOW", "FREQ", "Frequenza", "TIME_PERIOD", "TIME", "Period",
-    "OBS_VALUE", "obs_value", "Value", "Osservazione", "OBS_STATUS",
-    "OBS_CONF", "MEASURE", "BASE_PER", "UNIT_MEAS", "UNIT_MULT", "Flags",
+    "DATAFLOW",
+    "FREQ",
+    "Frequenza",
+    "TIME_PERIOD",
+    "TIME",
+    "Period",
+    "OBS_VALUE",
+    "obs_value",
+    "Value",
+    "Osservazione",
+    "OBS_STATUS",
+    "OBS_CONF",
+    "MEASURE",
+    "BASE_PER",
+    "UNIT_MEAS",
+    "UNIT_MULT",
+    "Flags",
     "CONF_STATUS",
 }
 
@@ -107,16 +119,25 @@ def _normalize_columns(reader: csv.DictReader) -> dict:
     return inv
 
 
-def _dimension_candidates(fieldnames, mapping: dict,
-                         series_code_cols: list[str]) -> list[str]:
-    excluded = set(_NON_DIMENSION_COLUMNS) | set(series_code_cols) | {
-        mapping.get("value"), mapping.get("period"), mapping.get("freq"),
-        mapping.get("status"), mapping.get("market"), mapping.get("dataflow"),
-    }
+def _dimension_candidates(fieldnames, mapping: dict, series_code_cols: list[str]) -> list[str]:
+    excluded = (
+        set(_NON_DIMENSION_COLUMNS)
+        | set(series_code_cols)
+        | {
+            mapping.get("value"),
+            mapping.get("period"),
+            mapping.get("freq"),
+            mapping.get("status"),
+            mapping.get("market"),
+            mapping.get("dataflow"),
+        }
+    )
     excluded = {v for v in excluded if v}
     return [
-        c for c in (fieldnames or [])
-        if c and c.strip() not in excluded
+        c
+        for c in (fieldnames or [])
+        if c
+        and c.strip() not in excluded
         and not c.lstrip().startswith(("NOTE_", "UNIT_", "Flags"))
     ]
 
@@ -146,8 +167,9 @@ def _detect_series_code_cols(reader: csv.DictReader, mapping: dict) -> list[str]
     return best[-1:] if len(best) > 1 else best
 
 
-def _reject_unfiltered_dimensions(reader: csv.DictReader, mapping: dict,
-                                  series_code_cols: list[str]) -> None:
+def _reject_unfiltered_dimensions(
+    reader: csv.DictReader, mapping: dict, series_code_cols: list[str]
+) -> None:
     """Rifiuta query che lasciano dimensioni non filtrate in un dataflow
     configurato: piu' valori della stessa dimensione verrebbero mescolati
     nella stessa serie (es. PROF_STATUS_EMP, DATA_TYPE nelle retribuzioni).
@@ -170,9 +192,7 @@ def _reject_unfiltered_dimensions(reader: csv.DictReader, mapping: dict,
     distinct = _distinct_counts(reader, candidates)
     unfiltered = sorted(c for c in candidates if len(distinct[c]) > 1)
     if unfiltered:
-        details: dict[str, list[str]] = {
-            dim: sorted(distinct[dim]) for dim in unfiltered
-        }
+        details: dict[str, list[str]] = {dim: sorted(distinct[dim]) for dim in unfiltered}
         # Etichette leggibili per le dimensioni più comuni (fallback al codice)
         _DIM_LABELS = {
             "DATA_TYPE": "Tipo dato",
@@ -198,27 +218,25 @@ def _reject_unfiltered_dimensions(reader: csv.DictReader, mapping: dict,
             "e riprova."
         )
         # Dettaglio esteso per l'utente: spiega il mescolamento con la serie già nel DB
-        dim_desc = "; ".join(
-            f"{dim} ({_DIM_LABELS.get(dim, dim)}) = [{', '.join(vals[:5])}{' …' if len(vals) > 5 else ''}]"
+        dim_desc = "; ".join(  # noqa: E501
+            f"{dim} ({_DIM_LABELS.get(dim, dim)}) = [{', '.join(vals[:5])}{' …' if len(vals) > 5 else ''}]"  # noqa: E501
             for dim, vals in details.items()
         )
-        extended_msg = (
-            f"ISTAT ha restituito dati con più valori per: {dim_desc}. "
-            f"Tutti questi dati verrebbero salvati come serie '{serie_label}' con lo stesso codice (es. per ATECO 95.1), "
-            f"sovrascrivendosi a vicenda e mescolando popolazioni diverse nella serie già presente nel database. "
-            f"Per evitarlo, apri il databrowser ISTAT, filtra ciascuna dimensione a un singolo valore (es. DATA_TYPE=N) "
-            f"e ricopia l'URL Data. "
-            f"{base_msg}"
+        extended_msg = (  # noqa: E501
+            f"ISTAT ha restituito dati con più valori per: {dim_desc}. "  # noqa: E501
+            f"Tutti questi dati verrebbero salvati come serie '{serie_label}' con lo stesso codice (es. per ATECO 95.1), "  # noqa: E501
+            f"sovrascrivendosi a vicenda e mescolando popolazioni diverse nella serie già presente nel database. "  # noqa: E501
+            f"Per evitarlo, apri il databrowser ISTAT, filtra ciascuna dimensione a un singolo valore (es. DATA_TYPE=N) "  # noqa: E501
+            f"e ricopia l'URL Data. "  # noqa: E501
+            f"{base_msg}"  # noqa: E501
         )
-        suggestion = (
-            "Filtra queste dimensioni nel databrowser (una sola frequenza/codice) "
-            "e riprova. Valori osservati: "
-            + ", ".join(f"{k}={v}" for k, v in details.items())
-            + f". La serie nel database è identificata da '{serie_label}'; i valori multipli sopra verrebbero tutti scritti lì."
+        suggestion = (  # noqa: E501
+            "Filtra queste dimensioni nel databrowser (una sola frequenza/codice) "  # noqa: E501
+            "e riprova. Valori osservati: "  # noqa: E501
+            + ", ".join(f"{k}={v}" for k, v in details.items())  # noqa: E501
+            + f". La serie nel database è identificata da '{serie_label}'; i valori multipli sopra verrebbero tutti scritti lì."  # noqa: E501
         )
-        truncated_details = {
-            k: (v[:5] + ["…"] if len(v) > 5 else v) for k, v in details.items()
-        }
+        truncated_details = {k: (v[:5] + ["…"] if len(v) > 5 else v) for k, v in details.items()}
         raise HTTPException(
             status_code=422,
             detail={
@@ -228,6 +246,7 @@ def _reject_unfiltered_dimensions(reader: csv.DictReader, mapping: dict,
                 "truncated_values": truncated_details,
             },
         )
+
 
 def _reject_mixed_frequencies(reader: csv.DictReader, mapping: dict) -> None:
     """Rifiuta CSV che mescolano frequenze (es. query A+M con dati sia annuali
@@ -276,12 +295,9 @@ def _row_freq(row, mapping: dict, fallback: str) -> str:
     return fallback
 
 
-def _series_name(row, fieldnames, code: str, series_names: dict,
-                 group_key: str) -> str:
+def _series_name(row, fieldnames, code: str, series_names: dict, group_key: str) -> str:
     name = series_names.get(code, f"{group_key} - {code}")
-    desc_cols = [
-        c for c in (fieldnames or []) if "Attività" in c or "economica" in c
-    ]
+    desc_cols = [c for c in (fieldnames or []) if "Attività" in c or "economica" in c]
     if desc_cols:
         desc_val = (row.get(desc_cols[0]) or "").strip()
         if desc_val:
@@ -349,8 +365,7 @@ def import_sdmx_content(
         if not series_code_cols:
             raise HTTPException(
                 400,
-                "Formato CSV non riconosciuto: nessuna colonna dimensione per il "
-                "codice serie",
+                "Formato CSV non riconosciuto: nessuna colonna dimensione per il codice serie",
             )
 
     # Frequenze mescolate = periodi collidenti: rifiuta prima di scrivere.
@@ -361,8 +376,12 @@ def import_sdmx_content(
     freq = freq_param
     group_upper = group_key.upper()
     results = {
-        "added": 0, "updated": 0, "skipped": 0, "errors": 0,
-        "series_created": 0, "imported_rows": 0,
+        "added": 0,
+        "updated": 0,
+        "skipped": 0,
+        "errors": 0,
+        "series_created": 0,
+        "imported_rows": 0,
         "dataflow_id": detected_dataflow,
         "dataflow_matched": df_config is not None,
         "group_key": group_key,
@@ -405,19 +424,19 @@ def import_sdmx_content(
             name = _series_name(row, reader.fieldnames, code, series_names, group_key)
 
             with db.begin_nested():
-                series = (
-                    db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
-                )
+                series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
                 created = series is None
                 if series is None:
-                    db.add(IndexSeries(
-                        id=series_id,
-                        name=name,
-                        source="ISTAT",
-                        normative_category=contract_type or "services",
-                        classification_ref=group_key,
-                        frequency=row_freq,
-                    ))
+                    db.add(
+                        IndexSeries(
+                            id=series_id,
+                            name=name,
+                            source="ISTAT",
+                            normative_category=contract_type or "services",
+                            classification_ref=group_key,
+                            frequency=row_freq,
+                        )
+                    )
                     db.flush()
                 existing = (
                     db.query(IndexObservation)
@@ -432,12 +451,14 @@ def import_sdmx_content(
                     existing.is_definitive = is_def
                     kind = "updated"
                 else:
-                    db.add(IndexObservation(
-                        series_id=series_id,
-                        ref_period=ref_period,
-                        value=value,
-                        is_definitive=is_def,
-                    ))
+                    db.add(
+                        IndexObservation(
+                            series_id=series_id,
+                            ref_period=ref_period,
+                            value=value,
+                            is_definitive=is_def,
+                        )
+                    )
                     kind = "added"
                 db.flush()
                 if created:
@@ -451,8 +472,10 @@ def import_sdmx_content(
                 period_for_log = ""
                 if "period_str" in locals():
                     period_for_log = period_str
-                print(f"  ERR: row code={_row_code(row, series_code_cols)} "
-                      f"period={period_for_log}: {e}")
+                print(
+                    f"  ERR: row code={_row_code(row, series_code_cols)} "
+                    f"period={period_for_log}: {e}"
+                )
         finally:
             if row_no % COMMIT_EVERY == 0:
                 db.commit()

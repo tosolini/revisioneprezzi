@@ -33,6 +33,7 @@ def extract_document(case_id: UUID, file: UploadFile = File(...), db: Session = 
         raise HTTPException(status_code=400, detail="Nessun file fornito")
 
     from app.core.uploads import read_upload_limited
+
     contents = read_upload_limited(file)
 
     with httpx.Client(timeout=60) as client:

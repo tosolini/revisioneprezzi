@@ -25,23 +25,15 @@ def generate_report(case_id: UUID, db: Session) -> str:
     if not case:
         raise ValueError("Case not found")
 
-    contract = db.query(ContractContext).filter(
-        ContractContext.case_id == case_id
-    ).first()
+    contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
 
-    cpv_assignments = (
-        db.query(CpvAssignment)
-        .filter(CpvAssignment.case_id == case_id)
-        .all()
+    cpv_assignments = db.query(CpvAssignment).filter(CpvAssignment.case_id == case_id).all()
+
+    classification = (
+        db.query(ClassificationDecision).filter(ClassificationDecision.case_id == case_id).first()
     )
 
-    classification = db.query(ClassificationDecision).filter(
-        ClassificationDecision.case_id == case_id
-    ).first()
-
-    revision_input = db.query(RevisionInput).filter(
-        RevisionInput.case_id == case_id
-    ).first()
+    revision_input = db.query(RevisionInput).filter(RevisionInput.case_id == case_id).first()
 
     results = (
         db.query(RevisionResult)
@@ -57,11 +49,7 @@ def generate_report(case_id: UUID, db: Session) -> str:
         .all()
     )
 
-    override_reasons = (
-        db.query(OverrideReason)
-        .filter(OverrideReason.case_id == case_id)
-        .all()
-    )
+    override_reasons = db.query(OverrideReason).filter(OverrideReason.case_id == case_id).all()
 
     audit_logs = (
         db.query(AuditLog)
@@ -72,9 +60,11 @@ def generate_report(case_id: UUID, db: Session) -> str:
 
     index_series = None
     if classification and classification.selected_index_series_id:
-        index_series = db.query(IndexSeries).filter(
-            IndexSeries.id == classification.selected_index_series_id
-        ).first()
+        index_series = (
+            db.query(IndexSeries)
+            .filter(IndexSeries.id == classification.selected_index_series_id)
+            .first()
+        )
 
     template = env.get_template("report.md.j2")
     report = template.render(

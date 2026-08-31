@@ -49,9 +49,10 @@ def test_delete_case(client):
 
 def test_wizard_save_and_read(client):
     cid = _make_case(client)
-    save = client.post(f"/api/v1/cases/{cid}/wizard/1", json={
-        "answers": [{"step": 1, "field_key": "contract_type", "field_value": "service"}]
-    })
+    save = client.post(
+        f"/api/v1/cases/{cid}/wizard/1",
+        json={"answers": [{"step": 1, "field_key": "contract_type", "field_value": "service"}]},
+    )
     assert save.status_code == 201
     read = client.get(f"/api/v1/cases/{cid}/wizard/1")
     assert read.status_code == 200
@@ -60,9 +61,9 @@ def test_wizard_save_and_read(client):
 
 
 def test_classify_endpoint(client):
-    resp = client.post("/api/v1/classify", json={
-        "cpv_primary": "90910000-9", "contract_type": "service"
-    })
+    resp = client.post(
+        "/api/v1/classify", json={"cpv_primary": "90910000-9", "contract_type": "service"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "candidates" in data
@@ -77,11 +78,16 @@ def test_indices_list(client):
 def test_indices_search(client):
     db = SessionLocal()
     sid = f"SRC_{uuid.uuid4().hex[:6]}"
-    db.add(IndexSeries(
-        id=sid, name="Indice Ricerca Unica", source="TEST",
-        classification_ref="tol", frequency="annual",
-        normative_category="test_search",
-    ))
+    db.add(
+        IndexSeries(
+            id=sid,
+            name="Indice Ricerca Unica",
+            source="TEST",
+            classification_ref="tol",
+            frequency="annual",
+            normative_category="test_search",
+        )
+    )
     db.commit()
     db.close()
 
@@ -102,20 +108,30 @@ def test_calculate_endpoint(client):
     db = SessionLocal()
     sid = f"TST_API_{uuid.uuid4().hex[:6]}"
     db.add(IndexSeries(id=sid, name="API Test", source="TEST"))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
-    ))
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
+        )
+    )
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
+        )
+    )
     db.commit()
     db.close()
 
     cid = _make_case(client)
-    resp = client.post("/api/v1/calculate", json={
-        "case_id": cid, "series_id": sid,
-        "base_period": "2023-01-01", "comparison_period": "2025-01-01", "amount": 100000.0,
-    })
+    resp = client.post(
+        "/api/v1/calculate",
+        json={
+            "case_id": cid,
+            "series_id": sid,
+            "base_period": "2023-01-01",
+            "comparison_period": "2025-01-01",
+            "amount": 100000.0,
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["revision_amount"] == 4000.0
@@ -125,20 +141,30 @@ def test_report_generation(client):
     db = SessionLocal()
     sid = f"TST_RPT_{uuid.uuid4().hex[:6]}"
     db.add(IndexSeries(id=sid, name="Report Test", source="TEST"))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
-    ))
-    db.add(IndexObservation(
-        series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
-    ))
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2023, 1, 1), value=100.0, is_definitive=True
+        )
+    )
+    db.add(
+        IndexObservation(
+            series_id=sid, ref_period=date(2025, 1, 1), value=110.0, is_definitive=True
+        )
+    )
     db.commit()
     db.close()
 
     cid = _make_case(client)
-    client.post("/api/v1/calculate", json={
-        "case_id": cid, "series_id": sid,
-        "base_period": "2023-01-01", "comparison_period": "2025-01-01", "amount": 100000.0,
-    })
+    client.post(
+        "/api/v1/calculate",
+        json={
+            "case_id": cid,
+            "series_id": sid,
+            "base_period": "2023-01-01",
+            "comparison_period": "2025-01-01",
+            "amount": 100000.0,
+        },
+    )
     resp = client.post(f"/api/v1/cases/{cid}/report")
     assert resp.status_code == 200
     assert "report" in resp.json()

@@ -67,19 +67,16 @@ def _point_import_config(monkeypatch, tmp_path):
 
 def _cleanup(db, group: str):
     ids = [
-        s.id
-        for s in db.query(IndexSeries).filter(IndexSeries.classification_ref == group).all()
+        s.id for s in db.query(IndexSeries).filter(IndexSeries.classification_ref == group).all()
     ]
     if ids:
-        db.query(IndexImportQuerySeries).filter(
-            IndexImportQuerySeries.series_id.in_(ids)
-        ).delete(synchronize_session=False)
-        db.query(IndexObservation).filter(
-            IndexObservation.series_id.in_(ids)
-        ).delete(synchronize_session=False)
-        db.query(IndexSeries).filter(IndexSeries.id.in_(ids)).delete(
+        db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.series_id.in_(ids)).delete(
             synchronize_session=False
         )
+        db.query(IndexObservation).filter(IndexObservation.series_id.in_(ids)).delete(
+            synchronize_session=False
+        )
+        db.query(IndexSeries).filter(IndexSeries.id.in_(ids)).delete(synchronize_session=False)
         db.commit()
 
 
@@ -228,9 +225,9 @@ def test_saved_query_run_reenrols(client, db, monkeypatch, tmp_path):
         assert q2.last_run_at is not None and q2.last_run_at >= first_run
 
         # serie ancora linkata alla stessa query
-        links = db.query(IndexImportQuerySeries).filter(
-            IndexImportQuerySeries.query_id == q.id
-        ).all()
+        links = (
+            db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).all()
+        )
         assert {link.series_id for link in links} == {"ISTAT_TEST_SDMX_49", "ISTAT_TEST_SDMX_50"}
     finally:
         _cleanup(db, "test_sdmx")
@@ -268,9 +265,11 @@ def test_saved_query_update(client, db):
 
 def test_saved_query_delete(client, db):
     sid = f"SQ_DEL_{uuid.uuid4().hex[:6]}"
-    db.add(IndexSeries(
-        id=sid, name="Serie query delete", source="TEST", classification_ref="test_sqdel"
-    ))
+    db.add(
+        IndexSeries(
+            id=sid, name="Serie query delete", source="TEST", classification_ref="test_sqdel"
+        )
+    )
     db.commit()
     q = _seed_query(db, SDMX_DATA_URL, series_ids=[sid])
     try:
@@ -280,9 +279,10 @@ def test_saved_query_delete(client, db):
 
         # riga e link rimossi, serie conservata
         assert db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).first() is None
-        assert db.query(IndexImportQuerySeries).filter(
-            IndexImportQuerySeries.query_id == q.id
-        ).count() == 0
+        assert (
+            db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).count()
+            == 0
+        )
         assert db.query(IndexSeries).filter(IndexSeries.id == sid).first() is not None
 
         # by-group non espone più la query
@@ -290,27 +290,28 @@ def test_saved_query_delete(client, db):
         assert g[0]["saved_query"] is None
 
         # evento audit
-        audit = db.query(AuditLog).filter(
-            AuditLog.event_type == "indices.delete_import_query"
-        ).all()
+        audit = (
+            db.query(AuditLog).filter(AuditLog.event_type == "indices.delete_import_query").all()
+        )
         assert len(audit) >= 1
         assert audit[-1].payload_json is not None
     finally:
-        db.query(IndexImportQuerySeries).filter(
-            IndexImportQuerySeries.series_id == sid
-        ).delete(synchronize_session=False)
-        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(
+        db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.series_id == sid).delete(
             synchronize_session=False
         )
+        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(synchronize_session=False)
         db.commit()
 
 
 def test_saved_query_404(client, db):
     missing = str(uuid.uuid4())
     assert client.get(f"/api/v1/indices/saved-queries/{missing}").status_code == 404
-    assert client.put(
-        f"/api/v1/indices/saved-queries/{missing}", json={"url": SDMX_DATA_URL}
-    ).status_code == 404
+    assert (
+        client.put(
+            f"/api/v1/indices/saved-queries/{missing}", json={"url": SDMX_DATA_URL}
+        ).status_code
+        == 404
+    )
     assert client.delete(f"/api/v1/indices/saved-queries/{missing}").status_code == 404
     # id malformato: 404, non 500
     assert client.get("/api/v1/indices/saved-queries/non-un-uuid").status_code == 404

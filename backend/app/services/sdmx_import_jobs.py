@@ -63,10 +63,7 @@ def _run(job_id: str, runner) -> None:
 
 def _purge_locked() -> None:
     now = time.time()
-    expired = [
-        jid for jid, j in _jobs.items()
-        if (now - _job_ts(j)) > _JOB_TTL_SECONDS
-    ]
+    expired = [jid for jid, j in _jobs.items() if (now - _job_ts(j)) > _JOB_TTL_SECONDS]
     for jid in expired:
         del _jobs[jid]
 

@@ -2,6 +2,7 @@
 API endpoint per calcolo revisione prezzi v2 (semplificato)
 Secondo D.lgs 36/2023 Allegato II.2-bis
 """
+
 from datetime import date
 from typing import Literal
 
@@ -22,34 +23,34 @@ router = APIRouter(prefix="/calculation/v2", tags=["calculation-v2"])
 # Request/Response Models
 class IndicesConfigSingle(BaseModel):
     """Configurazione indice singolo"""
+
     type: Literal["single"] = "single"
     single_series_id: str = Field(..., description="ID serie ISTAT/MIT")
 
 
 class IndicesConfigComposite(BaseModel):
     """Configurazione indice composito (multi-TOL o multi-indice CPV)"""
+
     type: Literal["composite"] = "composite"
     method: Literal["weighted_values", "weighted_variations"] = "weighted_values"
     components: dict[str, float] = Field(
-        ...,
-        description="Mappa series_id: peso_percentuale (somma deve essere 100)"
+        ..., description="Mappa series_id: peso_percentuale (somma deve essere 100)"
     )
 
 
 class CalculationRequest(BaseModel):
     """Richiesta calcolo revisione prezzi"""
+
     contract_type: str = Field(
         ...,
         pattern="^(works|services|supplies)$",
-        description="Tipo contratto: works|services|supplies"
+        description="Tipo contratto: works|services|supplies",
     )
     amount: float = Field(..., gt=0, description="Importo assoggettabile a revisione")
     base_period: date = Field(..., description="Periodo base (data aggiudicazione)")
     comparison_period: date = Field(..., description="Periodo confronto (data rilevazione)")
     indices_config: IndicesConfigSingle | IndicesConfigComposite = Field(
-        ...,
-        discriminator="type",
-        description="Configurazione indici (singolo o composito)"
+        ..., discriminator="type", description="Configurazione indici (singolo o composito)"
     )
     force_inverted_periods: bool = Field(
         default=False,
@@ -62,13 +63,12 @@ class CalculationRequest(BaseModel):
 
 class MultiComponentRequest(BaseModel):
     """Richiesta calcolo multi-componente (Art. 13)"""
+
     contract_type: str = Field(..., pattern="^(works|services|supplies)$")
     base_period: date
     comparison_period: date
     components: list[dict] = Field(
-        ...,
-        min_length=2,
-        description="Lista componenti con amount, indices_config, description"
+        ..., min_length=2, description="Lista componenti con amount, indices_config, description"
     )
     force_inverted_periods: bool = Field(
         default=False,
@@ -97,22 +97,16 @@ def _check_period_order(base_period: date, comparison_period: date, force: bool)
         _raise_inverted_periods(base_period, comparison_period)
 
 
-
 class CoverageRequest(BaseModel):
     """Richiesta verifica copertura periodi per le serie componenti."""
-    components: dict[str, float] = Field(
-        ...,
-        description="Mappa series_id: peso_percentuale"
-    )
+
+    components: dict[str, float] = Field(..., description="Mappa series_id: peso_percentuale")
     base_period: date
     comparison_period: date
 
 
 @router.post("/coverage")
-def period_coverage(
-    request: CoverageRequest,
-    db: Session = Depends(get_db)
-) -> dict:
+def period_coverage(request: CoverageRequest, db: Session = Depends(get_db)) -> dict:
     """Copertura dei periodi richiesti per ciascuna serie componente.
 
     Indica, per ogni serie, l'osservazione che il calcolo utilizzerebbe per
@@ -131,17 +125,14 @@ def period_coverage(
 
 
 @router.post("/calculate")
-def calculate(
-    request: CalculationRequest,
-    db: Session = Depends(get_db)
-) -> dict:
+def calculate(request: CalculationRequest, db: Session = Depends(get_db)) -> dict:
     """
     Calcola revisione prezzi secondo schema semplificato v2
-    
+
     Parametri normativi applicati automaticamente:
     - Lavori: soglia 3%, coefficiente 90%
     - Servizi/Forniture: soglia 5%, coefficiente 80%
-    
+
     Returns:
         Risultato calcolo con tutti i passaggi, soglia superata, importo revisionale
     """
@@ -153,33 +144,33 @@ def calculate(
         if request.indices_config.type == "single":
             indices_config = {
                 "type": "single",
-                "single_series_id": request.indices_config.single_series_id
+                "single_series_id": request.indices_config.single_series_id,
             }
         else:
             indices_config = {
                 "type": "composite",
                 "method": request.indices_config.method,
-                "components": request.indices_config.components
+                "components": request.indices_config.components,
             }
-        
+
         result = calculate_price_revision(
             db=db,
             contract_type=request.contract_type,
             amount=request.amount,
             base_period=request.base_period,
             comparison_period=request.comparison_period,
-            indices_config=indices_config
+            indices_config=indices_config,
         )
-        
+
         if "error" in result:
             detail = result["error"]
             for key in ("comparison_errors", "base_errors"):
                 if result.get(key):
                     detail = detail + "\n" + "\n".join(result[key])
             raise HTTPException(status_code=400, detail=detail)
-        
+
         return result
-    
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -188,12 +179,11 @@ def calculate(
 
 @router.post("/calculate/multi-component")
 def calculate_multi_component(
-    request: MultiComponentRequest,
-    db: Session = Depends(get_db)
+    request: MultiComponentRequest, db: Session = Depends(get_db)
 ) -> dict:
     """
     Calcola revisione per contratti multi-componente (Art. 13)
-    
+
     Applicabile a contratti con prestazioni di natura diversa (CPV diversi)
     La clausola si attiva solo se la variazione complessiva supera la soglia
     """
@@ -206,18 +196,18 @@ def calculate_multi_component(
             contract_type=request.contract_type,
             components=request.components,
             base_period=request.base_period,
-            comparison_period=request.comparison_period
+            comparison_period=request.comparison_period,
         )
-        
+
         if "error" in result:
             detail = result["error"]
             for key in ("comparison_errors", "base_errors"):
                 if result.get(key):
                     detail = detail + "\n" + "\n".join(result[key])
             raise HTTPException(status_code=400, detail=detail)
-        
+
         return result
-    
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -228,29 +218,26 @@ def calculate_multi_component(
 def get_normative_parameters(contract_type: str) -> dict:
     """
     Ritorna i parametri normativi per un tipo di contratto
-    
+
     Path params:
     - contract_type: works|services|supplies
-    
+
     Returns:
         threshold_percent, recognition_rate_percent, reference
     """
     from app.services.revision_calculation_v2 import NORMATIVE_PARAMS
-    
+
     if contract_type not in NORMATIVE_PARAMS:
         raise HTTPException(
             status_code=400,
-            detail="Tipo contratto non valido. Valori ammessi: works, services, supplies"
+            detail="Tipo contratto non valido. Valori ammessi: works, services, supplies",
         )
-    
+
     return NORMATIVE_PARAMS[contract_type]
 
 
 @router.post("/preview")
-def preview_calculation(
-    request: CalculationRequest,
-    db: Session = Depends(get_db)
-) -> dict:
+def preview_calculation(request: CalculationRequest, db: Session = Depends(get_db)) -> dict:
     """
     Anteprima calcolo senza salvare
     Alias di /calculate, utile per separare preview da esecuzione definitiva

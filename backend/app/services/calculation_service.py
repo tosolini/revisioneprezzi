@@ -119,20 +119,24 @@ def calculate_single(
     variation = _round(variation, 4)
 
     steps = []
-    steps.append({
-        "step": 1,
-        "description": "Calcolo variazione percentuale",
-        "formula": f"(({comp_value} - {base_value}) / {base_value}) * 100",
-        "result": f"{variation}%",
-    })
+    steps.append(
+        {
+            "step": 1,
+            "description": "Calcolo variazione percentuale",
+            "formula": f"(({comp_value} - {base_value}) / {base_value}) * 100",
+            "result": f"{variation}%",
+        }
+    )
 
     if abs(variation) <= threshold:
-        steps.append({
-            "step": 2,
-            "description": "Verifica soglia di attivazione",
-            "formula": f"|{variation}%| <= {threshold}%",
-            "result": "Nessuna revisione: variazione entro la soglia",
-        })
+        steps.append(
+            {
+                "step": 2,
+                "description": "Verifica soglia di attivazione",
+                "formula": f"|{variation}%| <= {threshold}%",
+                "result": "Nessuna revisione: variazione entro la soglia",
+            }
+        )
         return {
             "series_id": series_id,
             "base_value": base_value,
@@ -153,28 +157,34 @@ def calculate_single(
     # Se la variazione è negativa (deflazione), excess potrebbe essere negativo
     excess = _round(excess, 4)
 
-    steps.append({
-        "step": 2,
-        "description": "Verifica soglia di attivazione",
-        "formula": f"|{variation}%| > {threshold}%",
-        "result": "Soglia superata",
-    })
-    steps.append({
-        "step": 3,
-        "description": "Calcolo quota eccedente",
-        "formula": f"{variation}% - {threshold}% = {excess}%",
-        "result": f"{excess}%",
-    })
+    steps.append(
+        {
+            "step": 2,
+            "description": "Verifica soglia di attivazione",
+            "formula": f"|{variation}%| > {threshold}%",
+            "result": "Soglia superata",
+        }
+    )
+    steps.append(
+        {
+            "step": 3,
+            "description": "Calcolo quota eccedente",
+            "formula": f"{variation}% - {threshold}% = {excess}%",
+            "result": f"{excess}%",
+        }
+    )
 
     revision_amount = amount * (excess / 100) * (recognition_rate / 100)
     revision_amount = _round(revision_amount)
 
-    steps.append({
-        "step": 4,
-        "description": "Applicazione coefficiente riconoscibile",
-        "formula": f"{amount} × ({excess} / 100) × ({recognition_rate} / 100)",
-        "result": f"€ {revision_amount:,.2f}",
-    })
+    steps.append(
+        {
+            "step": 4,
+            "description": "Applicazione coefficiente riconoscibile",
+            "formula": f"{amount} × ({excess} / 100) × ({recognition_rate} / 100)",
+            "result": f"€ {revision_amount:,.2f}",
+        }
+    )
 
     return {
         "series_id": series_id,
@@ -221,11 +231,13 @@ def calculate_composite(
         )
         if "error" in result:
             return result
-        component_results.append({
-            "series_id": comp["series_id"],
-            "weight": comp["weight"],
-            "result": result,
-        })
+        component_results.append(
+            {
+                "series_id": comp["series_id"],
+                "weight": comp["weight"],
+                "result": result,
+            }
+        )
         if result["is_applicable"]:
             weighted_revision += result["revision_amount"]
 
@@ -236,7 +248,8 @@ def calculate_composite(
         "revision_amount": weighted_revision,
         "threshold_percent": threshold or _get_param(db, "activation_threshold"),
         "recognition_percent": recognition_rate or _get_param(db, "recognition_rate"),
-        "formula_detail": "Indice composito pesato:\n" + "\n".join(
+        "formula_detail": "Indice composito pesato:\n"
+        + "\n".join(
             f"  - {c['series_id']} ({c['weight']}%): € {c['result']['revision_amount']:,.2f}"
             for c in component_results
         ),

@@ -1,6 +1,7 @@
 """
 Pydantic schemas per TOL (Tipologie Omogenee Lavorazioni)
 """
+
 from datetime import datetime
 from uuid import UUID
 
@@ -24,6 +25,7 @@ class TolMasterResponse(TolMasterBase):
 
 class TolListResponse(BaseModel):
     """Lista TOL con info essenziali per selezione"""
+
     code: str
     sequence: int
     short_description: str
@@ -33,12 +35,7 @@ class TolListResponse(BaseModel):
 # TOL Assignment Schemas
 class TolAssignmentCreate(BaseModel):
     tol_code: str = Field(..., description="Codice TOL da assegnare")
-    weight_percent: float = Field(
-        100.0,
-        ge=0.0,
-        le=100.0,
-        description="Peso percentuale della TOL"
-    )
+    weight_percent: float = Field(100.0, ge=0.0, le=100.0, description="Peso percentuale della TOL")
     notes: str | None = None
 
 
@@ -63,6 +60,7 @@ class TolAssignmentResponse(BaseModel):
 
 class TolAssignmentBulkCreate(BaseModel):
     """Assegnazione multipla TOL a una pratica"""
+
     assignments: list[TolAssignmentCreate] = Field(..., min_length=1, max_length=20)
 
     @field_validator("assignments")
@@ -72,9 +70,7 @@ class TolAssignmentBulkCreate(BaseModel):
         if len(v) > 1:
             total = sum(a.weight_percent for a in v)
             if abs(total - 100.0) > 0.01:
-                raise ValueError(
-                    f"I pesi percentuali devono sommarsi a 100% (attuale: {total}%)"
-                )
+                raise ValueError(f"I pesi percentuali devono sommarsi a 100% (attuale: {total}%)")
         return v
 
 
@@ -98,6 +94,7 @@ class TolIndexSeriesResponse(TolIndexSeriesBase):
 # Utility Schemas
 class TolValidationResponse(BaseModel):
     """Risposta validazione assegnazioni TOL"""
+
     is_valid: bool
     total_weight: float
     errors: list[str] = []
@@ -106,4 +103,5 @@ class TolValidationResponse(BaseModel):
 
 class TolWithIndicesResponse(TolMasterResponse):
     """TOL con serie indici associate"""
+
     indices: list[TolIndexSeriesResponse] = []

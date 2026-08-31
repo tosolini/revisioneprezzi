@@ -46,42 +46,57 @@ CHECK_DIGIT_VALID = _check_digit_valid()
 # BtoB disponibili per nome.
 PPS_SERIES_MAP = {
     "494": "ISTAT_PS_BTOB_TRASP",  # Trasporto di merci su strada e trasloco
-    "81": "ISTAT_PS_BTOB_PUL",     # Attività di servizi per edifici e paesaggio
-    "49": "ISTAT_PS_BTOB_TRASP",   # Trasporto terrestre e mediante condotte
-    "50": "ISTAT_PS_BTOB_TRASP",   # Trasporto marittimo e per vie d'acqua
+    "81": "ISTAT_PS_BTOB_PUL",  # Attività di servizi per edifici e paesaggio
+    "49": "ISTAT_PS_BTOB_TRASP",  # Trasporto terrestre e mediante condotte
+    "50": "ISTAT_PS_BTOB_TRASP",  # Trasporto marittimo e per vie d'acqua
     "511": "ISTAT_PS_BTOB_TRASP",  # Trasporto aereo di passeggeri
     "512": "ISTAT_PS_BTOB_TRASP",  # Trasporto aereo di merci e spaziale
     "521": "ISTAT_PS_BTOB_TRASP",  # Magazzinaggio e custodia
     "522": "ISTAT_PS_BTOB_TRASP",  # Attività di supporto ai trasporti
-    "5224": "ISTAT_PS_BTOB_TRASP", # Movimentazione merci
-    "5229": "ISTAT_PS_BTOB_TRASP", # Altre attività di supporto ai trasporti
-    "53": "ISTAT_PS_BTOB_TRASP",   # Servizi postali e attività di corriere
-    "61": "ISTAT_PS_BTOB_INFO",    # Telecomunicazioni
-    "611": "ISTAT_PS_BTOB_INFO",   # Telecomunicazioni fisse
-    "612": "ISTAT_PS_BTOB_INFO",   # Telecomunicazioni mobili
-    "62": "ISTAT_PS_BTOB_INFO",    # Produzione software, consulenza informatica
-    "631": "ISTAT_PS_BTOB_INFO",   # Elaborazione dati, hosting, portali web
-    "639": "ISTAT_PS_BTOB_INFO",   # Altri servizi d'informazione
-    "702": "ISTAT_PS_BTOB_PROF",   # Consulenza gestionale
-    "71": "ISTAT_PS_BTOB_PROF",    # Studi di architettura e d'ingegneria
-    "73": "ISTAT_PS_BTOB_PROF",    # Pubblicità e ricerche di mercato
-    "771": "ISTAT_PS_BTOB_SUPP",   # Noleggio di altre macchine e attrezzature
-    "773": "ISTAT_PS_BTOB_SUPP",   # Noleggio di altre macchine e beni materiali
-    "78": "ISTAT_PS_BTOB_SUPP",    # Ricerca, selezione e fornitura personale
-    "79": "ISTAT_PS_BTOB_SUPP",    # Agenzie di viaggio e tour operator
-    "80": "ISTAT_PS_BTOB_SUPP",    # Vigilanza e investigazione
-    "812": "ISTAT_PS_BTOB_PUL",    # Attività di pulizia e disinfestazione
-    "82": "ISTAT_PS_BTOB_SUPP",    # Supporto per funzioni d'ufficio
+    "5224": "ISTAT_PS_BTOB_TRASP",  # Movimentazione merci
+    "5229": "ISTAT_PS_BTOB_TRASP",  # Altre attività di supporto ai trasporti
+    "53": "ISTAT_PS_BTOB_TRASP",  # Servizi postali e attività di corriere
+    "61": "ISTAT_PS_BTOB_INFO",  # Telecomunicazioni
+    "611": "ISTAT_PS_BTOB_INFO",  # Telecomunicazioni fisse
+    "612": "ISTAT_PS_BTOB_INFO",  # Telecomunicazioni mobili
+    "62": "ISTAT_PS_BTOB_INFO",  # Produzione software, consulenza informatica
+    "631": "ISTAT_PS_BTOB_INFO",  # Elaborazione dati, hosting, portali web
+    "639": "ISTAT_PS_BTOB_INFO",  # Altri servizi d'informazione
+    "702": "ISTAT_PS_BTOB_PROF",  # Consulenza gestionale
+    "71": "ISTAT_PS_BTOB_PROF",  # Studi di architettura e d'ingegneria
+    "73": "ISTAT_PS_BTOB_PROF",  # Pubblicità e ricerche di mercato
+    "771": "ISTAT_PS_BTOB_SUPP",  # Noleggio di altre macchine e attrezzature
+    "773": "ISTAT_PS_BTOB_SUPP",  # Noleggio di altre macchine e beni materiali
+    "78": "ISTAT_PS_BTOB_SUPP",  # Ricerca, selezione e fornitura personale
+    "79": "ISTAT_PS_BTOB_SUPP",  # Agenzie di viaggio e tour operator
+    "80": "ISTAT_PS_BTOB_SUPP",  # Vigilanza e investigazione
+    "812": "ISTAT_PS_BTOB_PUL",  # Attività di pulizia e disinfestazione
+    "82": "ISTAT_PS_BTOB_SUPP",  # Supporto per funzioni d'ufficio
 }
 PPS_DEFAULT_SERIES = "ISTAT_PS_BTOB_TOT"
 
 # --- Mappa IR divisione ATECO → lettera sezione (21 righe, nota Tabella D) ---
 IR_DIVISION_TO_SECTION = {
-    (1, 3): "A", (5, 9): "B", (10, 33): "C", (35, 35): "D",
-    (36, 39): "E", (41, 43): "F", (45, 47): "G", (49, 53): "H",
-    (55, 56): "I", (58, 63): "J", (64, 66): "K", (68, 68): "L",
-    (69, 75): "M", (77, 82): "N", (84, 84): "O", (85, 85): "P",
-    (86, 88): "Q", (90, 93): "R", (94, 96): "S", (97, 98): "T",
+    (1, 3): "A",
+    (5, 9): "B",
+    (10, 33): "C",
+    (35, 35): "D",
+    (36, 39): "E",
+    (41, 43): "F",
+    (45, 47): "G",
+    (49, 53): "H",
+    (55, 56): "I",
+    (58, 63): "J",
+    (64, 66): "K",
+    (68, 68): "L",
+    (69, 75): "M",
+    (77, 82): "N",
+    (84, 84): "O",
+    (85, 85): "P",
+    (86, 88): "Q",
+    (90, 93): "R",
+    (94, 96): "S",
+    (97, 98): "T",
     (99, 99): "U",
 }
 
@@ -131,17 +146,11 @@ def _series_available(db: Session, series_id: str | None) -> bool:
     series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
     if series is None:
         return False
-    count = (
-        db.query(IndexObservation)
-        .filter(IndexObservation.series_id == series_id)
-        .count()
-    )
+    count = db.query(IndexObservation).filter(IndexObservation.series_id == series_id).count()
     return count > 0
 
 
-def resolve_series(
-    assoc: dict, db: Session
-) -> dict:
+def resolve_series(assoc: dict, db: Session) -> dict:
     """Determina la serie ISTAT per un'associazione Tabella D.
 
     Ritorna `{series_id, available}`; `series_id` None se nessuna serie
@@ -222,9 +231,7 @@ def resolve_associations(cpv: str, db: Session) -> dict | None:
             master_row = None
             if CHECK_DIGIT_VALID:
                 master_row = (
-                    db.query(CpvTabellaDMaster)
-                    .filter(CpvTabellaDMaster.cpv_code == parent)
-                    .first()
+                    db.query(CpvTabellaDMaster).filter(CpvTabellaDMaster.cpv_code == parent).first()
                 )
             else:
                 parent_base = cpv_base(parent)

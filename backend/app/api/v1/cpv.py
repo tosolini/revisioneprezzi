@@ -28,16 +28,10 @@ def list_cpv(
         )
     else:
         results = (
-            db.query(CpvCatalog)
-            .order_by(CpvCatalog.cpv_code)
-            .limit(limit)
-            .offset(offset)
-            .all()
+            db.query(CpvCatalog).order_by(CpvCatalog.cpv_code).limit(limit).offset(offset).all()
         )
     return {
-        "results": [
-            {"code": r.cpv_code, "description": r.description} for r in results
-        ],
+        "results": [{"code": r.cpv_code, "description": r.description} for r in results],
         "has_more": len(results) == limit,
         "limit": limit,
         "offset": offset,
@@ -56,23 +50,19 @@ def search_cpv(q: str = Query("", min_length=1), db: Session = Depends(get_db)):
         .limit(50)
         .all()
     )
-    return {
-        "results": [
-            {"code": r.cpv_code, "description": r.description}
-            for r in results
-        ]
-    }
+    return {"results": [{"code": r.cpv_code, "description": r.description} for r in results]}
 
 
 @router.post("/import-zip")
 def import_cpv_zip(file: UploadFile = File(...), db: Session = Depends(get_db)):
     from app.services.cpv_importer import import_from_zip_bytes
 
-    if not file.filename or not file.filename.lower().endswith('.zip'):
+    if not file.filename or not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Il file deve essere un archivio ZIP")
 
     try:
         from app.core.uploads import read_upload_limited
+
         contents = read_upload_limited(file)
         imported, source = import_from_zip_bytes(db, contents)
     except ValueError as e:
@@ -85,15 +75,16 @@ def import_cpv_zip(file: UploadFile = File(...), db: Session = Depends(get_db)):
     return {"imported": imported, "source": source}
 
 
-@router.get('/import_status')
+@router.get("/import_status")
 def import_status():
     from pathlib import Path
     import json
-    status_file = Path(__file__).resolve().parents[1] / 'data' / 'cpv_import_status.json'
+
+    status_file = Path(__file__).resolve().parents[1] / "data" / "cpv_import_status.json"
     if not status_file.exists():
         return {"last_imported_at": None}
     try:
-        with status_file.open('r', encoding='utf-8') as f:
+        with status_file.open("r", encoding="utf-8") as f:
             obj = json.load(f)
         return obj
     except Exception:
