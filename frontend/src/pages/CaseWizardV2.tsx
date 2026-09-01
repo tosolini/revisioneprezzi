@@ -421,14 +421,76 @@ export default function CaseWizardV2() {
     })
   }
 
-  const addCpv = (code: string, description: string) => {
+  const addCpv = async (code: string, description: string): Promise<void> => {
+    if (dataRef.current.cpv_selections.some(sel => sel.cpv_code === code)) return
     setData(prev => {
       if (prev.cpv_selections.some(sel => sel.cpv_code === code)) return prev
       const list = [...prev.cpv_selections, { cpv_code: code, description, weight: undefined }]
       return { ...prev, cpv_selections: list, cpv_code: list[0].cpv_code, cpv_description: list[0].description, indices_config: undefined, result: null }
     })
-    invalidateDerivedForClassificationChange()
     setCpvModalOpen(false)
+    invalidateDerivedForClassificationChange()
+    try {
+      const res = await fetch('/api/v1/classify/cpv-index-mapping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpv_code: code }),
+      })
+      if (!res.ok) return
+      const body: unknown = await res.json()
+      if (!isRecord(body)) return
+      const tableClass = asNullableString(body['table_class'])
+      if (tableClass !== 'D2' && tableClass !== 'D3') return
+      const rawAssocs = Array.isArray(body['associations']) ? body['associations'] : []
+      const assocs = rawAssocs.filter(isRecord).filter(a => String(a['classification'] ?? '') === 'ATECO' && String(a['ateco_code'] ?? '').trim() !== '')
+      if (assocs.length === 0) return
+      const uniqueCodes = [...new Set(assocs.map(a => String(a['ateco_code']).trim()).filter(Boolean))]
+      if (uniqueCodes.length === 0) return
+      const descByCode: Record<string, string> = {}
+      for (const a of assocs) {
+        const k = String(a['ateco_code']).trim()
+        if (k) descByCode[k] = String(a['description'] ?? '')
+      }
+      const baseAteco = dataRef.current.ateco_selections
+      const existingSet0 = new Set(baseAteco.map(s => normalizeAteco(s.ateco_code)))
+      const toAdd0 = uniqueCodes.filter(c => !existingSet0.has(normalizeAteco(c)))
+      if (toAdd0.length === 0) return
+      setData(prev => {
+        const base = prev.ateco_selections
+        const existingSet = new Set(base.map(s => normalizeAteco(s.ateco_code)))
+        const filteredToAdd = uniqueCodes.filter(c => !existingSet.has(normalizeAteco(c)))
+        if (filteredToAdd.length === 0) return prev
+        const n = base.length + filteredToAdd.length
+        const w = Math.floor(100 / n)
+        const rem = 100 - w * n
+        const adj = base.length > 0 ? base.map((s, i) => ({ ...s, weight: w + (i === 0 ? rem : 0) })) : []
+        const news = base.length > 0
+          ? filteredToAdd.map(c => ({ ateco_code: c, weight: w }))
+          : filteredToAdd.map((c, i) => ({ ateco_code: c, weight: w + (i === 0 ? rem : 0) }))
+        return { ...prev, ateco_selections: [...adj, ...news], result: null }
+      })
+      setAtecoInputs(prev => {
+        const existingDisplayCodes = new Set(Object.values(prev).map(v => normalizeAteco(String(v).split(' —')[0] ?? String(v))))
+        const existingDataCodes = new Set(dataRef.current.ateco_selections.map(s => normalizeAteco(s.ateco_code)))
+        const combined = new Set([...existingDisplayCodes, ...existingDataCodes])
+        const filteredForInput = toAdd0.filter(c => !combined.has(normalizeAteco(c)))
+        // fallback to toAdd0 if combined dedup leaves empty but data dedup would have added some (race); ensure we use filtered from data perspective
+        const effective = filteredForInput.length > 0 ? filteredForInput : toAdd0.filter(c => !existingDisplayCodes.has(normalizeAteco(c)))
+        if (effective.length === 0) return prev
+        const baseLen = Object.keys(prev).length
+        const out: Record<string, string> = { ...prev }
+        effective.forEach((c, i) => {
+          const d = descByCode[c] ?? ''
+          const display = d ? `${c} — ${d}` : c
+          out[String(baseLen + i)] = display.trim()
+        })
+        return out
+      })
+      setAtecoSuggestions([])
+      setActiveAtecoIndex(null)
+    } catch {
+      return
+    }
   }
 
   const removeCpv = (atIndex: number) => {
