@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
 
 interface TolOption {
   code: string
@@ -20,54 +19,47 @@ interface TolSelectorProps {
   disabled?: boolean
 }
 
-export default function TolSelector({ 
-  value, 
-  onChange, 
+export default function TolSelector({
+  value,
+  onChange,
   multiSelect = false,
-  disabled = false 
+  disabled = false,
 }: TolSelectorProps) {
   const [tols, setTols] = useState<TolOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedTol, setExpandedTol] = useState<string | null>(null)
-  const [tolDetails, setTolDetails] = useState<Record<string, any>>({})
+  const [tolDetails, setTolDetails] = useState<Record<string, Record<string, unknown>>>({})
 
   useEffect(() => {
+    setLoading(true)
     fetch('/api/v1/tol/list')
-      .then(r => r.json())
-      .then(data => {
-        setTols(data)
-        setLoading(false)
+      .then(r => {
+        if (!r.ok) throw new Error('Errore caricamento TOL')
+        return r.json() as Promise<unknown>
       })
-      .catch(err => {
-        setError('Errore caricamento TOL')
-        setLoading(false)
+      .then(body => {
+        const list = Array.isArray(body) ? (body as TolOption[]) : []
+        setTols(list)
+        setError('')
       })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleToggleTol = (code: string) => {
     if (disabled) return
-    
-    const existing = value.find(s => s.code === code)
-    
-    if (existing) {
-      // Rimuovi
+    const exists = value.find(s => s.code === code)
+    if (exists) {
       onChange(value.filter(s => s.code !== code))
     } else {
-      if (multiSelect) {
-        // Aggiungi con peso di default
-        const newWeight = value.length === 0 ? 100 : Math.floor(100 / (value.length + 1))
-        const adjusted = value.map(s => ({ ...s, weight: newWeight }))
-        onChange([...adjusted, { code, weight: newWeight }])
-      } else {
-        // Modalità singola selezione
-        onChange([{ code, weight: 100 }])
-      }
+      if (!multiSelect) onChange([{ code, weight: 100 }])
+      else onChange([...value, { code, weight: 0 }])
     }
   }
 
   const handleWeightChange = (code: string, weight: number) => {
-    onChange(value.map(s => s.code === code ? { ...s, weight } : s))
+    onChange(value.map(s => (s.code === code ? { ...s, weight } : s)))
   }
 
   const handleViewDetails = async (code: string) => {
@@ -75,150 +67,305 @@ export default function TolSelector({
       setExpandedTol(null)
       return
     }
-    
-    if (!tolDetails[code]) {
-      try {
-        const response = await fetch(`/api/v1/tol/${code}`)
-        const data = await response.json()
-        setTolDetails(prev => ({ ...prev, [code]: data }))
-      } catch (err) {
-        console.error('Errore caricamento dettagli TOL', err)
-      }
-    }
     setExpandedTol(code)
+    if (tolDetails[code]) return
+    try {
+      const res = await fetch(`/api/v1/tol/${encodeURIComponent(code)}`)
+      const body = (await res.json()) as Record<string, unknown>
+      setTolDetails(prev => ({ ...prev, [code]: body }))
+    } catch {
+      // silent
+    }
   }
 
   const totalWeight = value.reduce((sum, s) => sum + s.weight, 0)
   const isWeightValid = Math.abs(totalWeight - 100) < 0.01
 
   if (loading) {
-    return <div className="text-sm text-gray-500">Caricamento TOL...</div>
+    return (
+      <div
+        style={{
+          padding: 32,
+          textAlign: 'center',
+          color: 'var(--color-text-muted)',
+          fontSize: 13,
+          border: '1px solid var(--color-border-light)',
+          borderRadius: 12,
+          background: 'var(--color-bg-card)',
+        }}
+      >
+        Caricamento TOL…
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="text-sm text-red-600">{error}</div>
+    return (
+      <div
+        style={{
+          padding: 12,
+          borderRadius: 10,
+          background: 'var(--color-bg-error)',
+          color: 'var(--color-text-error)',
+          border: '1px solid var(--color-border-error)',
+          fontSize: 13,
+        }}
+      >
+        {error}
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Selezione TOL */}
-      <div className="border rounded-lg divide-y max-h-96 overflow-y-auto">
-        {tols.map(tol => {
-          const selected = value.find(s => s.code === tol.code)
-          const isExpanded = expandedTol === tol.code
-          
-          return (
-            <div key={tol.code} className={`p-3 ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-              <div className="flex items-start gap-3">
-                {/* Checkbox */}
-                <input
-                  type={multiSelect ? 'checkbox' : 'radio'}
-                  checked={!!selected}
-                  onChange={() => handleToggleTol(tol.code)}
-                  disabled={disabled}
-                  className="mt-1"
-                />
-                
-                {/* Info TOL */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium">{tol.code}</span>
-                    {tol.is_specialized && (
-                      <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">
-                        Specializzata
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div
+        style={{
+          border: '1.5px solid var(--color-border-light)',
+          borderRadius: 16,
+          overflow: 'hidden',
+          background: 'var(--color-bg-card)',
+          boxShadow: '0 1px 3px var(--color-shadow)',
+        }}
+      >
+        <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+          {tols.map(tol => {
+            const selected = value.find(s => s.code === tol.code)
+            const isExpanded = expandedTol === tol.code
+
+            return (
+              <div
+                key={tol.code}
+                style={{
+                  padding: '14px 16px',
+                  borderBottom: '1px solid var(--color-border-lighter)',
+                  background: selected ? 'var(--color-bg-muted)' : 'var(--color-bg-card)',
+                  transition: 'background 140ms',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <input
+                    type={multiSelect ? 'checkbox' : 'radio'}
+                    checked={!!selected}
+                    onChange={() => handleToggleTol(tol.code)}
+                    disabled={disabled}
+                    style={{
+                      marginTop: 4,
+                      width: 16,
+                      height: 16,
+                      accentColor: 'var(--color-primary)',
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                    }}
+                  />
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: selected ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                          background: selected ? 'var(--color-bg-info)' : 'var(--color-bg-muted)',
+                          border: '1px solid var(--color-border-light)',
+                          padding: '2px 7px',
+                          borderRadius: 6,
+                        }}
+                      >
+                        {tol.code}
                       </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-700 mt-1">{tol.short_description}</p>
-                  
-                  {/* Pulsante dettagli */}
-                  <button
-                    type="button"
-                    onClick={() => handleViewDetails(tol.code)}
-                    className="text-xs text-blue-600 hover:underline mt-1"
-                  >
-                    {isExpanded ? 'Nascondi' : 'Mostra'} declaratoria completa
-                  </button>
-                  
-                  {/* Declaratoria espansa */}
-                  {isExpanded && tolDetails[tol.code] && (
-                    <div className="mt-2 p-3 bg-white rounded border text-sm text-gray-600">
-                      {tolDetails[tol.code].full_description}
-                      {tolDetails[tol.code].notes && (
-                        <p className="mt-2 text-xs italic text-gray-500">
-                          Note: {tolDetails[tol.code].notes}
-                        </p>
+                      {tol.is_specialized && (
+                        <span
+                          style={{
+                            padding: '2px 7px',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            background: '#f3e8ff',
+                            color: '#7c3aed',
+                            border: '1px solid #e9d5ff',
+                            borderRadius: 999,
+                          }}
+                        >
+                          Specializzata
+                        </span>
+                      )}
+                      {selected && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: 'var(--color-text-success)',
+                            background: 'var(--color-bg-success)',
+                            border: '1px solid var(--color-border-success)',
+                            padding: '2px 7px',
+                            borderRadius: 999,
+                          }}
+                        >
+                          ✓ selezionata
+                        </span>
                       )}
                     </div>
-                  )}
-                  
-                  {/* Input peso (se selezionato e multi-select) */}
-                  {selected && multiSelect && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <label className="text-xs text-gray-600">Peso %:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={selected.weight}
-                        onChange={(e) => handleWeightChange(tol.code, parseFloat(e.target.value) || 0)}
-                        disabled={disabled}
-                        className="w-20 px-2 py-1 text-sm border rounded"
-                      />
-                      <span className="text-xs text-gray-500">%</span>
-                    </div>
-                  )}
+                    <p
+                      style={{
+                        margin: '6px 0 0',
+                        fontSize: 13,
+                        lineHeight: 1.45,
+                        color: 'var(--color-text-secondary)',
+                      }}
+                    >
+                      {tol.short_description}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleViewDetails(tol.code)}
+                      style={{
+                        marginTop: 8,
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: 'var(--color-primary)',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                      }}
+                    >
+                      {isExpanded ? 'Nascondi declaratoria' : 'Mostra declaratoria completa'}
+                    </button>
+
+                    {isExpanded && tolDetails[tol.code] && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: '12px 14px',
+                          background: 'var(--color-bg-card)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: 10,
+                          fontSize: 12.5,
+                          lineHeight: 1.5,
+                          color: 'var(--color-text-secondary)',
+                        }}
+                      >
+                        {String(tolDetails[tol.code]['full_description'] ?? '')}
+                        {(() => {
+                          const n = tolDetails[tol.code]['notes']
+                          return typeof n === 'string' && n.trim() ? (
+                            <p
+                              style={{
+                                margin: '8px 0 0',
+                                fontSize: 11,
+                                fontStyle: 'italic',
+                                color: 'var(--color-text-muted)',
+                              }}
+                            >
+                              Note: {n}
+                            </p>
+                          ) : null
+                        })()}
+                      </div>
+                    )}
+
+                    {selected && multiSelect && (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                          Peso %
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                          value={selected.weight}
+                          onChange={e => handleWeightChange(tol.code, parseFloat(e.target.value) || 0)}
+                          disabled={disabled}
+                          style={{
+                            width: 72,
+                            padding: '6px 8px',
+                            borderRadius: 8,
+                            border: '1.5px solid var(--color-border)',
+                            background: 'var(--color-bg-input)',
+                            color: 'var(--color-text-primary)',
+                            fontSize: 13,
+                            fontFamily: 'ui-monospace, monospace',
+                            textAlign: 'right',
+                            outline: 'none',
+                          }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>%</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
-      {/* Riepilogo selezione */}
       {value.length > 0 && (
-        <div className="p-4 bg-gray-50 rounded-lg space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Riepilogo selezione:</h4>
-          <div className="space-y-1">
+        <div
+          style={{
+            padding: '14px 16px',
+            borderRadius: 12,
+            background: 'var(--color-bg-muted)',
+            border: '1px solid var(--color-border-light)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+            Riepilogo selezione
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {value.map(sel => (
-              <div key={sel.code} className="flex justify-between text-sm">
-                <span className="font-mono">{sel.code}</span>
-                {multiSelect && <span>{sel.weight.toFixed(1)}%</span>}
+              <div key={sel.code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600, color: 'var(--color-text-primary)' }}>{sel.code}</span>
+                {multiSelect && <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>{sel.weight.toFixed(1)}%</span>}
               </div>
             ))}
           </div>
-          
-          {/* Validazione peso totale */}
+
           {multiSelect && value.length > 1 && (
-            <div className="pt-2 border-t mt-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Totale:</span>
-                <span className={`text-sm font-bold ${isWeightValid ? 'text-green-600' : 'text-red-600'}`}>
+            <div style={{ paddingTop: 10, borderTop: '1px solid var(--color-border-light)', marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>Totale</span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: isWeightValid ? 'var(--color-text-success)' : 'var(--color-text-error)',
+                    background: isWeightValid ? 'var(--color-bg-success)' : 'var(--color-bg-error)',
+                    border: `1px solid ${isWeightValid ? 'var(--color-border-success)' : 'var(--color-border-error)'}`,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                  }}
+                >
                   {totalWeight.toFixed(1)}%
                 </span>
               </div>
-              {!isWeightValid && (
-                <p className="text-xs text-red-600 mt-1">
-                  ⚠️ La somma dei pesi deve essere 100%
-                </p>
-              )}
-              {isWeightValid && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Pesi corretti
-                </p>
-              )}
+              <p
+                style={{
+                  margin: '6px 0 0',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: isWeightValid ? 'var(--color-text-success)' : 'var(--color-text-error)',
+                }}
+              >
+                {isWeightValid ? '✓ Pesi corretti' : '⚠️ La somma dei pesi deve essere 100%'}
+              </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Hint */}
-      <p className="text-xs text-gray-500">
-        {multiSelect 
-          ? 'Per contratti con lavorazioni diverse, seleziona più TOL e assegna i pesi percentuali. La somma deve essere 100%.'
-          : 'Seleziona la TOL prevalente per questo contratto.'
-        }
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+        {multiSelect
+          ? 'Per lavorazioni diverse, seleziona più TOL e ripartisci i pesi — la somma deve essere 100%.'
+          : 'Seleziona la TOL prevalente per questo contratto.'}
       </p>
     </div>
   )

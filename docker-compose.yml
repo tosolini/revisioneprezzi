@@ -1,7 +1,6 @@
 services:
   backend:
-    #image: ghcr.io/tosolini/revisioneprezzi/backend:main
-    build: ./backend
+    image: ghcr.io/tosolini/revisioneprezzi/backend:latest
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -11,14 +10,14 @@ services:
       - db
 
   frontend:
-    build: ./frontend
+    image: ghcr.io/tosolini/revisioneprezzi/frontend:latest
     ports:
       - "127.0.0.1:3000:80"
     depends_on:
       - backend
 
   parser:
-    image: ghcr.io/tosolini/revisioneprezzi/parser:main
+    image: ghcr.io/tosolini/revisioneprezzi/parser:latest
     ports:
       - "127.0.0.1:8002:8002"
 

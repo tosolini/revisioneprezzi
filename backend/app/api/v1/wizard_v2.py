@@ -295,6 +295,13 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
             )
 
     case.current_step = payload.current_step
+    # Distingue V2 da V1 e marca completamento: V2 ha 5 passi, V1 ne ha 7/8.
+    # Se il frontend ha raggiunto il report (step 5) con risultato, la pratica è completata.
+    if payload.current_step >= 5 and payload.result is not None:
+        case.status = "completed"
+    elif payload.current_step >= 5:
+        # salvato a step 5 anche senza risultato (es. navigazione): considera completata
+        case.status = "completed"
 
     db.commit()
     return {"status": "ok", "case_id": str(case_id)}

@@ -20,8 +20,15 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 - **Catalogo ISTAT** — gestione indici: import CSV, import da query SDMX asincrono con salvataggio automatico delle query, **strategie riscrittura `startPeriod`/`endPeriod`** (riscarica con `fixed`/`earliest`/`expand_1y`/`expand_5y` per inizio più vecchio e `fixed`/`last_month_end`/`today` per fine), riscarica e gestione provenienza per serie, ricerca per gruppo, svuotamento con doppia conferma; **guardie di integrità** con payload strutturato (`unfiltered_dimensions` + `example_url`) e box esplicativo che indica quali valori si mescolerebbero nella serie esistente
 - **UX modali** — tutte le modali SDMX/CSV/svuotamento con `maxHeight:90vh`, scroll interno e header/footer sticky: mai bloccate fuori viewport anche con errori lunghi
 - **Cataloghi CPV, ATECO, TOL** — consultazione e ricerca
-- **Parser documentale** (V2) — estrazione automatica dei dati da DOCX/PDF
+- **Parser documentale (V2)** — estrazione su richiesta alla creazione pratica — preview e conferma admin prima di avviare il percorso rapido (carica PDF/DOCX opzionale in “Nuova pratica”, verifica i dati trovati e scegli se usare il rapido)
 - **Backup del database** — esportazione e ripristino dal backend (`/api/v1/backup`)
+
+#### Quale percorso scegliere?
+
+| Percorso | Quando usarlo | Passi |
+|----------|---------------|-------|
+| **Percorso rapido (V2, 5 passi)** | Servizi/forniture standard con CPV noto; ideale dopo aver caricato determina/bando e confermato i dati estratti | 1. Tipo contratto → 2. CPV/ATECO → 3. Importo e periodi → 4. Pesi indici → 5. Calcolo |
+| **Percorso completo (V1, 7 passi)** | Casi complessi, lavori con TOL, o quando l'estrazione non trova dati utili | 7 passi con classificazione fine e indici compositi |
 
 ### Stack tecnologico
 

@@ -9,18 +9,39 @@ export default function CaseDetail() {
   const [c, setC] = useState<CaseDetailType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [v2Step, setV2Step] = useState<number | null>(null)
 
   useEffect(() => {
     if (!id) return
     api.cases.get(id)
       .then(setC)
-      .catch(e => setError(e.message))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!id || !c) return
+    fetch(`/api/v1/cases/${id}/wizard-v2`)
+      .then(res => {
+        if (!res.ok) throw new Error('no v2')
+        return res.json() as Promise<Record<string, unknown>>
+      })
+      .then(body => {
+        const state = body['state'] as Record<string, unknown> | undefined
+        const step = state?.['current_step']
+        if (typeof step === 'number' && step > 1) setV2Step(step)
+        else setV2Step(null)
+      })
+      .catch(() => setV2Step(null))
+  }, [id, c])
 
   if (loading) return <div style={{ color: 'var(--color-text-muted)' }}>Caricamento...</div>
   if (error) return <div style={{ color: 'var(--color-text-error)' }}>{error}</div>
   if (!c) return <div style={{ color: 'var(--color-text-muted)' }}>Pratica non trovata</div>
+
+  const isFresh = c.current_step === 0 || c.current_step === 1
+  const continuedInV2 = v2Step != null && v2Step > 1
+  const isDraft = c.status === 'draft'
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -67,13 +88,41 @@ export default function CaseDetail() {
         </table>
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => navigate(`/cases/${id}/wizard/${c.current_step || 1}`)}
-          style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
-        >
-          Continua wizard →
-        </button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {isDraft && (
+          <>
+            {isFresh ? (
+              <>
+                <button
+                  onClick={() => navigate(`/cases/${id}/wizard-v2`)}
+                  style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
+                >
+                  Percorso rapido (5 passi)
+                </button>
+                <button
+                  onClick={() => navigate(`/cases/${id}/wizard/1`)}
+                  style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+                >
+                  Percorso completo (7 passi)
+                </button>
+              </>
+            ) : continuedInV2 ? (
+              <button
+                onClick={() => navigate(`/cases/${id}/wizard-v2`)}
+                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
+              >
+                Continua percorso rapido →
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate(`/cases/${id}/wizard/${c.current_step || 1}`)}
+                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
+              >
+                Continua wizard →
+              </button>
+            )}
+          </>
+        )}
         <button
           onClick={() => navigate(`/cases/${id}/report`)}
           style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}

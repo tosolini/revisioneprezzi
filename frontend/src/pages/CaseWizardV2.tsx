@@ -162,10 +162,128 @@ function normalizeAteco(code: string): string {
   return digits || code.trim().toUpperCase()
 }
 
+const MONTH_LABELS_V2 = [
+  ['01', 'Gennaio'], ['02', 'Febbraio'], ['03', 'Marzo'], ['04', 'Aprile'],
+  ['05', 'Maggio'], ['06', 'Giugno'], ['07', 'Luglio'], ['08', 'Agosto'],
+  ['09', 'Settembre'], ['10', 'Ottobre'], ['11', 'Novembre'], ['12', 'Dicembre'],
+] as const
+
+function parseMonthValueV2(value: string): [string, string] {
+  const s = (value || '').slice(0, 7)
+  const [year, month] = s.split('-')
+  return [year || '', month || '']
+}
+
+function buildYearRangeV2(): string[] {
+  const cur = new Date().getFullYear()
+  const years: string[] = []
+  for (let y = cur - 15; y <= cur + 15; y++) years.push(String(y))
+  return years
+}
+
+function MonthYearPicker({
+  value,
+  onChange,
+  id,
+}: {
+  value: string
+  onChange: (v: string) => void
+  id?: string
+}) {
+  const [seedYear, seedMonth] = parseMonthValueV2(value)
+  const [year, setYear] = useState(seedYear)
+  const [month, setMonth] = useState(seedMonth)
+  const years = buildYearRangeV2()
+
+  useEffect(() => {
+    const [y, m] = parseMonthValueV2(value)
+    setYear(y)
+    setMonth(m)
+  }, [value])
+
+  const selectStyle: React.CSSProperties = {
+    flex: 1,
+    padding: '10px 12px',
+    border: '1.5px solid var(--color-border)',
+    borderRadius: 10,
+    fontSize: 14,
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+    background: 'var(--color-bg-input)',
+    color: 'var(--color-text-primary)',
+    outline: 'none',
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 10 }}>
+      <select
+        id={id ? `${id}-month` : undefined}
+        value={month}
+        onChange={e => {
+          const m = e.target.value
+          setMonth(m)
+          if (year && m) onChange(`${year}-${m}-01`)
+          else if (!m && !year) onChange('')
+        }}
+        style={selectStyle}
+        aria-label="Mese"
+      >
+        <option value="">Mese</option>
+        {MONTH_LABELS_V2.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+      <select
+        id={id ? `${id}-year` : undefined}
+        value={year}
+        onChange={e => {
+          const y = e.target.value
+          setYear(y)
+          if (y && month) onChange(`${y}-${month}-01`)
+          else if (!y && !month) onChange('')
+        }}
+        style={selectStyle}
+        aria-label="Anno"
+      >
+        <option value="">Anno</option>
+        {years.map(y => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
 export default function CaseWizardV2() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const handlePrint = () => {
+    const style = document.createElement('style')
+    style.id = '__print_style_v2'
+    style.textContent = `
+      @media print {
+        body * { visibility: hidden !important; }
+        #print-area-v2, #print-area-v2 * { visibility: visible !important; }
+        #print-area-v2 { position: absolute; left: 0; top: 0; width: 100%; }
+        #root > div > nav { display: none !important; }
+        button, .no-print { display: none !important; }
+        @page { margin: 15mm; }
+      }
+    `
+    document.head.appendChild(style)
+    window.print()
+    setTimeout(() => {
+      const s = document.getElementById('__print_style_v2')
+      if (s) s.remove()
+    }, 1000)
+  }
+
   const [data, setData] = useState<WizardData>({
     contract_type: '',
     cpv_selections: [],
@@ -1073,104 +1191,307 @@ export default function CaseWizardV2() {
     switch (currentStep) {
       case 1:
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Tipo di Contratto</h2>
-            <p className="text-gray-600 mb-6">
-              Seleziona la tipologia di contratto per determinare i parametri normativi applicabili
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {(data.cpv_selections.length === 0 && data.amount === 0 && data.contract_type === '' && !initialLoading) && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'flex-start',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'var(--color-bg-card)',
+                  border: '1px solid var(--color-border-light)',
+                  boxShadow: '0 1px 2px var(--color-shadow)',
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 999,
+                    background: 'var(--color-bg-info)',
+                    border: '1px solid var(--color-border-info)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 14,
+                    flexShrink: 0,
+                  }}
+                  aria-hidden
+                >
+                  ✦
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1.35 }}>
+                    Percorso rapido (5 passi) — ideale per servizi e forniture standard
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.45, marginTop: 2 }}>
+                    Hai aperto la pratica senza dati estratti. Se è un lavoro complesso, puoi passare al percorso completo in un click.
+                  </div>
+                </div>
+                <button
+                  onClick={() => { if (id) navigate(`/cases/${id}/wizard/1`) }}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: 'var(--color-bg-card)',
+                    color: 'var(--color-text-primary)',
+                    border: '1.5px solid var(--color-border)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  Passa a 7 passi
+                </button>
+              </div>
+            )}
+            <div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '5px 10px',
+                  borderRadius: 999,
+                  background: 'var(--color-bg-muted)',
+                  border: '1px solid var(--color-border-light)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: 'var(--color-primary)',
+                  }}
+                  aria-hidden
+                />
+                Passo 1 di 5
+                <span style={{ opacity: 0.45 }}>·</span>
+                Tipo di contratto
+              </div>
+              <h2
+                style={{
+                  margin: '14px 0 8px',
+                  fontSize: 26,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.15,
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                Che tipo di contratto stai ricalcolando?
+              </h2>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13.5,
+                  lineHeight: 1.5,
+                  color: 'var(--color-text-muted)',
+                  maxWidth: 580,
+                }}
+              >
+                La scelta determina soglie, coefficienti e classificazione (CPV o TOL) dei passi successivi. Potrai modificarla in seguito.
+              </p>
+            </div>
             <ContractTypeSelector
               value={data.contract_type}
               onChange={(type) => setDataField('contract_type', type)}
             />
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+              Suggerimento: per servizi/forniture standard il <strong style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>percorso rapido</strong> è più veloce; per lavori complessi usa il percorso completo (7 passi).
+            </p>
           </div>
         )
 
-      case 2:
+      case 2: {
+        const isWorks = data.contract_type === 'works'
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Classificazione</h2>
-            <p className="text-gray-600 mb-6">
-              {data.contract_type === 'works'
-                ? 'Seleziona le TOL (Tipologie Omogenee Lavorazioni) applicabili al contratto'
-                : 'Inserisci uno o più codici CPV e i codici ATECO presenti nel testo contrattuale'
-              }
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <div>
+              <div
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 999,
+                  background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-muted)',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--color-primary)' }} aria-hidden />
+                Passo 2 di 5
+                <span style={{ opacity: 0.45 }}>·</span>
+                Classificazione
+              </div>
+              <h2
+                style={{
+                  margin: '14px 0 8px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--color-text-primary)',
+                }}
+              >
+                {isWorks ? 'Quali lavorazioni comprende l’appalto?' : 'Come è classificata la prestazione?'}
+              </h2>
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', maxWidth: 580 }}>
+                {isWorks
+                  ? 'Seleziona le TOL (Tipologie Omogenee Lavorazioni). Se più di una, ripartisci i pesi fino a 100%.'
+                  : 'Aggiungi i codici CPV e, se presenti nel bando, i codici ATECO per affinare i pesi Tabella D.'}
+              </p>
+            </div>
 
-            {data.contract_type === 'works' ? (
-              <TolSelector
-                value={data.tol_selections || []}
-                onChange={(selections) => setDataField('tol_selections', selections)}
-                multiSelect={true}
-              />
+            {isWorks ? (
+              <TolSelector value={data.tol_selections || []} onChange={selections => setDataField('tol_selections', selections)} multiSelect={true} />
             ) : (
-              <div className="space-y-6">
-                {/* CPV selections */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* CPV */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Codici CPV</label>
-                  <div className="space-y-3">
-                    {data.cpv_selections.map((sel, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={sel.cpv_code}
-                            readOnly
-                            placeholder="CPV selezionato"
-                            className="w-full px-4 py-2 border rounded-lg bg-gray-50 font-mono"
-                          />
-                          {sel.description && (
-                            <p className="text-xs text-gray-500 mt-1">{sel.description}</p>
-                          )}
-                        </div>
-                        {data.cpv_selections.length > 1 && (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step="0.01"
-                              value={sel.weight ?? ''}
-                              onChange={e => updateCpvWeight(i, e.target.value ? parseFloat(e.target.value) : undefined)}
-                              placeholder="peso %"
-                              className="w-20 px-2 py-2 border rounded-lg text-sm"
-                            />
-                            <span className="text-xs text-gray-500">%</span>
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeCpv(i)}
-                          className="px-3 py-2 border rounded-lg text-red-600 hover:bg-red-50 text-sm"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                      Codici CPV
+                      {data.cpv_selections.length > 0 && (
+                        <span style={{ marginLeft: 8, padding: '2px 7px', borderRadius: 999, background: 'var(--color-bg-info)', border: '1px solid var(--color-border-info)', color: 'var(--color-text-info)', fontSize: 10 }}>
+                          {data.cpv_selections.length} selezionat{data.cpv_selections.length === 1 ? 'o' : 'i'}
+                        </span>
+                      )}
+                    </div>
+                    {data.cpv_selections.length > 1 && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)' }}>Pesi = ripartizione importo (Art. 13)</span>
+                    )}
                   </div>
-                  {data.cpv_selections.length > 1 && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Pesi CPV = ripartizione dell'importo tra le prestazioni (Art. 13)
-                    </p>
+
+                  {data.cpv_selections.length === 0 ? (
+                    <div
+                      style={{
+                        padding: 18, borderRadius: 12, border: '1.5px dashed var(--color-border)', background: 'var(--color-bg-muted)',
+                        textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13, lineHeight: 1.5,
+                      }}
+                    >
+                      Nessun CPV ancora. Aggiungi il codice principale del bando — potrai aggiungerne altri con pesi.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {data.cpv_selections.map((sel, i) => (
+                        <div
+                          key={sel.cpv_code + i}
+                          style={{
+                            display: 'flex', gap: 12, alignItems: 'center', padding: '12px 14px',
+                            borderRadius: 12, border: '1.5px solid var(--color-border-light)', background: 'var(--color-bg-card)',
+                            boxShadow: '0 1px 3px var(--color-shadow)',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span
+                                style={{
+                                  fontFamily: 'ui-monospace, monospace', fontSize: 13, fontWeight: 800, color: 'var(--color-primary)',
+                                  background: 'var(--color-bg-info)', border: '1px solid var(--color-border-info)', padding: '3px 8px', borderRadius: 8,
+                                }}
+                              >
+                                {sel.cpv_code}
+                              </span>
+                              {i === 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-info)', background: 'var(--color-bg-info)', border: '1px solid var(--color-border-info)', padding: '2px 6px', borderRadius: 999 }}>
+                                  principale
+                                </span>
+                              )}
+                            </div>
+                            {sel.description && (
+                              <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>{sel.description}</div>
+                            )}
+                          </div>
+
+                          {data.cpv_selections.length > 1 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                                Peso
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.01}
+                                value={sel.weight ?? ''}
+                                onChange={e => updateCpvWeight(i, e.target.value ? parseFloat(e.target.value) : undefined)}
+                                placeholder="—"
+                                style={{
+                                  width: 74, padding: '7px 8px', borderRadius: 8, fontSize: 13, fontFamily: 'ui-monospace, monospace', textAlign: 'right',
+                                  border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none',
+                                }}
+                              />
+                              <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 700 }}>%</span>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => removeCpv(i)}
+                            aria-label={`Rimuovi CPV ${sel.cpv_code}`}
+                            style={{
+                              width: 32, height: 32, borderRadius: 8, display: 'grid', placeItems: 'center', flexShrink: 0,
+                              border: '1.5px solid var(--color-border-light)', background: 'var(--color-bg-card)', color: 'var(--color-text-light)',
+                              cursor: 'pointer', fontSize: 14, fontWeight: 700, transition: 'all 120ms',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg-error)'; e.currentTarget.style.color = 'var(--color-text-error)'; e.currentTarget.style.borderColor = 'var(--color-border-error)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-bg-card)'; e.currentTarget.style.color = 'var(--color-text-light)'; e.currentTarget.style.borderColor = 'var(--color-border-light)' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
+
                   <button
                     type="button"
                     onClick={() => setCpvModalOpen(true)}
-                    className="mt-3 px-4 py-2 border border-dashed rounded-lg text-sm font-medium text-gray-600 w-full hover:bg-gray-50"
+                    style={{
+                      marginTop: 12, width: '100%', padding: '13px 16px', borderRadius: 12, border: '1.5px dashed var(--color-border)', background: 'var(--color-bg-card)',
+                      color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      transition: 'all 120ms',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-bg-muted)'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-bg-card)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
                   >
-                    + Aggiungi CPV
+                    <span style={{ width: 22, height: 22, borderRadius: 999, background: 'var(--color-primary)', color: 'var(--color-primary-text)', display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 800 }}>＋</span>
+                    Aggiungi CPV
+                    <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 12 }}>— cerca per codice o descrizione</span>
                   </button>
                 </div>
 
-                {/* ATECO from contract text */}
+                {/* ATECO */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 10 }}>
                     Codici ATECO dal testo contrattuale
-                  </label>
-                  <div className="space-y-3">
-                    {data.ateco_selections.map((at, i) => (
-                      <div key={i} className="relative">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
+                    <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--color-text-light)', marginLeft: 8, fontSize: 11 }}>
+                      opzionali — affinano i pesi (Art. 11.3)
+                    </span>
+                  </div>
+
+                  {data.ateco_selections.length === 0 ? (
+                    <div
+                      style={{
+                        padding: 14, borderRadius: 12, border: '1px solid var(--color-border-light)', background: 'var(--color-bg-muted)',
+                        fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.5,
+                      }}
+                    >
+                      Se nel bando sono indicati ATECO (es. 26.3, 95.1), aggiungili per ripartire con precisione i pesi tra PPI e retribuzioni.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {data.ateco_selections.map((at, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: 'flex', gap: 10, alignItems: 'center', padding: '12px 14px',
+                            borderRadius: 12, border: '1.5px solid var(--color-border-light)', background: 'var(--color-bg-card)',
+                            boxShadow: '0 1px 3px var(--color-shadow)', position: 'relative' as const,
+                          }}
+                        >
+                          <div style={{ flex: 1, position: 'relative' as const }}>
                             <input
                               type="text"
                               value={atecoInputs[String(i)] ?? at.ateco_code}
@@ -1179,138 +1500,214 @@ export default function CaseWizardV2() {
                                 if (!at.ateco_code) return
                                 fetch(`/api/v1/ateco/search?q=${encodeURIComponent(at.ateco_code)}`)
                                   .then(res => res.json())
-                                  .then(body => setAtecoSuggestions(isRecord(body) && Array.isArray(body['results']) ? body['results'].filter(isRecord).map(r => ({
-                                    code: String(r['code'] ?? ''),
-                                    description: String(r['description'] ?? ''),
-                                  })) : []))
+                                  .then(body =>
+                                    setAtecoSuggestions(
+                                      isRecord(body) && Array.isArray(body['results'])
+                                        ? (body['results'] as unknown[])
+                                            .filter(isRecord)
+                                            .map(r => ({ code: String((r as Record<string, unknown>)['code'] ?? ''), description: String((r as Record<string, unknown>)['description'] ?? '') }))
+                                        : []
+                                    )
+                                  )
                                   .catch(() => setAtecoSuggestions([]))
                               }}
-                              placeholder="es. 26.3, 95.1"
-                              className="w-full px-4 py-2 border rounded-lg"
+                              placeholder="es. 26.3 — fabbricazione computer"
+                              style={{
+                                width: '100%', padding: '9px 12px', borderRadius: 10, fontSize: 13,
+                                border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none',
+                              }}
                             />
                             {atecoSuggestions.length > 0 && (
-                              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-auto">
+                              <div
+                                style={{
+                                  position: 'absolute' as const, zIndex: 10, marginTop: 6, width: '100%',
+                                  background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12,
+                                  boxShadow: '0 12px 28px var(--color-shadow-heavy)', maxHeight: 192, overflow: 'auto', padding: 6,
+                                }}
+                              >
                                 {atecoSuggestions.map(s => (
                                   <button
                                     key={s.code}
                                     type="button"
                                     onClick={() => pickAteco(i, s.code, s.description)}
-                                    className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                    style={{
+                                      display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 8, border: '1px solid transparent',
+                                      background: 'transparent', cursor: 'pointer', fontSize: 13,
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg-muted)'; e.currentTarget.style.borderColor = 'var(--color-border-light)' }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
                                   >
-                                    <span className="font-mono font-semibold">{s.code}</span>
-                                    <span className="text-gray-500 ml-2">{s.description}</span>
+                                    <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: 'var(--color-primary)' }}>{s.code}</span>
+                                    <span style={{ color: 'var(--color-text-muted)', marginLeft: 8 }}>{s.description}</span>
                                   </button>
                                 ))}
                               </div>
                             )}
                           </div>
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step="0.01"
-                            value={at.weight || ''}
-                            onChange={e => updateAtecoWeight(i, parseFloat(e.target.value) || 0)}
-                            placeholder="peso %"
-                            className="w-20 px-2 py-2 border rounded-lg text-sm"
-                          />
-                          <span className="text-xs text-gray-500">%</span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                              Peso
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={0.01}
+                              value={at.weight || ''}
+                              onChange={e => updateAtecoWeight(i, parseFloat(e.target.value) || 0)}
+                              placeholder="—"
+                              style={{
+                                width: 74, padding: '7px 8px', borderRadius: 8, fontSize: 13, fontFamily: 'ui-monospace, monospace', textAlign: 'right',
+                                border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none',
+                              }}
+                            />
+                            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 700 }}>%</span>
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => removeAteco(i)}
-                            className="px-3 py-2 border rounded-lg text-red-600 hover:bg-red-50 text-sm"
+                            aria-label="Rimuovi ATECO"
+                            style={{
+                              width: 32, height: 32, borderRadius: 8, display: 'grid', placeItems: 'center', flexShrink: 0,
+                              border: '1.5px solid var(--color-border-light)', background: 'var(--color-bg-card)', color: 'var(--color-text-light)',
+                              cursor: 'pointer', fontSize: 14, fontWeight: 700, transition: 'all 120ms',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg-error)'; e.currentTarget.style.color = 'var(--color-text-error)'; e.currentTarget.style.borderColor = 'var(--color-border-error)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-bg-card)'; e.currentTarget.style.color = 'var(--color-text-light)'; e.currentTarget.style.borderColor = 'var(--color-border-light)' }}
                           >
-                            ✕
+                            ×
                           </button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={addAteco}
-                    className="mt-3 px-4 py-2 border border-dashed rounded-lg text-sm font-medium text-gray-600 w-full hover:bg-gray-50"
+                    style={{
+                      marginTop: 12, width: '100%', padding: '13px 16px', borderRadius: 12, border: '1.5px dashed var(--color-border)', background: 'var(--color-bg-card)',
+                      color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      transition: 'all 120ms',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-bg-muted)'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-bg-card)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
                   >
-                    + Aggiungi codice ATECO
+                    <span style={{ width: 22, height: 22, borderRadius: 999, background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)', display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 800, color: 'var(--color-text-muted)' }}>
+                      ＋
+                    </span>
+                    Aggiungi codice ATECO
+                    <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 12 }}>— dal bando</span>
                   </button>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Incidenza manodopera/materiali dal bando (Art. 11.3, Tabella D punto 7)
+                  <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+                    Incidenza manodopera/materiali (Art. 11.3, Tabella D punto 7) — se lasci vuoto, i pesi verranno ripartiti in automatico.
                   </p>
                 </div>
               </div>
             )}
           </div>
         )
+      }
 
       case 3:
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Dati Contrattuali</h2>
-            <p className="text-gray-600 mb-6">
-              Inserisci l'importo assoggettabile a revisione e i periodi di riferimento
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <div>
+              <div
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 999,
+                  background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-muted)',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--color-primary)' }} aria-hidden />
+                Passo 3 di 5
+                <span style={{ opacity: 0.45 }}>·</span>
+                Importi e periodi
+              </div>
+              <h2
+                style={{
+                  margin: '14px 0 8px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--color-text-primary)',
+                }}
+              >
+                Importo e periodi di riferimento
+              </h2>
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', maxWidth: 580 }}>
+                Inserisci l’importo assoggettabile a revisione e i due mesi che delimitano il calcolo.
+              </p>
+            </div>
 
-            <div className="space-y-6">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                   Importo assoggettabile a revisione (€)
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min={0}
                   value={data.amount || ''}
-                  onChange={(e) => setDataField('amount', parseFloat(e.target.value) || 0)}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  placeholder="es. 100000.00"
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Periodo base (mese aggiudicazione) — deve precedere il periodo di confronto
-                </label>
-                <input
-                  type="month"
-                  value={data.base_period ? data.base_period.substring(0, 7) : ''}
-                  onChange={(e) => setDataField('base_period', `${e.target.value}-01`)}
+                  onChange={e => setDataField('amount', parseFloat(e.target.value) || 0)}
+                  placeholder="es. 100 000,00"
                   style={{
-                    width: '100%', padding: '8px 12px',
-                    border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 14,
-                    fontFamily: 'inherit', boxSizing: 'border-box',
-                    background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
-                    colorScheme: 'dark',
+                    width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
+                    border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+                    outline: 'none', boxSizing: 'border-box',
                   }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--color-border)' }}
                 />
-                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Il mese e anno di aggiudicazione del contratto (indice di riferimento)
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                  Solo la quota soggetta a revisione (al netto di oneri non rivalutabili).
                 </p>
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Periodo confronto (mese rilevazione) — deve seguire il periodo base
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                  Periodo base — mese di aggiudicazione
+                  <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--color-text-light)', marginLeft: 6, fontSize: 11 }}>
+                    (solo mese e anno)
+                  </span>
                 </label>
-                <input
-                  type="month"
-                  value={data.comparison_period ? data.comparison_period.substring(0, 7) : ''}
-                  onChange={(e) => setDataField('comparison_period', `${e.target.value}-01`)}
-                  style={{
-                    width: '100%', padding: '8px 12px',
-                    border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 14,
-                    fontFamily: 'inherit', boxSizing: 'border-box',
-                    background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
-                    colorScheme: 'dark',
-                  }}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Il mese e anno di rilevazione corrente (indice da confrontare)
+                <MonthYearPicker value={data.base_period} onChange={v => setDataField('base_period', v)} id="base-period" />
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                  Seleziona dalle tendine mese e anno di aggiudicazione (es. <em>Luglio 2023</em>) — il giorno è sempre il 1º del mese.
                 </p>
-                {data.base_period && data.comparison_period && data.base_period > data.comparison_period && (
-                  <p style={{ fontSize: 12, color: 'var(--color-text-error)', marginTop: 4 }}>
-                    Il periodo base deve precedere il periodo di confronto: con l'ordine inverso
-                    la variazione risulterebbe col segno invertito. Correggi i periodi.
+                {data.base_period && (
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    Selezionato: <strong style={{ color: 'var(--color-text-primary)', fontFamily: 'ui-monospace, monospace' }}>{data.base_period.slice(0, 7)}</strong>
                   </p>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                  Periodo di confronto — mese di rilevazione
+                  <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--color-text-light)', marginLeft: 6, fontSize: 11 }}>
+                    (solo mese e anno)
+                  </span>
+                </label>
+                <MonthYearPicker value={data.comparison_period} onChange={v => setDataField('comparison_period', v)} id="comparison-period" />
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                  Seleziona dalle tendine il mese di rilevazione corrente — deve essere successivo al periodo base.
+                </p>
+                {data.comparison_period && (
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    Selezionato: <strong style={{ color: 'var(--color-text-primary)', fontFamily: 'ui-monospace, monospace' }}>{data.comparison_period.slice(0, 7)}</strong>
+                  </p>
+                )}
+                {data.base_period && data.comparison_period && data.base_period > data.comparison_period && (
+                  <div
+                    style={{
+                      marginTop: 8, padding: '9px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                      background: 'var(--color-bg-error)', color: 'var(--color-text-error)', border: '1px solid var(--color-border-error)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Il periodo base deve precedere il confronto — con l’ordine inverso la variazione avrebbe segno invertito.
+                  </div>
                 )}
               </div>
             </div>
@@ -1319,82 +1716,137 @@ export default function CaseWizardV2() {
 
       case 4:
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Indici ISTAT</h2>
-            <p className="text-gray-600 mb-6">
-              Associazione CPV → indici secondo la Tabella D (Allegato II.2-bis)
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div>
+              <div
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 999,
+                  background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-muted)',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--color-primary)' }} aria-hidden />
+                Passo 4 di 5
+                <span style={{ opacity: 0.45 }}>·</span>
+                Indici ISTAT
+              </div>
+              <h2
+                style={{
+                  margin: '14px 0 8px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--color-text-primary)',
+                }}
+              >
+                Pesi e serie ISTAT
+              </h2>
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', maxWidth: 580 }}>
+                Associazione CPV → indici secondo Tabella D (All. II.2-bis). Verifica i pesi e la disponibilità dei dati prima di calcolare.
+              </p>
+            </div>
 
             {data.cpv_selections.length > 0 && (
-              <div className="space-y-6">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {data.cpv_selections.map((sel, i) => (
-                  <div key={i} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="font-semibold mb-2 text-sm">
-                      {sel.cpv_code}
-                      {sel.description && <span className="font-normal text-gray-600 ml-2">{sel.description}</span>}
-                    </h3>
+                  <div
+                    key={sel.cpv_code + i}
+                    style={{
+                      padding: 16, borderRadius: 12, border: '1.5px solid var(--color-border-light)', background: 'var(--color-bg-card)',
+                      boxShadow: '0 1px 3px var(--color-shadow)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          fontFamily: 'ui-monospace, monospace', fontSize: 13, fontWeight: 800, color: 'var(--color-primary)',
+                          background: 'var(--color-bg-info)', border: '1px solid var(--color-border-info)', padding: '3px 8px', borderRadius: 8,
+                        }}
+                      >
+                        {sel.cpv_code}
+                      </span>
+                      {sel.description && (
+                        <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>{sel.description}</span>
+                      )}
+                    </div>
                     {renderMappingForCpv(sel)}
                   </div>
                 ))}
               </div>
             )}
 
-            <div className="p-6 bg-blue-50 rounded-lg border border-blue-200 mt-6">
-              <h3 className="font-semibold mb-3">Riepilogo configurazione:</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Tipo contratto:</span>
-                  <span className="font-medium">
-                    {data.contract_type === 'works' ? 'Lavori' :
-                     data.contract_type === 'services' ? 'Servizi' : 'Forniture'}
+            <div
+              style={{
+                padding: 16, borderRadius: 12, background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)',
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 10 }}>
+                Riepilogo configurazione
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Tipo contratto</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {data.contract_type === 'works' ? 'Lavori' : data.contract_type === 'services' ? 'Servizi' : 'Forniture'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Classificazione:</span>
-                  <span className="font-medium">
-                    {data.contract_type === 'works'
-                      ? `${data.tol_selections?.length || 0} TOL selezionate`
-                      : data.cpv_selections.map(s => s.cpv_code).join(', ')
-                    }
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Classificazione</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textAlign: 'right', maxWidth: 260 }}>
+                    {data.contract_type === 'works' ? `${data.tol_selections?.length || 0} TOL` : data.cpv_selections.map(s => s.cpv_code).join(', ')}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Importo:</span>
-                  <span className="font-medium">
-                    € {data.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Importo</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>€ {data.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Periodo:</span>
-                  <span className="font-medium">
-                    {data.base_period.substring(0, 7)} → {data.comparison_period.substring(0, 7)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Periodo</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>
+                    {data.base_period ? data.base_period.substring(0, 7) : '—'} → {data.comparison_period ? data.comparison_period.substring(0, 7) : '—'}
                   </span>
                 </div>
               </div>
             </div>
 
             {mappingIssues().length > 0 && (
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                {mappingIssues().map((issue, i) => (
-                  <p key={i} className="text-sm text-amber-800">{issue}</p>
+              <div
+                style={{
+                  padding: '12px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', flexDirection: 'column', gap: 4,
+                }}
+              >
+                {mappingIssues().map((issue, idx) => (
+                  <p key={idx} style={{ margin: 0, fontSize: 12.5, color: '#92400e', lineHeight: 1.4 }}>
+                    • {issue}
+                  </p>
                 ))}
               </div>
             )}
 
-            <p className="text-sm text-gray-600 mt-4">
-              Premi "Calcola" per eseguire il calcolo della revisione prezzi
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+              Quando i pesi sono a 100% e le serie hanno dati nei periodi scelti, puoi calcolare la revisione.
             </p>
           </div>
         )
 
       case 5:
         return (
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {reportData ? (
-              <ReportV2View reportData={reportData} />
+              <div id="print-area-v2" ref={printRef}>
+                <ReportV2View reportData={reportData} />
+              </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Caricamento report...</p>
+              <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 999,
+                    border: '3px solid var(--color-border)',
+                    borderTopColor: 'var(--color-primary)',
+                    margin: '0 auto 12px',
+                    animation: 'spin 0.8s linear infinite',
+                  }}
+                  aria-hidden
+                />
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Caricamento report...</p>
               </div>
             )}
           </div>
@@ -1431,31 +1883,126 @@ export default function CaseWizardV2() {
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between items-center">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          padding: '16px 0 0',
+          marginTop: 8,
+          borderTop: '1px solid var(--color-border-lighter)',
+        }}
+      >
         <button
           onClick={handleBack}
           disabled={currentStep === 1 || loading || initialLoading}
-          className="px-6 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            padding: '10px 16px',
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 600,
+            background: 'var(--color-bg-card)',
+            color: 'var(--color-text-secondary)',
+            border: '1.5px solid var(--color-border)',
+            cursor: currentStep === 1 || loading || initialLoading ? 'not-allowed' : 'pointer',
+            opacity: currentStep === 1 || loading || initialLoading ? 0.45 : 1,
+            transition: 'all 140ms',
+          }}
         >
           ← Indietro
         </button>
 
-        {currentStep < totalSteps ? (
-          <button
-            onClick={handleNext}
-            disabled={!canProceed() || loading || initialLoading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {currentStep === 4 ? (loading ? 'Calcolo...' : 'Calcola') : 'Avanti →'}
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/cases')}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            Chiudi
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {currentStep === 1 && !canProceed() && !initialLoading && (
+            <span className="hidden sm:inline" style={{ fontSize: 12, color: 'var(--color-text-light)' }}>
+              Seleziona un tipo per continuare
+            </span>
+          )}
+          {currentStep < totalSteps ? (
+            <button
+              onClick={handleNext}
+              disabled={!canProceed() || loading || initialLoading}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 700,
+                background: !canProceed() || loading || initialLoading ? 'var(--color-bg-hover)' : 'var(--color-primary)',
+                color: !canProceed() || loading || initialLoading ? 'var(--color-text-light)' : 'var(--color-primary-text)',
+                border: !canProceed() || loading || initialLoading ? '1.5px solid var(--color-border-light)' : '1.5px solid var(--color-primary)',
+                cursor: !canProceed() || loading || initialLoading ? 'not-allowed' : 'pointer',
+                boxShadow: !canProceed() || loading || initialLoading ? 'none' : '0 4px 12px var(--color-shadow)',
+                opacity: 1,
+                transition: 'all 140ms',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {currentStep === 4 ? (loading ? 'Calcolo…' : 'Calcola') : 'Avanti'}
+              <span aria-hidden>{currentStep === 4 ? '✦' : '→'}</span>
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} className="no-print">
+              <button
+                onClick={handlePrint}
+                disabled={!reportData}
+                title={!reportData ? 'Report non ancora pronto' : 'Stampa o salva PDF'}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: !reportData ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
+                  color: !reportData ? 'var(--color-text-light)' : 'var(--color-text-secondary)',
+                  border: '1.5px solid var(--color-border)',
+                  cursor: !reportData ? 'not-allowed' : 'pointer',
+                  opacity: !reportData ? 0.6 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span aria-hidden>🖨️</span> Stampa / PDF
+              </button>
+              <button
+                onClick={async () => {
+                  if (id && (currentStep >= 5 || reportData || data.result)) {
+                    try {
+                      await fetch(`/api/v1/cases/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: 'completed', current_step: 5 }),
+                      })
+                    } catch {
+                      // ignora, naviga comunque
+                    }
+                    try {
+                      await saveWizardState(5)
+                    } catch {
+                      // ignora
+                    }
+                  }
+                  navigate('/')
+                }}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: 'var(--color-primary)',
+                  color: 'var(--color-primary-text)',
+                  border: '1.5px solid var(--color-primary)',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px var(--color-shadow)',
+                }}
+              >
+                Chiudi ✓
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <CpvSearchModal

@@ -699,7 +699,7 @@ export default function CaseWizard() {
     if (!saved) return
     if (step >= totalSteps) {
       if (id) await api.cases.update(id, { status: 'completed' as string }).catch(() => {})
-      navigate(`/cases`)
+      navigate(`/`)
     } else {
       navigate(`/cases/${id}/wizard/${step + 1}`)
     }
