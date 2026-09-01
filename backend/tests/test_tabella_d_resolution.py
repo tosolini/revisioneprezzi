@@ -59,10 +59,10 @@ def test_resolve_series_ir(db):
 
 
 def test_resolve_series_ir_prefers_wages_when_available(db):
-    # Verifica che per 61 (Telecomunicazioni, sezione J) se wages_ateco 61 esiste venga preferito a RCO_J
+    # Verifica che per 61 (sezione J) se wages_ateco 61 esiste venga
+    # preferito a RCO_J
     from app.models.index_series import IndexSeries
-    from app.models.index_observation import IndexObservation
-    from datetime import date
+
     wages_id = "ISTAT_WAGES_ATECO_61"
     has_wages = db.query(IndexSeries).filter(IndexSeries.id == wages_id).first() is not None
     detail = resolve_series({"index_type": "IR", "ateco_code": "61"}, db)
@@ -70,6 +70,7 @@ def test_resolve_series_ir_prefers_wages_when_available(db):
         assert detail["series_id"] == wages_id
     else:
         assert detail["series_id"] == "ISTAT_RCO_SETT_J"
+
 
 def test_resolve_series_ir_section_letter(db):
     detail = resolve_series({"index_type": "IR", "ateco_code": "A"}, db)
