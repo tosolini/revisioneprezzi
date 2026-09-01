@@ -26,7 +26,7 @@ def test_cpv_index_mapping_d3(client, tabella_d_data):
     assert by_type["PPI"]["ateco_code"] == "263"
     assert by_type["PPI"]["series_id"] == "ISTAT_PPI_263_D"
     assert by_type["IR"]["ateco_code"] == "951"
-    assert by_type["IR"]["series_id"] == "ISTAT_RCO_SETT_S"
+    assert by_type["IR"]["series_id"] == "ISTAT_WAGES_ATECO_951"
 
 
 def test_cpv_index_mapping_d1(client, tabella_d_data):

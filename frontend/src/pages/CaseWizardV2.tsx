@@ -128,6 +128,7 @@ interface PeriodCoverage {
   comparison: { requested: string; used: string | null; value: number | null; exact: boolean; missing_months?: string[] }
   satisfied: boolean
   missing: boolean
+  saved_query?: { id: string; url: string; dataflow_id: string; key_part: string; end_period_strategy: string; start_period_strategy: string; last_run_at: string | null } | null
 }
 
 const COV_MONTH_NAMES = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
@@ -302,6 +303,8 @@ export default function CaseWizardV2() {
   const [mappingLoading, setMappingLoading] = useState(false)
   const [periodCoverage, setPeriodCoverage] = useState<Record<string, PeriodCoverage> | null>(null)
   const [coverageLoading, setCoverageLoading] = useState(false)
+  const [sdmxReloading, setSdmxReloading] = useState<Record<string, boolean>>({})
+  const [sdmxReloadMsg, setSdmxReloadMsg] = useState<Record<string, { status: 'done' | 'error'; msg: string }>>({})
   const [cpvModalOpen, setCpvModalOpen] = useState(false)
   const [atecoSuggestions, setAtecoSuggestions] = useState<{ code: string; description: string }[]>([])
   const [activeAtecoIndex, setActiveAtecoIndex] = useState<number | null>(null)
@@ -695,10 +698,9 @@ export default function CaseWizardV2() {
       fetchMappings(data.cpv_selections, data.ateco_selections)
     }
   }, [currentStep, data.cpv_selections, data.ateco_selections, fetchMappings])
-
   // Copertura periodi: mostra chiaramente se i periodi richiesti esistono
   // nelle serie selezionate o vengono soddisfatti per fallback.
-  useEffect(() => {
+  const fetchPeriodCoverage = useCallback(async () => {
     if (currentStep !== 4) return
     if (!data.base_period || !data.comparison_period) {
       setPeriodCoverage(null)
@@ -720,32 +722,100 @@ export default function CaseWizardV2() {
       return
     }
     setCoverageLoading(true)
-    fetch('/api/v1/calculation/v2/coverage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        components: series,
-        base_period: data.base_period,
-        comparison_period: data.comparison_period,
-      }),
-    })
-      .then(res => (res.ok ? res.json() : null))
-      .then(body => {
-        if (isRecord(body) && Array.isArray(body['series'])) {
-          const map: Record<string, PeriodCoverage> = {}
-          for (const c of body['series']) {
-            if (isRecord(c) && typeof c['series_id'] === 'string') {
-              map[c['series_id']] = c as unknown as PeriodCoverage
-            }
-          }
-          setPeriodCoverage(map)
-        } else {
-          setPeriodCoverage(null)
-        }
+    try {
+      const res = await fetch('/api/v1/calculation/v2/coverage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          components: series,
+          base_period: data.base_period,
+          comparison_period: data.comparison_period,
+        }),
       })
-      .catch(() => setPeriodCoverage(null))
-      .finally(() => setCoverageLoading(false))
+      if (!res.ok) {
+        setPeriodCoverage(null)
+        return
+      }
+      const body: unknown = await res.json()
+      if (isRecord(body) && Array.isArray(body['series'])) {
+        const map: Record<string, PeriodCoverage> = {}
+        for (const c of body['series']) {
+          if (isRecord(c) && typeof c['series_id'] === 'string') {
+            map[c['series_id']] = c as unknown as PeriodCoverage
+          }
+        }
+        setPeriodCoverage(map)
+      } else {
+        setPeriodCoverage(null)
+      }
+    } catch {
+      setPeriodCoverage(null)
+    } finally {
+      setCoverageLoading(false)
+    }
   }, [currentStep, mappings, data.base_period, data.comparison_period, data.cpv_selections])
+
+  useEffect(() => {
+    void fetchPeriodCoverage()
+  }, [fetchPeriodCoverage])
+
+  const pollImportJob = async (jobId: string): Promise<unknown> => {
+    const deadline = Date.now() + 15 * 60 * 1000
+    while (Date.now() < deadline) {
+      await new Promise<void>(r => setTimeout(r, 3000))
+      const res = await fetch(`/api/v1/indices/import-jobs/${encodeURIComponent(jobId)}`)
+      if (!res.ok) throw new Error('Errore nel controllo dell\'import')
+      const job: unknown = await res.json()
+      if (isRecord(job)) {
+        const status = String(job['status'] ?? '')
+        if (status === 'done') return job
+        if (status === 'error') throw new Error(String(job['error'] ?? 'Errore importazione'))
+      }
+    }
+    throw new Error('Tempo scaduto: Istat non ha risposto entro 15 minuti. Riprova.')
+  }
+
+  const handleReloadSdmx = async (seriesId: string) => {
+    const cov = periodCoverage?.[seriesId]
+    const qid = cov?.saved_query?.id
+    if (!qid || sdmxReloading[seriesId]) return
+    setSdmxReloading(prev => ({ ...prev, [seriesId]: true }))
+    setSdmxReloadMsg(prev => {
+      const next = { ...prev }
+      delete next[seriesId]
+      return next
+    })
+    try {
+      const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(qid)}/run`, { method: 'POST' })
+      if (!res.ok) {
+        let detail = await res.text()
+        try {
+          const j: unknown = JSON.parse(detail)
+          if (isRecord(j) && typeof j['detail'] === 'string' && j['detail']) detail = j['detail']
+        } catch { /* ignore */ }
+        throw new Error(detail || 'Errore riscarica')
+      }
+      const body: unknown = await res.json()
+      const jobId = isRecord(body) ? String(body['job_id'] ?? '') : ''
+      if (!jobId) throw new Error('job_id mancante')
+      const job = await pollImportJob(jobId) as Record<string, unknown>
+      const details = isRecord(job['result']) && isRecord(job['result']['details']) ? job['result']['details'] as Record<string, unknown> : null
+      const added = details ? String(details['added'] ?? '0') : '0'
+      const updated = details ? String(details['updated'] ?? '0') : '0'
+      const suffix = isRecord(body) && isRecord(body['resolved_meta']) && typeof body['resolved_meta']['endPeriod'] === 'string' && body['url'] !== body['original_url'] ? ` (endPeriod ${String(body['resolved_meta']['endPeriod'])})` : ''
+      setSdmxReloadMsg(prev => ({ ...prev, [seriesId]: { status: 'done', msg: `Riscaricata ${cov?.saved_query?.dataflow_id ?? seriesId}: ${added} aggiunte, ${updated} aggiornate${suffix}` } }))
+      await fetchPeriodCoverage()
+      // se la serie era non disponibile, aggiorna anche i mapping per riflettere dati nuovi
+      // trigger leggero: ricarica mapping senza cambiare pesi
+      // (fetchMappings già chiamato all'ingresso step; qui solo coverage basta)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setSdmxReloadMsg(prev => ({ ...prev, [seriesId]: { status: 'error', msg } }))
+    } finally {
+      setSdmxReloading(prev => ({ ...prev, [seriesId]: false }))
+    }
+  }
+
   const setMode = (cpv: string, mode: 'single' | 'weighted') => {
     setMappings(prev => {
       const m = prev[cpv]
@@ -1076,10 +1146,40 @@ export default function CaseWizardV2() {
     if (coverageLoading) return null
     const cov = seriesId ? periodCoverage?.[seriesId] : undefined
     if (!cov) return null
+    const reloadMsg = seriesId ? sdmxReloadMsg[seriesId] : undefined
+    const reloading = seriesId ? !!sdmxReloading[seriesId] : false
     if (cov.missing) {
       return (
-        <span style={{ color: 'var(--color-text-error)', display: 'block', fontSize: 12, marginTop: 2 }}>
-          Nessun dato definitivo nei periodi richiesti: il calcolo fallirebbe per questa serie.
+        <span style={{ color: 'var(--color-text-error)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+          <span>Nessun dato definitivo nei periodi richiesti: il calcolo fallirebbe per questa serie.</span>
+          {cov.saved_query && (
+            <button
+              type="button"
+              onClick={() => seriesId && handleReloadSdmx(seriesId)}
+              disabled={reloading}
+              title={`Riscarica ${cov.saved_query.dataflow_id} — end:${cov.saved_query.end_period_strategy} start:${cov.saved_query.start_period_strategy}`}
+              style={{
+                marginLeft: 8,
+                padding: '4px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                lineHeight: 1,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg-card)',
+                color: 'var(--color-text-secondary)',
+                cursor: reloading ? 'not-allowed' : 'pointer',
+                opacity: reloading ? 0.6 : 1,
+                verticalAlign: 'middle',
+              }}
+            >
+              {reloading ? 'Ricarica…' : '⟳ Ricarica dati'}
+            </button>
+          )}
+          {reloadMsg && (
+            <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
+              {reloadMsg.msg}
+            </span>
+          )}
         </span>
       )
     }
@@ -1098,8 +1198,36 @@ export default function CaseWizardV2() {
       )
     }
     return (
-      <span style={{ color: 'var(--color-text-warning)', display: 'block', fontSize: 12, marginTop: 2 }}>
-        I periodi richiesti non esistono in questa serie: {notes.join(' · ')}.
+      <span style={{ color: 'var(--color-text-warning)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+        <span>I periodi richiesti non esistono in questa serie: {notes.join(' · ')}.</span>
+        {cov.saved_query && (
+          <button
+            type="button"
+            onClick={() => seriesId && handleReloadSdmx(seriesId)}
+            disabled={reloading}
+            title={`Riscarica ${cov.saved_query.dataflow_id} — end:${cov.saved_query.end_period_strategy} start:${cov.saved_query.start_period_strategy}`}
+            style={{
+              marginLeft: 8,
+              padding: '4px 10px',
+              borderRadius: 8,
+              fontSize: 12,
+              lineHeight: 1,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-bg-card)',
+              color: 'var(--color-text-secondary)',
+              cursor: reloading ? 'not-allowed' : 'pointer',
+              opacity: reloading ? 0.6 : 1,
+              verticalAlign: 'middle',
+            }}
+          >
+            {reloading ? 'Ricarica…' : '⟳ Ricarica dati'}
+          </button>
+        )}
+        {reloadMsg && (
+          <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
+            {reloadMsg.msg}
+          </span>
+        )}
       </span>
     )
   }

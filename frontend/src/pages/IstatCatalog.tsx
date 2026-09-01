@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
+import { DATAFLOW_BY_TYPE, EXPLORER_LABELS, EXPLORER_LEAF_URLS, EXPLORER_URLS, sdmxTemplateFor } from "../constants/istatExplorer"
+import type { ExplorerIndexType } from "../constants/istatExplorer"
 
 interface Group {
   key: string
@@ -759,6 +762,8 @@ export default function IstatCatalog() {
   const [searchGroupCache, setSearchGroupCache] = useState<Record<string, Series[]>>({})
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchActive = searchQuery.trim().length > 0
+  const [searchParams] = useSearchParams()
+  useEffect(() => { const q = searchParams.get("q"); if (q) setSearchQuery(q) }, [searchParams])
 
   const parseErrorDetail = async (res: Response): Promise<string> => {
     let detail = await res.text()
@@ -885,6 +890,38 @@ export default function IstatCatalog() {
           </div>
         </div>
 
+        <div style={{ padding: "14px 16px", borderRadius: 12, border: "1px solid var(--color-border-light)", background: "var(--color-bg-muted)", display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>Dove cercare per tabelle D2/D3</div>
+          <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--color-text-secondary)" }}>
+            Parti da queste 4 categorie EsploraDati e filtra per il codice della tabella (ATECO/ECOICOP). Per PPI/PPS usa il <em>link leaf</em> (tabella specifica), per IR/PC il link è già filtrabile. Copia il template SDMX per evitare 422 <code style={{ fontFamily: "monospace", fontSize: 11 }}>unfiltered_dimensions</code> (IR richiede <code style={{ fontFamily: "monospace", fontSize: 11 }}>DATA_TYPE=N</code>).
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 8 }}>
+            {(["PPI", "PPS", "IR", "PC"] as ExplorerIndexType[]).map(t => {
+              const leaf = EXPLORER_LEAF_URLS[t]
+              const isLeaf = t === "IR" || t === "PC"
+              const code = (searchQuery.trim() || "").replace(/[^0-9A-Za-z]/g, "").slice(0, 6)
+              const sdmx = code ? sdmxTemplateFor(t, code) : sdmxTemplateFor(t, "263")
+              return (
+                <div key={t} style={{ padding: "10px 12px", borderRadius: 10, background: "var(--color-bg-card)", border: "1px solid var(--color-border-light)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-primary)" }}>{EXPLORER_LABELS[t]}</div>
+                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2, fontFamily: "monospace" }}>{DATAFLOW_BY_TYPE[t]}</div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                    <a href={leaf} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", textDecoration: "underline", fontSize: 11 }} title={isLeaf ? "Tabella filtrabile" : "Categoria → seleziona tabella leaf"}>{isLeaf ? "Apri EsploraDati" : "Apri leaf"} ↗</a>
+                    <a href={EXPLORER_URLS[t]} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-text-muted)", fontSize: 11, textDecoration: "underline" }} title="Categoria base">categoria</a>
+                    <button type="button" onClick={() => navigator.clipboard?.writeText(sdmx)} title={sdmx} style={{ padding: "2px 6px", borderRadius: 6, border: "1px solid var(--color-border-light)", background: "var(--color-bg-muted)", fontSize: 10, cursor: "pointer" }}>SDMX</button>
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--color-text-light)", marginTop: 4, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sdmx}>{sdmx}</div>
+                  {t === "IR" && <div style={{ fontSize: 10, color: "var(--color-text-warning)", marginTop: 2 }}>Filtra DATA_TYPE=N</div>}
+                  {t === "PPI" && <div style={{ fontSize: 10, color: "var(--color-text-light)" }}>Leaf: 145_360… (non la categoria)</div>}
+                  {t === "PPS" && <div style={{ fontSize: 10, color: "var(--color-text-light)" }}>Leaf: 145_376… trimestrale Q</div>}
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+            Suggerimento: digita un codice (es. <code>263</code>, <code>951</code>, <code>0117</code>) nella ricerca sopra — il template SDMX si aggiorna e la tabella “Risultati ricerca” filtra <code>ISTAT_*</code> localmente. Se il risultato è vuoto, usa il leaf EsploraDati corrispondente e filtra ATECO/ECOICOP lì, poi copia Query SDMX → Incolla in “Importa Query SDMX”.
+          </div>
+        </div>
         <input
           type="text"
           placeholder="Cerca indice per nome o codice…"

@@ -781,6 +781,15 @@ def list_saved_queries(q: str | None = None, db: Session = Depends(get_db)):
 
 
 @router.get("/saved-queries/{query_id}")
+def get_saved_query(query_id: str, db: Session = Depends(get_db)):
+    """Ritorna il dettaglio di una query SDMX salvata."""
+    q = _get_saved_query_or_404(db, query_id)
+    series_count = (
+        db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).count()
+    )
+    return _saved_query_payload(q, series_count)
+
+
 @router.post("/saved-queries/{query_id}/run", status_code=202)
 def run_saved_query(query_id: str, db: Session = Depends(get_db)):
     """Riesegue una query salvata: ri-valida l'URL (protegge da dati corrotti

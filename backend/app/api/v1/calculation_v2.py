@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.index_import_query import IndexImportQuery, IndexImportQuerySeries
 from app.services.revision_calculation_v2 import (
     calculate_multi_component_revision,
     calculate_period_coverage,
@@ -113,10 +114,49 @@ def period_coverage(request: CoverageRequest, db: Session = Depends(get_db)) -> 
     il periodo base e di confronto (periodo usato, valore, esattezza rispetto
     al periodo richiesto) così l'utente può capire se i periodi che sta
     cercando di confrontare esistono o vengono soddisfatti per fallback.
+    Arricchita con `saved_query` per offrire ⟳ Ricarica dati quando il periodo
+    non ha dati sufficienti ma esiste una query SDMX salvata.
     """
     coverage = calculate_period_coverage(
         db, request.components, request.base_period, request.comparison_period
     )
+    # Arricchisci con query SDMX salvata più recente per serie (forma breve come in /indices/search)
+    try:
+        series_ids = list(request.components.keys())
+        latest: dict[str, IndexImportQuery] = {}
+        if series_ids:
+            links = (
+                db.query(IndexImportQuerySeries, IndexImportQuery)
+                .join(IndexImportQuery, IndexImportQuerySeries.query_id == IndexImportQuery.id)
+                .filter(IndexImportQuerySeries.series_id.in_(series_ids))
+                .order_by(IndexImportQuery.created_at.desc(), IndexImportQuery.last_run_at.desc())
+                .all()
+            )
+            for link, q in links:
+                latest.setdefault(link.series_id, q)
+        for entry in coverage:
+            sid = entry.get("series_id")
+            q = latest.get(sid) if isinstance(sid, str) else None
+            if q is not None:
+                entry["saved_query"] = {
+                    "id": str(q.id),
+                    "url": q.url,
+                    "dataflow_id": q.dataflow_id,
+                    "key_part": q.key_part,
+                    "end_period_strategy": getattr(q, "end_period_strategy", "last_month_end")
+                    or "last_month_end",
+                    "start_period_strategy": getattr(q, "start_period_strategy", "fixed")
+                    or "fixed",
+                    "last_run_at": q.last_run_at.isoformat()
+                    if getattr(q, "last_run_at", None)
+                    else None,
+                }
+            else:
+                entry["saved_query"] = None
+    except Exception:
+        # Non bloccare la copertura se la tabella query non esiste o altro errore
+        for entry in coverage:
+            entry.setdefault("saved_query", None)
     return {
         "base_period": request.base_period.isoformat(),
         "comparison_period": request.comparison_period.isoformat(),
