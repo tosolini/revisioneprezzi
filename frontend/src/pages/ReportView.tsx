@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { api, ReportResponse } from '../api/client'
-import ReportV2View from '../components/ReportV2View'
+import ReportV2View, { ReportData } from '../components/ReportV2View'
 
 export default function ReportView() {
   const { id } = useParams()
@@ -13,6 +13,7 @@ export default function ReportView() {
   const printRef = useRef<HTMLDivElement>(null)
 
   const handlePrint = () => {
+    document.getElementById('__print_style_report')?.remove()
     const style = document.createElement('style')
     style.id = '__print_style_report'
     style.textContent = `
@@ -27,10 +28,11 @@ export default function ReportView() {
     `
     document.head.appendChild(style)
     window.print()
-    setTimeout(() => {
-      const s = document.getElementById('__print_style_report')
-      if (s) s.remove()
-    }, 1000)
+    const cleanup = () => {
+      document.getElementById('__print_style_report')?.remove()
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
   }
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export default function ReportView() {
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       {hasVisual ? (
         <div id="print-area-report" ref={printRef}>
-          <ReportV2View reportData={reportData as never} />
+          <ReportV2View reportData={reportData as unknown as ReportData} />
         </div>
       ) : (
         <div

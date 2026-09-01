@@ -190,12 +190,29 @@ def resolve_series(assoc: dict, db: Session) -> dict:
         if code.isalpha() and len(code) == 1:
             series_id = f"ISTAT_RCO_SETT_{code}"
         else:
-            division = int(code[:2]) if code[:2].isdigit() else None
-            section = _ir_section_for_division(division) if division is not None else None
-            series_id = f"ISTAT_RCO_SETT_{section}" if section else None
+            # Prefer granular wages_ateco monthly series (es. 61 → ISTAT_WAGES_ATECO_61) se disponibile con dati;
+            # fallback a RCO sezione (J per 61, S per 95.1) per compatibilità e anni aggregati.
+            normalized = code.strip().replace(".", "").replace(" ", "")
+            candidates: list[str] = []
+            if normalized:
+                candidates.append(f"ISTAT_WAGES_ATECO_{normalized}")
+                raw = code.strip()
+                if raw != normalized:
+                    candidates.append(f"ISTAT_WAGES_ATECO_{raw}")
+            div2 = normalized[:2] if len(normalized) >= 2 and normalized[:2].isdigit() else (code[:2] if code[:2].isdigit() else None)
+            if div2 and f"ISTAT_WAGES_ATECO_{div2}" not in candidates:
+                candidates.append(f"ISTAT_WAGES_ATECO_{div2}")
+            series_id = None
+            for cand in candidates:
+                if _series_available(db, cand):
+                    series_id = cand
+                    break
+            if series_id is None:
+                division = int(code[:2]) if code[:2].isdigit() else None
+                section = _ir_section_for_division(division) if division is not None else None
+                series_id = f"ISTAT_RCO_SETT_{section}" if section else None
     else:
         series_id = None
-
     available = _series_available(db, series_id)
     return {"series_id": series_id, "available": available}
 

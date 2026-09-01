@@ -65,10 +65,11 @@ export default function Dashboard() {
       // Determina per ogni pratica se usa il wizard rapido (5) o completo (7):
       // se lo stato V2 contiene dati (contract_type/cpv/tol/result o step>1) → 5 passi.
       const infos: Record<string, { isV2: boolean; v2Step: number }> = {}
+      const draftIds = list.filter(c => c.status !== 'completed').map(c => c.id)
       await Promise.all(
-        list.map(async c => {
+        draftIds.map(async id => {
           try {
-            const res = await fetch(`/api/v1/cases/${c.id}/wizard-v2`)
+            const res = await fetch(`/api/v1/cases/${id}/wizard-v2`)
             if (!res.ok) return
             const body = (await res.json()) as { state?: Record<string, unknown> }
             const s = body.state as Record<string, unknown> | undefined
@@ -81,7 +82,7 @@ export default function Dashboard() {
             const hasAmount = typeof s['amount'] === 'number' && (s['amount'] as number) > 0
             const hasResult = s['result'] != null
             const isV2 = hasContract || hasCpv || hasTol || hasAteco || hasAmount || hasResult || step > 1
-            infos[c.id] = { isV2, v2Step: step }
+            infos[id] = { isV2, v2Step: step }
           } catch {
             // ignora, considera V1
           }
@@ -244,11 +245,16 @@ export default function Dashboard() {
       }
       // keep tol empty
       payload['tol_selections'] = []
-      await fetch(`/api/v1/cases/${createdCaseId}/wizard-v2`, {
+      const res = await fetch(`/api/v1/cases/${createdCaseId}/wizard-v2`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      if (!res.ok) {
+        const body = await res.text()
+        setError(`Salvataggio wizard-v2 fallito (${res.status}): ${body.slice(0, 300)}`)
+        return
+      }
       const id = createdCaseId
       resetCreateForm()
       navigate(`/cases/${id}/wizard-v2`)

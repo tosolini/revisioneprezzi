@@ -223,7 +223,7 @@ function MonthYearPicker({
           const m = e.target.value
           setMonth(m)
           if (year && m) onChange(`${year}-${m}-01`)
-          else if (!m && !year) onChange('')
+          else onChange('')
         }}
         style={selectStyle}
         aria-label="Mese"
@@ -242,7 +242,7 @@ function MonthYearPicker({
           const y = e.target.value
           setYear(y)
           if (y && month) onChange(`${y}-${month}-01`)
-          else if (!y && !month) onChange('')
+          else onChange('')
         }}
         style={selectStyle}
         aria-label="Anno"
@@ -264,6 +264,7 @@ export default function CaseWizardV2() {
   const printRef = useRef<HTMLDivElement>(null)
 
   const handlePrint = () => {
+    document.getElementById('__print_style_v2')?.remove()
     const style = document.createElement('style')
     style.id = '__print_style_v2'
     style.textContent = `
@@ -278,10 +279,11 @@ export default function CaseWizardV2() {
     `
     document.head.appendChild(style)
     window.print()
-    setTimeout(() => {
-      const s = document.getElementById('__print_style_v2')
-      if (s) s.remove()
-    }, 1000)
+    const cleanup = () => {
+      document.getElementById('__print_style_v2')?.remove()
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
   }
 
   const [data, setData] = useState<WizardData>({
@@ -302,6 +304,7 @@ export default function CaseWizardV2() {
   const [coverageLoading, setCoverageLoading] = useState(false)
   const [cpvModalOpen, setCpvModalOpen] = useState(false)
   const [atecoSuggestions, setAtecoSuggestions] = useState<{ code: string; description: string }[]>([])
+  const [activeAtecoIndex, setActiveAtecoIndex] = useState<number | null>(null)
   const [atecoInputs, setAtecoInputs] = useState<Record<string, string>>({})
   const dataRef = useRef(data)
   useEffect(() => { dataRef.current = data }, [data])
@@ -452,6 +455,7 @@ export default function CaseWizardV2() {
   }
 
   const onAtecoInput = (atIndex: number, value: string) => {
+    setActiveAtecoIndex(atIndex)
     setAtecoInputs(prev => ({ ...prev, [String(atIndex)]: value }))
     setData(prev => {
       const list = prev.ateco_selections.map((sel, i) => i === atIndex ? { ...sel, ateco_code: value } : sel)
@@ -459,6 +463,7 @@ export default function CaseWizardV2() {
     })
     if (!value.trim()) {
       setAtecoSuggestions([])
+      setActiveAtecoIndex(null)
       return
     }
     fetch(`/api/v1/ateco/search?q=${encodeURIComponent(value.trim())}`)
@@ -479,6 +484,7 @@ export default function CaseWizardV2() {
     })
     setAtecoInputs(prev => ({ ...prev, [String(atIndex)]: `${code} — ${description}` }))
     setAtecoSuggestions([])
+    setActiveAtecoIndex(null)
     invalidateDerivedForClassificationChange()
   }
 
@@ -497,6 +503,19 @@ export default function CaseWizardV2() {
       ateco_selections: prev.ateco_selections.filter((_, i) => i !== atIndex),
       result: null,
     }))
+    setActiveAtecoIndex(null)
+    setAtecoSuggestions([])
+    setAtecoInputs(prev => {
+      const next: Record<string, string> = {}
+      Object.entries(prev).forEach(([k, v]) => {
+        const idx = Number(k)
+        if (Number.isNaN(idx)) return
+        if (idx === atIndex) return
+        if (idx > atIndex) next[String(idx - 1)] = v
+        else next[k] = v
+      })
+      return next
+    })
     invalidateDerivedForClassificationChange()
   }
 
@@ -1497,6 +1516,7 @@ export default function CaseWizardV2() {
                               value={atecoInputs[String(i)] ?? at.ateco_code}
                               onChange={e => onAtecoInput(i, e.target.value)}
                               onFocus={() => {
+                                setActiveAtecoIndex(i)
                                 if (!at.ateco_code) return
                                 fetch(`/api/v1/ateco/search?q=${encodeURIComponent(at.ateco_code)}`)
                                   .then(res => res.json())
@@ -1511,13 +1531,19 @@ export default function CaseWizardV2() {
                                   )
                                   .catch(() => setAtecoSuggestions([]))
                               }}
+                              onBlur={() => {
+                                // ritarda per permettere click sulla tendina prima di chiudere
+                                setTimeout(() => {
+                                  setActiveAtecoIndex(prev => (prev === i ? null : prev))
+                                }, 180)
+                              }}
                               placeholder="es. 26.3 — fabbricazione computer"
                               style={{
                                 width: '100%', padding: '9px 12px', borderRadius: 10, fontSize: 13,
                                 border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none',
                               }}
                             />
-                            {atecoSuggestions.length > 0 && (
+                            {activeAtecoIndex === i && atecoSuggestions.length > 0 && (
                               <div
                                 style={{
                                   position: 'absolute' as const, zIndex: 10, marginTop: 6, width: '100%',
@@ -1529,6 +1555,7 @@ export default function CaseWizardV2() {
                                   <button
                                     key={s.code}
                                     type="button"
+                                    onMouseDown={e => e.preventDefault()}
                                     onClick={() => pickAteco(i, s.code, s.description)}
                                     style={{
                                       display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 8, border: '1px solid transparent',

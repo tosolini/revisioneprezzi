@@ -18,7 +18,7 @@ interface ComponentRow {
   comparison_exact?: boolean
 }
 
-interface ReportData {
+export interface ReportData {
   case_id: string;
   sections: ReportSection[];
   calculation_result?: any;

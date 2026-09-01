@@ -51,10 +51,26 @@ export default function TolSelector({
     if (disabled) return
     const exists = value.find(s => s.code === code)
     if (exists) {
-      onChange(value.filter(s => s.code !== code))
+      const remaining = value.filter(s => s.code !== code)
+      if (remaining.length === 0) {
+        onChange([])
+      } else {
+        const n = remaining.length
+        const w = Math.floor(100 / n)
+        const rem = 100 - w * n
+        const adjusted = remaining.map((s, i) => ({ ...s, weight: w + (i === 0 ? rem : 0) }))
+        onChange(adjusted)
+      }
     } else {
-      if (!multiSelect) onChange([{ code, weight: 100 }])
-      else onChange([...value, { code, weight: 0 }])
+      if (!multiSelect) {
+        onChange([{ code, weight: 100 }])
+      } else {
+        const n = value.length + 1
+        const w = Math.floor(100 / n)
+        const rem = 100 - w * n
+        const adjusted = value.map((s, i) => ({ ...s, weight: w + (i === 0 ? rem : 0) }))
+        onChange([...adjusted, { code, weight: w }])
+      }
     }
   }
 
