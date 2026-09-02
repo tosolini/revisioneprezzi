@@ -19,9 +19,9 @@ from app.models.index_import_query import IndexImportQuery, IndexImportQuerySeri
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
 from app.models.tabella_d import CpvTabellaDAssociation
-from app.services.indices_import import import_sdmx_content
+from app.services.indices_import import _load_dataflow_configs, import_sdmx_content
 from app.services.sdmx_rate_limit import RateLimitTimeout, wait_for_slot
-from app.services import sdmx_import_jobs
+from app.services import sdmx_backfill, sdmx_import_jobs
 from app.services.audit_service import log_event
 from app.services.sdmx_url_utils import resolve_sdmx_url_dates_both
 
@@ -37,39 +37,115 @@ SDMX_FETCH_TOTAL_BUDGET = 600.0
 SDMX_PROBE_BUDGET = 45.0  # probe: esistenza dati, niente retry
 
 _WAGES_ATECO_PREFIX = "ISTAT_WAGES_ATECO_"
+_ATECO_CLASSIFICATION_REFS = {"ppi", "ps_business", "wages", "wages_ateco"}
+
+
+def _is_ateco_classification(classification_ref: str | None) -> bool:
+    """True se la serie usa codici ATECO (lookup AtecoCatalog ha senso)."""
+    if not classification_ref:
+        return False
+    if classification_ref in _ATECO_CLASSIFICATION_REFS:
+        return True
+    # gruppi dinamici ATECO_* / ATECOC_* creati da import SDMX wildcards
+    if classification_ref.startswith("ATECO"):
+        return True
+    return False
+
+
+def _extract_ateco_code(s: IndexSeries) -> str | None:
+    """Estrae il codice ATECO dal series.id per lookup in AtecoCatalog.
+
+    Gestisce tutti gli indici ISTAT (non solo wages_ateco):
+    - Se classification_ref è noto, usa prefix ISTAT_{CLASS}_
+    - Fallback sul prefix WAGES_ATECO per retrocompatibilità
+    - Per id non-ISTAT o non-ATECO ritorna None
+    """
+    sid = s.id
+    if not sid.startswith("ISTAT_"):
+        return None
+    # prefix basato su classification_ref (es. ISTAT_PPI_, ISTAT_PS_BUSINESS_, ISTAT_WAGES_ATECO_)
+    if s.classification_ref:
+        prefix = f"ISTAT_{s.classification_ref.upper()}_"
+        if sid.startswith(prefix):
+            code = sid.removeprefix(prefix)
+            if code:
+                return code
+        # Se classification è ATECO ma id non segue prefix canonico, non forzare
+        if _is_ateco_classification(s.classification_ref):
+            # prova anche fallback generico wages
+            if sid.startswith(_WAGES_ATECO_PREFIX):
+                code = sid.removeprefix(_WAGES_ATECO_PREFIX)
+                if code:
+                    return code
+            return None
+        return None
+    # senza classification_ref: prova solo prefix noto wages (legacy)
+    if sid.startswith(_WAGES_ATECO_PREFIX):
+        code = sid.removeprefix(_WAGES_ATECO_PREFIX)
+        if code:
+            return code
+    return None
+
+
+def _code_variants(code: str) -> list[str]:
+    """Varianti normalizzate per lookup AtecoCatalog (punti, suffissi mercato, zeri)."""
+    variants: list[str] = [code]
+    if "." in code:
+        v = code.replace(".", "")
+        if v not in variants:
+            variants.append(v)
+    if "_" in code:
+        base = code.split("_")[0]
+        if base not in variants:
+            variants.append(base)
+        if "." in base:
+            b2 = base.replace(".", "")
+            if b2 not in variants:
+                variants.append(b2)
+        stripped = base.lstrip("0")
+        if stripped and stripped not in variants:
+            variants.append(stripped)
+        if stripped and "." in stripped:
+            s2 = stripped.replace(".", "")
+            if s2 not in variants:
+                variants.append(s2)
+    else:
+        stripped = code.lstrip("0")
+        if stripped and stripped not in variants and stripped != code:
+            variants.append(stripped)
+    return variants
 
 
 def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict[str, str | None]:
-    """Ritorna mapping series.id -> ateco_label per serie wages_ateco.
+    """Ritorna mapping series.id -> ateco_label per serie ISTAT con codici ATECO.
 
-    Lookup in due passi (zero N+1):
+    Esteso da wages_ateco a tutti gli indici ISTAT con classificazione ATECO
+    (ppi, ps_business, wages, wages_ateco, ATECO_*). Lookup in due passi (zero N+1):
     1) AtecoCatalog (descrizione ufficiale)
     2) CpvTabellaDAssociation.index_description come fallback (copre 951 anche a DB ATECO vuoto)
     Se ateco_catalog vuoto o codice non trovato, label resta None (nessun errore).
     """
     if not series_list:
         return {}
-    # Raccogli codici ATECO dai series_id wages_ateco
+    # Raccogli codici ATECO dai series_id ISTAT con classificazione ATECO
     codes_by_series: dict[str, str] = {}
     codes_set: set[str] = set()
     for s in series_list:
-        is_wages = (s.classification_ref == "wages_ateco") or s.id.startswith(_WAGES_ATECO_PREFIX)
-        if not is_wages:
+        code = _extract_ateco_code(s)
+        if code is None:
             continue
-        if not s.id.startswith(_WAGES_ATECO_PREFIX):
+        # solo se la classificazione è ATECO (evita ECOICOP 01 che colliderebbe con ATECO 01)
+        if s.classification_ref and not _is_ateco_classification(s.classification_ref):
             continue
-        code = s.id.removeprefix(_WAGES_ATECO_PREFIX)
-        if not code:
-            continue
+        # per id senza classification ma con prefix wages, è per definizione ATECO
         codes_by_series[s.id] = code
         codes_set.add(code)
     if not codes_set:
         return {}
-    # Query AtecoCatalog: cerca sia codici esatti che varianti senza punto (es. 95.1 -> 951)
-    all_query_codes: set[str] = set(codes_set)
-    for c in list(codes_set):
-        if "." in c:
-            all_query_codes.add(c.replace(".", ""))
+    all_query_codes: set[str] = set()
+    for c in codes_set:
+        for v in _code_variants(c):
+            all_query_codes.add(v)
     ateco_map: dict[str, str] = {}
     try:
         rows = (
@@ -86,9 +162,11 @@ def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict
     series_label: dict[str, str | None] = {}
     still_missing_codes: set[str] = set()
     for sid, code in codes_by_series.items():
-        label = ateco_map.get(code)
-        if label is None and "." in code:
-            label = ateco_map.get(code.replace(".", ""))
+        label = None
+        for v in _code_variants(code):
+            label = ateco_map.get(v)
+            if label:
+                break
         if label is not None:
             series_label[sid] = label
         else:
@@ -96,10 +174,10 @@ def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict
             series_label[sid] = None
     if still_missing_codes:
         # lookup distinto su Tabella D
-        missing_query_codes: set[str] = set(still_missing_codes)
-        for c in list(still_missing_codes):
-            if "." in c:
-                missing_query_codes.add(c.replace(".", ""))
+        missing_query_codes: set[str] = set()
+        for c in still_missing_codes:
+            for v in _code_variants(c):
+                missing_query_codes.add(v)
         try:
             assoc_rows = (
                 db.query(
@@ -120,9 +198,11 @@ def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict
             for sid, code in codes_by_series.items():
                 if series_label.get(sid) is not None:
                     continue
-                fallback = assoc_map.get(code)
-                if fallback is None and "." in code:
-                    fallback = assoc_map.get(code.replace(".", ""))
+                fallback = None
+                for v in _code_variants(code):
+                    fallback = assoc_map.get(v)
+                    if fallback:
+                        break
                 if fallback:
                     series_label[sid] = fallback
         except Exception:
@@ -165,6 +245,69 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
     if group:
         query = query.filter(IndexSeries.classification_ref == group)
     series = query.order_by(IndexSeries.name).limit(100).all()
+    # Estensione: se q contiene termini descrittivi ATECO (es. "Riparazione", "Telecomunicazioni", "prodotti chimici"),
+    # la base id/name non trova nulla perché ateco_label è derivato da AtecoCatalog. Cerca anche lì.
+    if q and len(series) < 100:
+        search_term_ateco = f"%{q}%"
+        ateco_codes: set[str] = set()
+        try:
+            rows = db.query(AtecoCatalog.ateco_code).filter(AtecoCatalog.description.ilike(search_term_ateco)).limit(200).all()
+            for (c,) in rows:
+                ateco_codes.add(c)
+            rows2 = (
+                db.query(CpvTabellaDAssociation.ateco_code)
+                .filter(CpvTabellaDAssociation.index_description.ilike(search_term_ateco))
+                .limit(200)
+                .all()
+            )
+        except Exception:
+            ateco_codes = set()
+        if ateco_codes:
+            existing_ids = {s.id for s in series}
+            # candidati: solo classificazioni ATECO (evita ECOICOP)
+            cand_query = db.query(IndexSeries)
+            if group:
+                cand_query = cand_query.filter(IndexSeries.classification_ref == group)
+            else:
+                # filtra a classificazioni ATECO per evitare di scannerizzare tutto
+                cand_query = cand_query.filter(
+                    or_(
+                        IndexSeries.classification_ref.in_(list(_ATECO_CLASSIFICATION_REFS)),
+                        IndexSeries.classification_ref.like("ATECO%"),
+                        IndexSeries.id.like("ISTAT_WAGES_ATECO_%"),
+                        IndexSeries.id.like("ISTAT_PPI_%"),
+                        IndexSeries.id.like("ISTAT_PS_BUSINESS_%"),
+                    )
+                )
+            candidates = cand_query.all()
+            for s in candidates:
+                if s.id in existing_ids:
+                    continue
+                code = _extract_ateco_code(s)
+                if code is None:
+                    continue
+                # confronta varianti del codice serie con i codici ATECO trovati
+                matched = False
+                for v in _code_variants(code):
+                    if v in ateco_codes:
+                        matched = True
+                        break
+                # anche match inverso: codice ATECO potrebbe avere varianti (es. 0020 vs 20)
+                if not matched:
+                    for ac in ateco_codes:
+                        for av in _code_variants(ac):
+                            if av == code or av in _code_variants(code):
+                                matched = True
+                                break
+                        if matched:
+                            break
+                if matched:
+                    series.append(s)
+                    existing_ids.add(s.id)
+                    if len(series) >= 100:
+                        break
+            # riordina per nome e limita
+            series = sorted(series, key=lambda x: x.name)[:100]
     saved_by_series = _latest_saved_queries(db, [s.id for s in series])
     ateco_labels = _ateco_labels_for_wages(db, series)
     return [
@@ -1015,6 +1158,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
                 "name": s.name,
                 "frequency": s.frequency,
                 "normative_category": s.normative_category,
+                "classification_ref": s.classification_ref,
                 "observation_count": len(obs),
                 "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
                 "ateco_label": ateco_labels.get(s.id),
@@ -1029,6 +1173,134 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
             }
         )
     return result
+
+
+@router.post("/backfill-queries")
+@router.post("/backfill-sdmx-queries")
+def backfill_sdmx_queries(
+    dry_run: bool = False,
+    classification_ref: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Popola IndexImportQuery per serie esistenti senza query salvata.
+
+    Solo scrittura query (nessun fetch SDMX, nessun rate-limit). Idempotente:
+    serie già con query vengono saltate. Ritorna total/backfilled/skipped.
+    """
+    # valida classification_ref se fornito
+    if classification_ref is not None:
+        try:
+            configs = _load_dataflow_configs()
+            allowed = {c.get("group_key") for c in configs if c.get("group_key")}
+            # aggiungi anche chiavi note del frontend (ppi, ps_business, etc.)
+            allowed.update(sdmx_backfill.CLASSIFICATION_TO_EXPLORER.keys())
+            # includi anche i dataflow id come fallback? no, solo group_key
+            if classification_ref not in allowed:
+                # consenti anche filtri su gruppi realmente esistenti in DB (ATECO_G custom)
+                exists = db.query(IndexSeries).filter(IndexSeries.classification_ref == classification_ref).first()
+                if not exists:
+                    raise HTTPException(422, f"classification_ref sconosciuto: {classification_ref}. Ammessi: {sorted(allowed)}")
+        except HTTPException:
+            raise
+        except Exception:
+            # se yaml non leggibile, non bloccare validazione — procedi
+            pass
+
+    q = db.query(IndexSeries)
+    if classification_ref:
+        q = q.filter(IndexSeries.classification_ref == classification_ref)
+    series_list = q.order_by(IndexSeries.id).all()
+    total = len(series_list)
+    if total == 0:
+        return {"total": 0, "backfilled": 0, "skipped": [], "dry_run": dry_run}
+
+    latest = _latest_saved_queries(db, [s.id for s in series_list])
+    to_backfill = [s for s in series_list if s.id not in latest]
+
+    backfilled = 0
+    skipped: list[dict] = []
+    # Raggruppa per URL normalizzato per evitare sovrascrittura _save_import_query
+    # (serie PPI con stesso base code ma suffisso mercato diverso condividono URL)
+    groups: dict[str, dict] = {}  # normalized_url -> {dataflow_id, key_part, series_ids, raw_url}
+    for s in to_backfill:
+        raw = sdmx_backfill.build_sdmx_url(s)
+        if not raw:
+            skipped.append({"id": s.id, "reason": "non_mappabile"})
+            continue
+        normalized = None
+        dataflow_id = None
+        key_part = None
+        last_exc = None
+        candidates = [raw]
+        if sdmx_backfill._explorer_for_series(s) == "PPI":
+            code = sdmx_backfill._code_from_series(s)
+            if code:
+                ext = sdmx_backfill._build_ppi_extended_url(s, code)
+                if ext and ext not in candidates:
+                    candidates.append(ext)
+        for cand in candidates:
+            try:
+                normalized, dataflow_id, key_part = _validate_sdmx_url(cand)
+                break
+            except HTTPException as e:
+                last_exc = e
+                continue
+        if not normalized:
+            skipped.append({"id": s.id, "reason": f"invalid_url: {last_exc.detail if last_exc else 'unknown'}"})
+            continue
+        if dry_run:
+            # in dry_run non serve raggruppare, conta come backfilled
+            backfilled += 1
+            # per tracciare gruppi anche in dry_run (facoltativo)
+            g = groups.get(normalized)
+            if not g:
+                groups[normalized] = {"dataflow_id": dataflow_id, "key_part": key_part, "series_ids": [s.id], "raw_url": normalized}
+            else:
+                g["series_ids"].append(s.id)
+            continue
+        # reale: accumula gruppo
+        g = groups.get(normalized)
+        if not g:
+            groups[normalized] = {"dataflow_id": dataflow_id, "key_part": key_part, "series_ids": [s.id], "raw_url": normalized}
+        else:
+            g["series_ids"].append(s.id)
+
+    if not dry_run:
+        from app.models.index_import_query import IndexImportQuery, IndexImportQuerySeries
+
+        for norm_url, grp in groups.items():
+            try:
+                # merge con eventuali link già esistenti per questo URL (evita sovrascrittura)
+                existing = db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
+                if existing:
+                    existing_ids = {
+                        row.series_id
+                        for row in db.query(IndexImportQuerySeries)
+                        .filter(IndexImportQuerySeries.query_id == existing.id)
+                        .all()
+                    }
+                    combined = list(existing_ids.union(set(grp["series_ids"])))
+                    _save_import_query(db, norm_url, grp["dataflow_id"], grp["key_part"], combined)
+                else:
+                    _save_import_query(db, norm_url, grp["dataflow_id"], grp["key_part"], grp["series_ids"])
+                backfilled += len(grp["series_ids"])
+            except Exception as e:
+                for sid in grp["series_ids"]:
+                    skipped.append({"id": sid, "reason": str(e)[:200]})
+        # backfilled già contato per gruppi; se dry_run era true, backfilled già contato sopra
+    elif dry_run:
+        # backfilled già contato nel loop
+        pass
+
+    if not dry_run and backfilled > 0:
+        log_event(
+            db,
+            "indices.backfill_queries",
+            payload={"classification_ref": classification_ref, "total": total, "backfilled": backfilled, "skipped": len(skipped)},
+            motivation="Backfill query SDMX per serie esistenti",
+        )
+
+    return {"total": total, "backfilled": backfilled, "skipped": skipped, "dry_run": dry_run}
 
 
 @router.delete("/{series_id}/observations", status_code=200)

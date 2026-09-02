@@ -32,6 +32,7 @@ interface Series {
   name: string
   frequency: string
   normative_category: string
+  classification_ref?: string | null
   observation_count: number
   observations: Observation[]
   saved_query?: SavedQuery | null
@@ -59,6 +60,26 @@ const GROUP_LABELS: Record<string, string> = {
   ppi: 'Prezzi alla produzione industria (PPI)',
   wages: 'Retribuzioni contrattuali orarie',
   wages_ateco: 'Retribuzioni orarie per settore ATECO',
+}
+
+function getAtecoCode(id: string, classificationRef: string | null | undefined): string {
+  if (classificationRef) {
+    const prefix = `ISTAT_${classificationRef.toUpperCase()}_`
+    if (id.startsWith(prefix)) return id.slice(prefix.length)
+  }
+  if (id.startsWith("ISTAT_WAGES_ATECO_")) return id.slice("ISTAT_WAGES_ATECO_".length)
+  if (id.startsWith("ISTAT_PS_BUSINESS_")) return id.slice("ISTAT_PS_BUSINESS_".length)
+  if (id.startsWith("ISTAT_PPI_")) return id.slice("ISTAT_PPI_".length)
+  if (id.startsWith("ISTAT_WAGES_")) return id.slice("ISTAT_WAGES_".length)
+  if (id.startsWith("ISTAT_")) {
+    const rest = id.slice(6)
+    const firstUnd = rest.indexOf("_")
+    if (firstUnd !== -1) {
+      const secondPart = rest.slice(firstUnd + 1)
+      return secondPart.includes("_") ? secondPart : rest.slice(firstUnd + 1)
+    }
+  }
+  return id
 }
 
 const PINNED = ['tol', 'ps_business']
@@ -759,6 +780,8 @@ export default function IstatCatalog() {
   const [clearTarget, setClearTarget] = useState<Series | null>(null)
   const [manageTarget, setManageTarget] = useState<SavedQuery | null>(null)
   const [runState, setRunState] = useState<{ query: SavedQuery; status: 'running' | 'done' | 'error'; message?: string } | null>(null)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillMessage, setBackfillMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchHit[]>([])
   const [searching, setSearching] = useState(false)
@@ -803,6 +826,28 @@ export default function IstatCatalog() {
       setReloadKey(k => k + 1)
     } catch (e: unknown) {
       setRunState({ query, status: 'error', message: e instanceof Error ? e.message : String(e) })
+    }
+  }
+
+  const handleBackfill = async () => {
+    if (!selectedGroup || backfilling) return
+    const missing = seriesList.filter(s => !s.saved_query).length
+    if (missing === 0) return
+    if (!window.confirm(`Popolare ${missing} query SDMX mancanti per il gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.`)) return
+    setBackfilling(true)
+    setBackfillMessage(null)
+    try {
+      const res = await fetch(`/api/v1/indices/backfill-queries?classification_ref=${encodeURIComponent(selectedGroup)}`, { method: 'POST' })
+      if (!res.ok) throw new Error(await parseErrorDetail(res))
+      const j = await res.json() as { total: number; backfilled: number; skipped: Array<{id:string;reason:string}> }
+      setBackfillMessage(`Popolate ${j.backfilled}/${j.total} query (skipped ${j.skipped.length}).`)
+      setReloadKey(k => k + 1)
+      // ricarica cache ricerca se presente
+      setSearchGroupCache(c => { const n={...c}; delete n[selectedGroup]; return n })
+    } catch (e: unknown) {
+      setBackfillMessage(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBackfilling(false)
     }
   }
 
@@ -883,6 +928,7 @@ export default function IstatCatalog() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            {/* Pulsante "Popola query mancanti" nascosto per ora — handler handleBackfill rimane disponibile */}
             <button onClick={() => setShowSdmx(true)} style={{
               padding: '10px 20px', borderRadius: 8, border: 'none',
               background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
@@ -974,6 +1020,15 @@ export default function IstatCatalog() {
         background: 'var(--color-bg-card)', padding: 24, borderRadius: 12,
         boxShadow: '0 1px 3px var(--color-shadow)',
       }}>
+        {backfillMessage && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap',
+            background: backfillMessage.startsWith('Popolate') ? 'var(--color-bg-success)' : 'var(--color-bg-error)',
+            color: backfillMessage.startsWith('Popolate') ? 'var(--color-text-success)' : 'var(--color-text-error)',
+          }}>
+            {backfillMessage}
+          </div>
+        )}
         {runState && (
           <div style={{
             padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13, whiteSpace: 'pre-wrap',
@@ -1026,14 +1081,14 @@ export default function IstatCatalog() {
                         <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                           {expanded === hit.id ? '▼' : '▶'}
                         </td>
-                        <td style={{ padding: '10px 12px', fontWeight: 500 }} title={hit.ateco_label ? `[${hit.id.replace("ISTAT_WAGES_ATECO_", "")}] ${hit.ateco_label}` : undefined}>
+                        <td style={{ padding: '10px 12px', fontWeight: 500 }} title={hit.ateco_label ? `[${getAtecoCode(hit.id, hit.classification_ref)}] ${hit.ateco_label}` : undefined}>
                           {hit.name}
-                          {hit.ateco_label && (hit.classification_ref === "wages_ateco" || hit.id.includes("WAGES_ATECO")) && (
+                          {hit.ateco_label && (
                             <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: 12 }}> — {hit.ateco_label}</span>
                           )}
                           {hit.saved_query && <SdmxChip query={hit.saved_query} />}
                         </td>
-                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={hit.ateco_label ? `[${hit.id.replace("ISTAT_WAGES_ATECO_", "")}] ${hit.ateco_label}` : undefined}>{hit.id}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={hit.ateco_label ? `[${getAtecoCode(hit.id, hit.classification_ref)}] ${hit.ateco_label}` : undefined}>{hit.id}</td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                           {hit.frequency === 'quarterly' ? 'Trimestrale' : hit.frequency === 'monthly' ? 'Mensile' : hit.frequency === 'annual' ? 'Annuale' : hit.frequency}
                         </td>
@@ -1136,14 +1191,14 @@ export default function IstatCatalog() {
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       {expanded === s.id ? '▼' : '▶'}
                     </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 500 }} title={s.ateco_label ? `[${s.id.replace("ISTAT_WAGES_ATECO_", "")}] ${s.ateco_label}` : undefined}>
+                    <td style={{ padding: '10px 12px', fontWeight: 500 }} title={s.ateco_label ? `[${getAtecoCode(s.id, s.classification_ref)}] ${s.ateco_label}` : undefined}>
                       {s.name}
-                      {s.ateco_label && s.id.includes("WAGES_ATECO") && (
+                      {s.ateco_label && (
                         <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: 12 }}> — {s.ateco_label}</span>
                       )}
                       {s.saved_query && <SdmxChip query={s.saved_query} />}
                     </td>
-                    <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={s.ateco_label ? `[${s.id.replace("ISTAT_WAGES_ATECO_", "")}] ${s.ateco_label}` : undefined}>{s.id}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={s.ateco_label ? `[${getAtecoCode(s.id, s.classification_ref)}] ${s.ateco_label}` : undefined}>{s.id}</td>
                     <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                       {s.frequency === 'quarterly' ? 'Trimestrale' : s.frequency === 'monthly' ? 'Mensile' : s.frequency === 'annual' ? 'Annuale' : s.frequency}
                     </td>
