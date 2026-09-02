@@ -35,10 +35,17 @@ def main() -> None:
                 allowed = {c.get("group_key") for c in configs if c.get("group_key")}
                 allowed.update(sdmx_backfill.CLASSIFICATION_TO_EXPLORER.keys())
                 if args.group not in allowed:
-                    exists = db.query(IndexSeries).filter(IndexSeries.classification_ref == args.group).first()
+                    exists = (
+                        db.query(IndexSeries)
+                        .filter(IndexSeries.classification_ref == args.group)
+                        .first()
+                    )
                     if not exists:
-                        print(f"classification_ref sconosciuto: {args.group}. Ammessi: {sorted(allowed)}")
-                        sys.exit(2)
+                        msg = (
+                            f"classification_ref sconosciuto: {args.group}. "
+                            f"Ammessi: {sorted(allowed)}"
+                        )
+                        print(msg)
             except SystemExit:
                 raise
             except Exception:
@@ -80,20 +87,31 @@ def main() -> None:
                     last_exc = e
                     continue
             if not normalized:
-                skipped.append({"id": s.id, "reason": str(getattr(last_exc, "detail", last_exc))[:200]})
+                skipped.append(
+                    {"id": s.id, "reason": str(getattr(last_exc, "detail", last_exc))[:200]}
+                )
                 continue
             if args.dry_run:
                 print(f"  [dry] {s.id} -> {normalized[:90]}...")
                 backfilled += 1
                 g = groups.get(normalized)
                 if not g:
-                    groups[normalized] = {"dataflow_id": dataflow_id, "key_part": key_part, "series_ids": [s.id]}
+                    groups[normalized] = {
+                        "dataflow_id": dataflow_id,
+                        "key_part": key_part,
+                        "series_ids": [s.id],
+                    }
                 else:
                     g["series_ids"].append(s.id)
                 continue
             g = groups.get(normalized)
             if not g:
-                groups[normalized] = {"dataflow_id": dataflow_id, "key_part": key_part, "series_ids": [s.id], "raw_url": normalized}
+                groups[normalized] = {
+                    "dataflow_id": dataflow_id,
+                    "key_part": key_part,
+                    "series_ids": [s.id],
+                    "raw_url": normalized,
+                }
             else:
                 g["series_ids"].append(s.id)
 
@@ -103,16 +121,24 @@ def main() -> None:
 
             for norm_url, grp in groups.items():
                 try:
-                    existing = db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
+                    existing = (
+                        db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
+                    )
                     if existing:
                         existing_ids = {
                             row.series_id
-                            for row in db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == existing.id).all()
+                            for row in db.query(IndexImportQuerySeries)
+                            .filter(IndexImportQuerySeries.query_id == existing.id)
+                            .all()
                         }
                         combined = list(existing_ids.union(set(grp["series_ids"])))
-                        _save_import_query(db, norm_url, grp["dataflow_id"], grp["key_part"], combined)
+                        _save_import_query(
+                            db, norm_url, grp["dataflow_id"], grp["key_part"], combined
+                        )
                     else:
-                        _save_import_query(db, norm_url, grp["dataflow_id"], grp["key_part"], grp["series_ids"])
+                        _save_import_query(
+                            db, norm_url, grp["dataflow_id"], grp["key_part"], grp["series_ids"]
+                        )
                     backfilled += len(grp["series_ids"])
                     print(f"  [ok] {norm_url[:90]}... -> {len(grp['series_ids'])} serie")
                 except Exception as e:
@@ -120,13 +146,16 @@ def main() -> None:
                         skipped.append({"id": sid, "reason": str(e)[:200]})
                     print(f"  [err] {norm_url[:60]}... {e}")
 
-        print(f"\nRisultato: total={total} backfilled={backfilled} skipped={len(skipped)} dry_run={args.dry_run}")
+        print(
+            f"\nRisultato: total={total} backfilled={backfilled} "
+            f"skipped={len(skipped)} dry_run={args.dry_run}"
+        )
         if skipped:
             print("Skipped:")
             for entry in skipped[:20]:
                 print(f"  - {entry['id']}: {entry['reason']}")
             if len(skipped) > 20:
-                print(f"  ... e altri {len(skipped)-20}")
+                print(f"  ... e altri {len(skipped) - 20}")
     finally:
         db.close()
 

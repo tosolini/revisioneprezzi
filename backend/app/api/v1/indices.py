@@ -149,9 +149,7 @@ def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict
     ateco_map: dict[str, str] = {}
     try:
         rows = (
-            db.query(AtecoCatalog)
-            .filter(AtecoCatalog.ateco_code.in_(list(all_query_codes)))
-            .all()
+            db.query(AtecoCatalog).filter(AtecoCatalog.ateco_code.in_(list(all_query_codes))).all()
         )
         for r in rows:
             ateco_map[r.ateco_code] = r.description
@@ -184,11 +182,7 @@ def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict
                     CpvTabellaDAssociation.ateco_code,
                     CpvTabellaDAssociation.index_description,
                 )
-                .filter(
-                    CpvTabellaDAssociation.ateco_code.in_(
-                        list(missing_query_codes)
-                    )
-                )
+                .filter(CpvTabellaDAssociation.ateco_code.in_(list(missing_query_codes)))
                 .all()
             )
             assoc_map: dict[str, str] = {}
@@ -245,21 +239,36 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
     if group:
         query = query.filter(IndexSeries.classification_ref == group)
     series = query.order_by(IndexSeries.name).limit(100).all()
-    # Estensione: se q contiene termini descrittivi ATECO (es. "Riparazione", "Telecomunicazioni", "prodotti chimici"),
-    # la base id/name non trova nulla perché ateco_label è derivato da AtecoCatalog. Cerca anche lì.
+    # Estensione: se q contiene termini descrittivi ATECO
+    # (es. "Riparazione", "Telecomunicazioni", "prodotti chimici"),
+    # la base id/name non trova nulla perché ateco_label è derivato
+    # da AtecoCatalog. Cerca anche lì.
     if q and len(series) < 100:
         search_term_ateco = f"%{q}%"
         ateco_codes: set[str] = set()
         try:
-            rows = db.query(AtecoCatalog.ateco_code).filter(AtecoCatalog.description.ilike(search_term_ateco)).limit(200).all()
+            rows = (
+                db.query(AtecoCatalog.ateco_code)
+                .filter(
+                    AtecoCatalog.description.ilike(search_term_ateco)
+                )
+                .limit(200)
+                .all()
+            )
             for (c,) in rows:
                 ateco_codes.add(c)
             rows2 = (
                 db.query(CpvTabellaDAssociation.ateco_code)
-                .filter(CpvTabellaDAssociation.index_description.ilike(search_term_ateco))
+                .filter(
+                    CpvTabellaDAssociation.index_description.ilike(
+                        search_term_ateco
+                    )
+                )
                 .limit(200)
                 .all()
             )
+            for (c,) in rows2:
+                ateco_codes.add(c)
         except Exception:
             ateco_codes = set()
         if ateco_codes:
@@ -1197,9 +1206,17 @@ def backfill_sdmx_queries(
             # includi anche i dataflow id come fallback? no, solo group_key
             if classification_ref not in allowed:
                 # consenti anche filtri su gruppi realmente esistenti in DB (ATECO_G custom)
-                exists = db.query(IndexSeries).filter(IndexSeries.classification_ref == classification_ref).first()
+                exists = (
+                    db.query(IndexSeries)
+                    .filter(IndexSeries.classification_ref == classification_ref)
+                    .first()
+                )
                 if not exists:
-                    raise HTTPException(422, f"classification_ref sconosciuto: {classification_ref}. Ammessi: {sorted(allowed)}")
+                    msg = (
+                        f"classification_ref sconosciuto: {classification_ref}. "
+                        f"Ammessi: {sorted(allowed)}"
+                    )
+                    raise HTTPException(422, msg)
         except HTTPException:
             raise
         except Exception:
@@ -1246,7 +1263,9 @@ def backfill_sdmx_queries(
                 last_exc = e
                 continue
         if not normalized:
-            skipped.append({"id": s.id, "reason": f"invalid_url: {last_exc.detail if last_exc else 'unknown'}"})
+            skipped.append(
+                {"id": s.id, "reason": f"invalid_url: {last_exc.detail if last_exc else 'unknown'}"}
+            )
             continue
         if dry_run:
             # in dry_run non serve raggruppare, conta come backfilled
@@ -1254,14 +1273,24 @@ def backfill_sdmx_queries(
             # per tracciare gruppi anche in dry_run (facoltativo)
             g = groups.get(normalized)
             if not g:
-                groups[normalized] = {"dataflow_id": dataflow_id, "key_part": key_part, "series_ids": [s.id], "raw_url": normalized}
+                groups[normalized] = {
+                    "dataflow_id": dataflow_id,
+                    "key_part": key_part,
+                    "series_ids": [s.id],
+                    "raw_url": normalized,
+                }
             else:
                 g["series_ids"].append(s.id)
             continue
         # reale: accumula gruppo
         g = groups.get(normalized)
         if not g:
-            groups[normalized] = {"dataflow_id": dataflow_id, "key_part": key_part, "series_ids": [s.id], "raw_url": normalized}
+            groups[normalized] = {
+                "dataflow_id": dataflow_id,
+                "key_part": key_part,
+                "series_ids": [s.id],
+                "raw_url": normalized,
+            }
         else:
             g["series_ids"].append(s.id)
 
@@ -1271,7 +1300,9 @@ def backfill_sdmx_queries(
         for norm_url, grp in groups.items():
             try:
                 # merge con eventuali link già esistenti per questo URL (evita sovrascrittura)
-                existing = db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
+                existing = (
+                    db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
+                )
                 if existing:
                     existing_ids = {
                         row.series_id
@@ -1282,7 +1313,9 @@ def backfill_sdmx_queries(
                     combined = list(existing_ids.union(set(grp["series_ids"])))
                     _save_import_query(db, norm_url, grp["dataflow_id"], grp["key_part"], combined)
                 else:
-                    _save_import_query(db, norm_url, grp["dataflow_id"], grp["key_part"], grp["series_ids"])
+                    _save_import_query(
+                        db, norm_url, grp["dataflow_id"], grp["key_part"], grp["series_ids"]
+                    )
                 backfilled += len(grp["series_ids"])
             except Exception as e:
                 for sid in grp["series_ids"]:
@@ -1296,7 +1329,12 @@ def backfill_sdmx_queries(
         log_event(
             db,
             "indices.backfill_queries",
-            payload={"classification_ref": classification_ref, "total": total, "backfilled": backfilled, "skipped": len(skipped)},
+            payload={
+                "classification_ref": classification_ref,
+                "total": total,
+                "backfilled": backfilled,
+                "skipped": len(skipped),
+            },
             motivation="Backfill query SDMX per serie esistenti",
         )
 

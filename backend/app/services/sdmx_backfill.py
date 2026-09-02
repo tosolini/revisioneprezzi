@@ -116,6 +116,7 @@ def _code_from_series(s: IndexSeries) -> str | None:
         base = base.replace(".", "")
     return base.strip() if base else None
 
+
 def build_sdmx_url(s: IndexSeries) -> str | None:
     """Costruisce l'URL SDMX per la serie o None se non mappabile."""
     explorer = _explorer_for_series(s)
