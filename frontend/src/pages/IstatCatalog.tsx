@@ -35,6 +35,7 @@ interface Series {
   observation_count: number
   observations: Observation[]
   saved_query?: SavedQuery | null
+  ateco_label?: string | null
 }
 
 interface SearchHit {
@@ -45,6 +46,7 @@ interface SearchHit {
   classification_ref: string | null
   frequency: string
   saved_query?: SavedQuery | null
+  ateco_label?: string | null
 }
 
 const GROUP_LABELS: Record<string, string> = {
@@ -53,6 +55,7 @@ const GROUP_LABELS: Record<string, string> = {
   construction_cost_residential: 'Costo costruzione - Fabbricato residenziale',
   construction_cost_tunnel: 'Costo costruzione - Tronco stradale con galleria',
   nic: 'Prezzi al consumo (NIC)',
+  nic_ecoicop2: 'Prezzi al consumo (PC/NIC)',
   ppi: 'Prezzi alla produzione industria (PPI)',
   wages: 'Retribuzioni contrattuali orarie',
   wages_ateco: 'Retribuzioni orarie per settore ATECO',
@@ -121,7 +124,7 @@ const GROUP_OPTIONS = [
   { value: 'construction_cost_residential', label: 'Costo costruzione - Fabbricato residenziale' },
   { value: 'construction_cost_tunnel', label: 'Costo costruzione - Tronco stradale con galleria' },
   { value: 'nic', label: 'Prezzi al consumo (NIC)' },
-  { value: 'nic_ecoicop2', label: 'NIC - tutte le basi (Ecoicop 2)' },
+  { value: 'nic_ecoicop2', label: 'Prezzi al consumo (PC/NIC)' },
   { value: 'wages', label: 'Retribuzioni contrattuali orarie' },
   { value: 'wages_ateco', label: 'Retribuzioni orarie per settore ATECO' },
 ]
@@ -762,9 +765,9 @@ export default function IstatCatalog() {
   const [searchGroupCache, setSearchGroupCache] = useState<Record<string, Series[]>>({})
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchActive = searchQuery.trim().length > 0
+  const visibleGroups = groups.filter(g => g.observation_count > 0)
   const [searchParams] = useSearchParams()
   useEffect(() => { const q = searchParams.get("q"); if (q) setSearchQuery(q) }, [searchParams])
-
   const parseErrorDetail = async (res: Response): Promise<string> => {
     let detail = await res.text()
     try {
@@ -814,9 +817,10 @@ export default function IstatCatalog() {
           return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
         })
         setGroups(data)
+        const visible = data.filter(g => g.observation_count > 0)
         setSelectedGroup(prev => {
-          const stillExists = data.some(g => g.key === prev)
-          return stillExists ? prev : data.length > 0 ? data[0].key : ''
+          if (visible.some(g => g.key === prev)) return prev
+          return visible.length > 0 ? visible[0].key : ''
         })
       })
       .catch(() => setGroups([]))
@@ -940,9 +944,13 @@ export default function IstatCatalog() {
           </div>
         ) : loading ? (
           <div style={{ color: 'var(--color-text-muted)' }}>Caricamento gruppi...</div>
+        ) : visibleGroups.length === 0 ? (
+          <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: 13 }}>
+            Nessun indice con dati — importa una query SDMX o un CSV per popolare gli indici.
+          </div>
         ) : (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {groups.map(g => (
+            {visibleGroups.map(g => (
               <button
                 key={g.key}
                 onClick={() => setSelectedGroup(g.key)}
@@ -1018,11 +1026,14 @@ export default function IstatCatalog() {
                         <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                           {expanded === hit.id ? '▼' : '▶'}
                         </td>
-                        <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                        <td style={{ padding: '10px 12px', fontWeight: 500 }} title={hit.ateco_label ? `[${hit.id.replace("ISTAT_WAGES_ATECO_", "")}] ${hit.ateco_label}` : undefined}>
                           {hit.name}
+                          {hit.ateco_label && (hit.classification_ref === "wages_ateco" || hit.id.includes("WAGES_ATECO")) && (
+                            <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: 12 }}> — {hit.ateco_label}</span>
+                          )}
                           {hit.saved_query && <SdmxChip query={hit.saved_query} />}
                         </td>
-                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{hit.id}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={hit.ateco_label ? `[${hit.id.replace("ISTAT_WAGES_ATECO_", "")}] ${hit.ateco_label}` : undefined}>{hit.id}</td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                           {hit.frequency === 'quarterly' ? 'Trimestrale' : hit.frequency === 'monthly' ? 'Mensile' : hit.frequency === 'annual' ? 'Annuale' : hit.frequency}
                         </td>
@@ -1125,11 +1136,14 @@ export default function IstatCatalog() {
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       {expanded === s.id ? '▼' : '▶'}
                     </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 500 }} title={s.ateco_label ? `[${s.id.replace("ISTAT_WAGES_ATECO_", "")}] ${s.ateco_label}` : undefined}>
                       {s.name}
+                      {s.ateco_label && s.id.includes("WAGES_ATECO") && (
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: 12 }}> — {s.ateco_label}</span>
+                      )}
                       {s.saved_query && <SdmxChip query={s.saved_query} />}
                     </td>
-                    <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{s.id}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={s.ateco_label ? `[${s.id.replace("ISTAT_WAGES_ATECO_", "")}] ${s.ateco_label}` : undefined}>{s.id}</td>
                     <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
                       {s.frequency === 'quarterly' ? 'Trimestrale' : s.frequency === 'monthly' ? 'Mensile' : s.frequency === 'annual' ? 'Annuale' : s.frequency}
                     </td>

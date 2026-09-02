@@ -17,7 +17,7 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 - **Vincolo sull'ordine dei periodi** — il periodo base deve precedere il confronto; l'inversione è bloccata con messaggio esplicativo (override riservato, non esposto in UI)
 - **Report V2 strutturato** — dossier di revisione completo (e report Markdown classico) con passaggi di calcolo, pronto per stampa/PDF
 - **Audit logging** — ogni operazione significativa è tracciata (import, svuotamenti, eliminazione query SDMX)
-- **Catalogo ISTAT** — gestione indici: import CSV, import da query SDMX asincrono con salvataggio automatico delle query, **strategie riscrittura `startPeriod`/`endPeriod`** (riscarica con `fixed`/`earliest`/`expand_1y`/`expand_5y` per inizio più vecchio e `fixed`/`last_month_end`/`today` per fine), riscarica e gestione provenienza per serie, ricerca per gruppo, svuotamento con doppia conferma; **guardie di integrità** con payload strutturato (`unfiltered_dimensions` + `example_url`) e box esplicativo che indica quali valori si mescolerebbero nella serie esistente
+- **Catalogo ISTAT** — gestione indici: import CSV, import da query SDMX asincrono con salvataggio automatico delle query, **strategie riscrittura `startPeriod`/`endPeriod`** (riscarica con `fixed`/`earliest`/`expand_1y`/`expand_5y` per inizio più vecchio e `fixed`/`last_month_end`/`today` per fine), riscarica e gestione provenienza per serie, ricerca per gruppo, svuotamento con doppia conferma; **guardie di integrità** con payload strutturato (`unfiltered_dimensions` + `example_url`) e box esplicativo che indica quali valori si mescolerebbero nella serie esistente; **tooltip ATECO** per `wages_ateco` — la tabella mostra su `ISTAT_WAGES_ATECO_*` (es. `951`) la descrizione ATECO (`[951] Riparazione di computer e di apparecchiature per le comunicazioni`) come `title` nativo su Codice/Nome e come etichetta inline, risolta via `ateco_catalog` con fallback `Tabella D` (`/api/v1/indices/by-group/{group}` e `/api/v1/indices/search` espongono `ateco_label`)
 - **UX modali** — tutte le modali SDMX/CSV/svuotamento con `maxHeight:90vh`, scroll interno e header/footer sticky: mai bloccate fuori viewport anche con errori lunghi
 - **Cataloghi CPV, ATECO, TOL** — consultazione e ricerca
 - **Parser documentale (V2)** — estrazione su richiesta alla creazione pratica — preview e conferma admin prima di avviare il percorso rapido (carica PDF/DOCX opzionale in “Nuova pratica”, verifica i dati trovati e scegli se usare il rapido)
@@ -169,8 +169,8 @@ Endpoint principali:
 | POST | `/api/v1/report/v2/cases/{id}/calculation` | Salva il risultato di calcolo per il report |
 | GET | `/api/v1/report/v2/cases/{id}` | Report strutturato (V2) |
 | GET | `/api/v1/indices` | Elenco serie ISTAT |
-| GET | `/api/v1/indices/search` | Ricerca serie (nome/codice/gruppo) |
-| GET | `/api/v1/indices/by-group/{group}` | Serie di un gruppo |
+| GET | `/api/v1/indices/search` | Ricerca serie (nome/codice/gruppo) — per `wages_ateco` include `ateco_label` con descrizione ATECO |
+| GET | `/api/v1/indices/by-group/{group}` | Serie di un gruppo — per `wages_ateco` ogni serie include `ateco_label` (tooltip `[951] …`) |
 | POST | `/api/v1/indices/import-csv` | Importa osservazioni da CSV ISTAT |
 | POST | `/api/v1/indices/import-sdmx` | Avvia import da query SDMX (asincrono, ritorna `job_id`; body: `url` + `end_period_strategy`[`fixed`/`last_month_end`/`today`] + `start_period_strategy`[`fixed`/`earliest`/`expand_1y`/`expand_5y`]) |
 | GET | `/api/v1/indices/import-jobs/{id}` | Stato dell'import SDMX (esito al termine; `error` con `unfiltered_dimensions` + `example_url` se dimensioni non filtrate) |

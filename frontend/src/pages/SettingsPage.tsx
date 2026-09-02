@@ -18,7 +18,7 @@ const GROUP_OPTIONS = [
   { value: 'construction_cost_residential', label: 'Costo costruzione - Fabbricato residenziale' },
   { value: 'construction_cost_tunnel', label: 'Costo costruzione - Tronco stradale con galleria' },
   { value: 'nic', label: 'Prezzi al consumo (NIC)' },
-  { value: 'nic_ecoicop2', label: 'NIC - tutte le basi (Ecoicop 2)' },
+  { value: 'nic_ecoicop2', label: 'Prezzi al consumo (PC/NIC)' },
   { value: 'wages', label: 'Retribuzioni contrattuali orarie' },
   { value: 'wages_ateco', label: 'Retribuzioni orarie per settore ATECO' },
 ]
