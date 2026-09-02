@@ -14,9 +14,11 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.ateco_catalog import AtecoCatalog
 from app.models.index_import_query import IndexImportQuery, IndexImportQuerySeries
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
+from app.models.tabella_d import CpvTabellaDAssociation
 from app.services.indices_import import import_sdmx_content
 from app.services.sdmx_rate_limit import RateLimitTimeout, wait_for_slot
 from app.services import sdmx_import_jobs
@@ -33,6 +35,99 @@ SDMX_FETCH_TIMEOUT = httpx.Timeout(300.0, connect=30.0)
 # tutti-wildcard che Istat impiega 5-6 minuti (a volte più) a risolvere.
 SDMX_FETCH_TOTAL_BUDGET = 600.0
 SDMX_PROBE_BUDGET = 45.0  # probe: esistenza dati, niente retry
+
+_WAGES_ATECO_PREFIX = "ISTAT_WAGES_ATECO_"
+
+
+def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict[str, str | None]:
+    """Ritorna mapping series.id -> ateco_label per serie wages_ateco.
+
+    Lookup in due passi (zero N+1):
+    1) AtecoCatalog (descrizione ufficiale)
+    2) CpvTabellaDAssociation.index_description come fallback (copre 951 anche a DB ATECO vuoto)
+    Se ateco_catalog vuoto o codice non trovato, label resta None (nessun errore).
+    """
+    if not series_list:
+        return {}
+    # Raccogli codici ATECO dai series_id wages_ateco
+    codes_by_series: dict[str, str] = {}
+    codes_set: set[str] = set()
+    for s in series_list:
+        is_wages = (s.classification_ref == "wages_ateco") or s.id.startswith(_WAGES_ATECO_PREFIX)
+        if not is_wages:
+            continue
+        if not s.id.startswith(_WAGES_ATECO_PREFIX):
+            continue
+        code = s.id.removeprefix(_WAGES_ATECO_PREFIX)
+        if not code:
+            continue
+        codes_by_series[s.id] = code
+        codes_set.add(code)
+    if not codes_set:
+        return {}
+    # Query AtecoCatalog: cerca sia codici esatti che varianti senza punto (es. 95.1 -> 951)
+    all_query_codes: set[str] = set(codes_set)
+    for c in list(codes_set):
+        if "." in c:
+            all_query_codes.add(c.replace(".", ""))
+    ateco_map: dict[str, str] = {}
+    try:
+        rows = (
+            db.query(AtecoCatalog)
+            .filter(AtecoCatalog.ateco_code.in_(list(all_query_codes)))
+            .all()
+        )
+        for r in rows:
+            ateco_map[r.ateco_code] = r.description
+    except Exception:
+        ateco_map = {}
+    # Fallback Tabella D per codici ancora mancanti
+    # Costruisci mappa code -> label risolvendo anche variante normalizzata
+    series_label: dict[str, str | None] = {}
+    still_missing_codes: set[str] = set()
+    for sid, code in codes_by_series.items():
+        label = ateco_map.get(code)
+        if label is None and "." in code:
+            label = ateco_map.get(code.replace(".", ""))
+        if label is not None:
+            series_label[sid] = label
+        else:
+            still_missing_codes.add(code)
+            series_label[sid] = None
+    if still_missing_codes:
+        # lookup distinto su Tabella D
+        missing_query_codes: set[str] = set(still_missing_codes)
+        for c in list(still_missing_codes):
+            if "." in c:
+                missing_query_codes.add(c.replace(".", ""))
+        try:
+            assoc_rows = (
+                db.query(
+                    CpvTabellaDAssociation.ateco_code,
+                    CpvTabellaDAssociation.index_description,
+                )
+                .filter(
+                    CpvTabellaDAssociation.ateco_code.in_(
+                        list(missing_query_codes)
+                    )
+                )
+                .all()
+            )
+            assoc_map: dict[str, str] = {}
+            for acode, descr in assoc_rows:
+                if acode not in assoc_map and descr:
+                    assoc_map[acode] = descr
+            for sid, code in codes_by_series.items():
+                if series_label.get(sid) is not None:
+                    continue
+                fallback = assoc_map.get(code)
+                if fallback is None and "." in code:
+                    fallback = assoc_map.get(code.replace(".", ""))
+                if fallback:
+                    series_label[sid] = fallback
+        except Exception:
+            pass
+    return series_label
 
 
 class SdmxNoRecordsError(Exception):
@@ -71,6 +166,7 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
         query = query.filter(IndexSeries.classification_ref == group)
     series = query.order_by(IndexSeries.name).limit(100).all()
     saved_by_series = _latest_saved_queries(db, [s.id for s in series])
+    ateco_labels = _ateco_labels_for_wages(db, series)
     return [
         {
             "id": s.id,
@@ -80,6 +176,7 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
             "classification_ref": s.classification_ref,
             "frequency": s.frequency,
             "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
+            "ateco_label": ateco_labels.get(s.id),
         }
         for s in series
     ]
@@ -903,6 +1000,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
         .all()
     )
     saved_by_series = _latest_saved_queries(db, [s.id for s in series_list])
+    ateco_labels = _ateco_labels_for_wages(db, series_list)
     result = []
     for s in series_list:
         obs = (
@@ -919,6 +1017,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
                 "normative_category": s.normative_category,
                 "observation_count": len(obs),
                 "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
+                "ateco_label": ateco_labels.get(s.id),
                 "observations": [
                     {
                         "period": o.ref_period.isoformat(),
