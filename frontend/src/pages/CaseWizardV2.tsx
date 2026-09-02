@@ -381,31 +381,31 @@ export default function CaseWizardV2() {
 
   const saveWizardState = useCallback(async (nextStep?: number) => {
     if (!id) return
-    const primary = data.cpv_selections[0]
+    const d = dataRef.current
+    const primary = d.cpv_selections[0]
     try {
       await fetch(`/api/v1/cases/${id}/wizard-v2`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           current_step: nextStep ?? currentStep,
-          contract_type: data.contract_type,
-          tol_selections: data.tol_selections || [],
-          cpv_code: primary?.cpv_code || data.cpv_code || null,
-          cpv_description: primary?.description || data.cpv_description || null,
-          cpv_selections: data.cpv_selections,
-          ateco_selections: data.ateco_selections,
-          amount: data.amount,
-          base_period: data.base_period || null,
-          comparison_period: data.comparison_period || null,
-          indices_config: data.indices_config || null,
-          result: data.result || null,
+          contract_type: d.contract_type,
+          tol_selections: d.tol_selections || [],
+          cpv_code: primary?.cpv_code || d.cpv_code || null,
+          cpv_description: primary?.description || d.cpv_description || null,
+          cpv_selections: d.cpv_selections,
+          ateco_selections: d.ateco_selections,
+          amount: d.amount,
+          base_period: d.base_period || null,
+          comparison_period: d.comparison_period || null,
+          indices_config: d.indices_config || null,
+          result: d.result || null,
         })
       })
     } catch (err) {
       console.error('Errore salvataggio wizard:', err)
     }
-  }, [id, currentStep, data])
-
+  }, [id, currentStep])
   const setDataField = <K extends keyof WizardData>(field: K, value: WizardData[K]) => {
     setData(prev => ({ ...prev, [field]: value }))
   }
@@ -1041,6 +1041,18 @@ export default function CaseWizardV2() {
           })
         })
       }
+      // Salva anche su RevisionResult per report stabile dopo reopen (wizard state da solo non basta)
+      if (id) {
+        try {
+          await fetch(`/api/v1/report/v2/cases/${id}/calculation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(result),
+          })
+        } catch (e) {
+          console.warn('Salvataggio report fallito', e)
+        }
+      }
       // Carica il report completo (result esplicito: evita closure stantia)
       await loadReport(result)
 
@@ -1084,7 +1096,20 @@ export default function CaseWizardV2() {
         return
       }
       const report = body as unknown as ReportViewProps  // forma nota dal backend
-      const effective = isRecord(calcResult) ? calcResult as unknown as CalcResultLike : data.result
+      const effectiveRaw = isRecord(calcResult) ? calcResult as unknown as CalcResultLike : (d.result as unknown as CalcResultLike | null)
+      // Normalizza multi-componente (overall_*) come fa il backend per RevisionResult
+      let effective: any = effectiveRaw
+      if (effectiveRaw && (effectiveRaw as any).is_multi_component) {
+        const anyEff: any = effectiveRaw
+        effective = {
+          ...anyEff,
+          variation_percent: anyEff.variation_percent ?? anyEff.overall_variation_percent,
+          revision_amount: anyEff.revision_amount ?? anyEff.overall_revision_amount,
+          // threshold_exceeded già presente nel multi, ma fallback se manca
+          threshold_exceeded: anyEff.threshold_exceeded ?? (anyEff.overall_variation_percent != null && anyEff.threshold_percent != null ? Math.abs(anyEff.overall_variation_percent) > Math.abs(anyEff.threshold_percent) : null),
+          steps: anyEff.steps ?? anyEff.overall_steps ?? [],
+        }
+      }
       const sections = report.sections.map(sec => {
         const title = sec.title || ''
         const secData = sec.data && typeof sec.data === 'object' ? sec.data : {}
@@ -1093,17 +1118,23 @@ export default function CaseWizardV2() {
         }
         if (title === 'Indici ISTAT' && effective) {
           return (() => {
-            const step1 = (effective.steps ?? []).find(s => s.step === 1)
+            const step1 = (effective.steps ?? []).find((s: any) => s.step === 1)
             const d1 = step1?.details
-            return { ...sec, data: { ...secData, synthetic_index_base: effective.base_value, synthetic_index_comparison: effective.comparison_value, components: effective.weighted_component_variations ?? null, component_details: d1 ? d1['component_details'] ?? null : null, calc_formula: d1 ? d1['formula'] ?? null : null, calc_math: d1 ? d1['calculation'] ?? null : null } }
+            return { ...sec, data: { ...secData, synthetic_index_base: (effective as any).base_value, synthetic_index_comparison: (effective as any).comparison_value, components: (effective as any).weighted_component_variations ?? null, component_details: d1 ? d1['component_details'] ?? null : null, calc_formula: d1 ? d1['formula'] ?? null : null, calc_math: d1 ? d1['calculation'] ?? null : null } }
           })()
         }
         if (title === 'Risultato Calcolo' && effective) {
-          return { ...sec, data: { variation_percent: effective.variation_percent, threshold_exceeded: effective.threshold_exceeded, revision_amount: effective.revision_amount, revision_type: effective.revision_type, formula_steps: effective.steps || [] } }
+          const vp = (effective as any).variation_percent
+          // Se il risultato effettivo non ha variazione (es. calcolo non eseguito), non sovrascrivere il dato backend (che potrebbe già contenere il risultato persistito)
+          if (vp == null && (effective as any).overall_variation_percent == null) {
+            // prova a mantenere il dato backend se già presente, altrimenti mostra comunque il dato effettivo (che sarà null e triggera il blu, ma è corretto)
+            const hasBackendVariation = (secData as any).variation_percent != null
+            if (hasBackendVariation) return sec
+          }
+          return { ...sec, data: { variation_percent: (effective as any).variation_percent, threshold_exceeded: (effective as any).threshold_exceeded, revision_amount: (effective as any).revision_amount, revision_type: (effective as any).revision_type, formula_steps: (effective as any).steps || [] } }
         }
         return sec
       })
-      setReportData({ ...report, sections })
     } catch (err) {
       console.error('Errore caricamento report:', err)
     }
