@@ -10,10 +10,6 @@ steps:
         label: "Ente / Stazione appaltante"
         type: text
         required: false
-      - key: cig
-        label: "CIG"
-        type: text
-        required: false
       - key: cup
         label: "CUP"
         type: text
@@ -28,7 +24,7 @@ steps:
         required: false
       - key: notes
         label: "Note iniziali"
-        type: textarea
+        type: richtext
         required: false
 
   - step: 2

@@ -28,7 +28,7 @@ ISTAT_PS_BTOB_TOT,Prezzi alla produzione servizi B2B totale,ISTAT,ppi_services,A
 ISTAT_PS_BTOB_TRASP,Prezzi alla produzione servizi B2B trasporto e magazzinaggio,ISTAT,ppi_services,ATECOC_H,yearly
 ISTAT_PS_BTOB_INFO,Prezzi alla produzione servizi B2B informazione e comunicazione,ISTAT,ppi_services,ATECOC_J,yearly
 ISTAT_PS_BTOB_PROF,Prezzi alla produzione servizi B2B attività professionali scientifiche e tecniche,ISTAT,ppi_services,ATECOC_M,yearly
-ISTAT_PS_BTOB_SUPP,Prezzi alla produzione servizi B2B noleggio e supporto,ISTAT,ppi_services,ATECOC_N,yearly
+ISTAT_PS_BTOB_SUPP,Prezzi alla produzione servizi B2B noleggio e supporto,ISTAT,ppi_services,ATECOC_N,quarterly
 ISTAT_PS_BTOB_PUL,Prezzi alla produzione servizi B2B servizi di pulizia,ISTAT,ppi_services,ATECOC_81,yearly
 ISTAT_RCO_SETT_A,Retribuzioni contrattuali orarie agricoltura,ISTAT,labour_index,ATECO_A,yearly
 ISTAT_RCO_SETT_B,Retribuzioni contrattuali orarie estrazioni minerali,ISTAT,labour_index,ATECO_B,yearly

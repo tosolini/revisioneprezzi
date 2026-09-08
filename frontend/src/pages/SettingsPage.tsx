@@ -264,7 +264,7 @@ export default function SettingsPage() {
           <>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                Ente / Stazione appaltante predefinito
+                Ente / Stazione appaltante predefinito (condiviso)
               </label>
               <input
                 type="text"
@@ -279,7 +279,7 @@ export default function SettingsPage() {
                 }}
               />
               <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-light)' }}>
-                Verrà precompilato automaticamente nello step 1 del wizard. Modificabile in fase di compilazione.
+                Vale per tutti gli utenti e tutti i browser. Verrà precompilato automaticamente nello step 1 del wizard. Modificabile in fase di compilazione.
               </p>
             </div>
 

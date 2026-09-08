@@ -46,6 +46,22 @@ def test_resolve_walkup(db, tabella_d_data):
 def test_resolve_unknown(db):
     assert resolve_associations("99999999-9", db) is None
 
+def test_resolve_children_only_no_matching(db, tabella_d_data):
+    # CPV di raggruppamento ("Si vedano CPV di maggior dettaglio"): nessun
+    # matching automatico, solo scelta manuale — niente walk-up al D1 padre.
+    result = resolve_associations("03200000-3", db)
+    assert result is not None
+    assert result["table_class"] is None
+    assert result["resolved_cpv_code"] is None
+    assert result["associations"] == []
+    assert result["children_only"] is True
+
+
+def test_resolve_mapped_not_children_only(db, tabella_d_data):
+    result = resolve_associations("50330000-7", db)
+    assert result is not None
+    assert result["children_only"] is False
+
 
 def test_resolve_series_ppi(db):
     detail = resolve_series({"index_type": "PPI", "ateco_code": "263"}, db)

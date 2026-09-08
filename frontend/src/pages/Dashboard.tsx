@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, CaseItem } from '../api/client'
-import { formatDate, statusLabel } from '../components/utils'
+import { formatDate, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
+import NotesEditor, { isEmptyHtml } from '../components/NotesEditor'
 
 type ExtractFields = Record<string, unknown>
 
@@ -34,6 +35,9 @@ export default function Dashboard() {
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
   const [createdBy, setCreatedBy] = useState('')
+  const [cig, setCig] = useState('')
+  const [cup, setCup] = useState('')
+  const [stazioneAppaltante, setStazioneAppaltante] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,7 +67,9 @@ export default function Dashboard() {
       setCases(list)
       if (config.steps?.length) setTotalSteps(config.steps.length)
       // Determina per ogni pratica se usa il wizard rapido (5) o completo (7):
-      // se lo stato V2 contiene dati (contract_type/cpv/tol/result o step>1) → 5 passi.
+      // vince il marcatore esplicito di versione; senza marcatore conta solo
+      // uno stato V2 davvero salvato con avanzamento (i dati ricostruiti
+      // dalle risposte V1 non bastano, altrimenti le bozze V1 finiscono in V2).
       const infos: Record<string, { isV2: boolean; v2Step: number }> = {}
       const draftIds = list.filter(c => c.status !== 'completed').map(c => c.id)
       await Promise.all(
@@ -71,18 +77,8 @@ export default function Dashboard() {
           try {
             const res = await fetch(`/api/v1/cases/${id}/wizard-v2`)
             if (!res.ok) return
-            const body = (await res.json()) as { state?: Record<string, unknown> }
-            const s = body.state as Record<string, unknown> | undefined
-            if (!s) return
-            const step = typeof s['current_step'] === 'number' ? (s['current_step'] as number) : 1
-            const hasContract = typeof s['contract_type'] === 'string' && (s['contract_type'] as string) !== ''
-            const hasCpv = Array.isArray(s['cpv_selections']) && (s['cpv_selections'] as unknown[]).length > 0
-            const hasTol = Array.isArray(s['tol_selections']) && (s['tol_selections'] as unknown[]).length > 0
-            const hasAteco = Array.isArray(s['ateco_selections']) && (s['ateco_selections'] as unknown[]).length > 0
-            const hasAmount = typeof s['amount'] === 'number' && (s['amount'] as number) > 0
-            const hasResult = s['result'] != null
-            const isV2 = hasContract || hasCpv || hasTol || hasAteco || hasAmount || hasResult || step > 1
-            infos[id] = { isV2, v2Step: step }
+            const info = parseWizardVersion(await res.json())
+            infos[id] = { isV2: isV2Draft(info), v2Step: info.v2Step }
           } catch {
             // ignora, considera V1
           }
@@ -125,10 +121,12 @@ export default function Dashboard() {
       setDeletingDrafts(false)
     }
   }
-
   const resetCreateForm = () => {
     setTitle('')
     setCreatedBy('')
+    setCig('')
+    setCup('')
+    setStazioneAppaltante('')
     setNotes('')
     setUploadFile(null)
     setExtractError('')
@@ -153,13 +151,15 @@ export default function Dashboard() {
     setError('')
     setExtractError('')
     try {
-      const c = await api.cases.create({ title, created_by: createdBy || undefined, notes: notes || undefined })
+      const c = await api.cases.create({ title, created_by: createdBy || undefined, cig: cig.trim() || undefined, cup: cup.trim() || undefined, stazione_appaltante: stazioneAppaltante.trim() || undefined, notes: !isEmptyHtml(notes) ? notes : undefined })
       setCreatedCaseId(c.id)
       // clear form inputs now but keep modal context for branching
       setTitle('')
       setCreatedBy('')
+      setCig('')
+      setCup('')
+      setStazioneAppaltante('')
       setNotes('')
-
       if (uploadFile) {
         setExtractLoading(true)
         try {
@@ -180,7 +180,9 @@ export default function Dashboard() {
             fields['cpv_primary'] != null && String(fields['cpv_primary']).trim() !== '' ||
             fields['cpv'] != null && String(fields['cpv']).trim() !== '' ||
             fields['importo_complessivo'] != null && String(fields['importo_complessivo']).trim() !== '' ||
-            fields['cig'] != null && String(fields['cig']).trim() !== ''
+            fields['cig'] != null && String(fields['cig']).trim() !== '' ||
+            fields['cup'] != null && String(fields['cup']).trim() !== '' ||
+            fields['ente'] != null && String(fields['ente']).trim() !== ''
           if (hasUseful) {
             setExtractPreview(fields)
             setShowExtractPreview(true)
@@ -243,8 +245,6 @@ export default function Dashboard() {
         indices_config: null,
         result: null,
       }
-      // keep tol empty
-      payload['tol_selections'] = []
       const res = await fetch(`/api/v1/cases/${createdCaseId}/wizard-v2`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -255,6 +255,16 @@ export default function Dashboard() {
         setError(`Salvataggio wizard-v2 fallito (${res.status}): ${body.slice(0, 300)}`)
         return
       }
+      const extractedCig = typeof extractPreview['cig'] === 'string' ? extractPreview['cig'].trim() : ''
+      const extractedCup = typeof extractPreview['cup'] === 'string' ? extractPreview['cup'].trim() : ''
+      const extractedEnte = typeof extractPreview['ente'] === 'string' ? extractPreview['ente'].trim() : ''
+      const casePatch: { cig?: string; cup?: string; stazione_appaltante?: string } = {}
+      if (extractedCig) casePatch.cig = extractedCig
+      if (extractedCup) casePatch.cup = extractedCup
+      if (extractedEnte) casePatch.stazione_appaltante = extractedEnte
+      if (Object.keys(casePatch).length > 0) {
+        await api.cases.update(createdCaseId, casePatch).catch(() => {})
+      }
       const id = createdCaseId
       resetCreateForm()
       navigate(`/cases/${id}/wizard-v2`)
@@ -263,11 +273,17 @@ export default function Dashboard() {
     }
   }
 
-  const confirmPathChoice = () => {
+  const confirmPathChoice = async () => {
     if (!createdCaseId) return
     const id = createdCaseId
     const choice = pathChoice
     resetCreateForm()
+    // Scelta esplicita del percorso: la registra così il resume la rispetta.
+    try {
+      await api.wizard.setVersion(id, choice === 'rapido' ? 'v2' : 'v1')
+    } catch {
+      // ignora: il resume usa l'euristica di fallback
+    }
     if (choice === 'rapido') navigate(`/cases/${id}/wizard-v2`)
     else navigate(`/cases/${id}/wizard/1`)
   }
@@ -282,10 +298,7 @@ export default function Dashboard() {
     try {
       const res = await fetch(`/api/v1/cases/${caseId}/wizard-v2`)
       if (res.ok) {
-        const body = await res.json() as Record<string, unknown>
-        const state = body['state'] as Record<string, unknown> | undefined
-        const step = state?.['current_step']
-        if (typeof step === 'number' && step > 1) {
+        if (isV2Draft(parseWizardVersion(await res.json()))) {
           navigate(`/cases/${caseId}/wizard-v2`)
           return
         }
@@ -294,6 +307,17 @@ export default function Dashboard() {
       // ignore, fallback to V1
     }
     navigate(`/cases/${caseId}/wizard/${currentStep}`)
+  }
+
+  const enterWizard = async (caseId: string, version: 'v1' | 'v2') => {
+    // Scelta esplicita del percorso dalla card: la registra così il resume la rispetta.
+    try {
+      await api.wizard.setVersion(caseId, version)
+    } catch {
+      // ignora: la navigazione resta valida comunque
+    }
+    if (version === 'v2') navigate(`/cases/${caseId}/wizard-v2`)
+    else navigate(`/cases/${caseId}/wizard/1`)
   }
 
   const formatPreviewValue = (v: unknown): string => {
@@ -393,11 +417,25 @@ export default function Dashboard() {
             value={createdBy} onChange={e => setCreatedBy(e.target.value)}
             style={inputStyle}
           />
-          <textarea
-            placeholder="Note (opzionale)"
-            value={notes} onChange={e => setNotes(e.target.value)}
-            rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+          <input
+            placeholder="CIG (opzionale)"
+            value={cig} onChange={e => setCig(e.target.value)}
+            style={inputStyle}
           />
+          <input
+            placeholder="Stazione appaltante (opzionale)"
+            value={stazioneAppaltante} onChange={e => setStazioneAppaltante(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            placeholder="CUP (opzionale)"
+            value={cup} onChange={e => setCup(e.target.value)}
+            style={inputStyle}
+          />
+          <div style={{ marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Note (opzionale)</div>
+            <NotesEditor value={notes} onChange={setNotes} placeholder="Note (opzionale)" />
+          </div>
 
           {/* Upload facoltativo */}
           <div style={{
@@ -505,6 +543,7 @@ export default function Dashboard() {
               {([
                 ['Ente', extractPreview['ente']],
                 ['CIG', extractPreview['cig']],
+                ['CUP', extractPreview['cup']],
                 ['Importo', (() => {
                   const v = extractPreview['importo_complessivo']
                   if (v == null || v === '') return '— non trovato'
@@ -710,7 +749,7 @@ export default function Dashboard() {
                   displayCurrent <= 1 ? (
                   <>
                     <button
-                      onClick={e => { e.stopPropagation(); navigate(`/cases/${c.id}/wizard-v2`) }}
+                      onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'v2') }}
                       title="Percorso rapido (5 passi)"
                       style={{
                         padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
@@ -720,7 +759,7 @@ export default function Dashboard() {
                       Rapido (5 passi)
                     </button>
                     <button
-                      onClick={e => { e.stopPropagation(); navigate(`/cases/${c.id}/wizard/1`) }}
+                      onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'v1') }}
                       title="Percorso completo (7 passi)"
                       style={{
                         padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,

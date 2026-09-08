@@ -87,16 +87,38 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         .all()
     }
 
+    # Stato wizard-v2 (step 0): il flusso V2 non scrive risposte step 1-5,
+    # tiene tutto nel blob. Fallback per importi/periodi/serie quando mancano.
+    v2_state: dict = {}
+    v2_state_row = (
+        db.query(WizardAnswer)
+        .filter(
+            WizardAnswer.case_id == case_id,
+            WizardAnswer.step == 0,
+            WizardAnswer.field_key == "wizard_v2_state",
+        )
+        .first()
+    )
+    if v2_state_row and v2_state_row.field_value:
+        try:
+            parsed_state = json.loads(v2_state_row.field_value)
+            if isinstance(parsed_state, dict):
+                v2_state = parsed_state
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            pass  # corrupt saved state: report uses step answers only
+
     contract_data = {
         "case_number": str(case.id),
         "title": case.title or "Senza titolo",
         "contract_type": ct,
         "contract_type_label": _get_contract_type_label(ct),
-        "cig": step1_answers.get("cig"),
-        "cup": step1_answers.get("cup"),
-        "station": step1_answers.get("ente"),
+        "cig": case.cig or step1_answers.get("cig"),
+        "cup": case.cup or step1_answers.get("cup"),
+        "station": case.stazione_appaltante or step1_answers.get("ente"),
         "operatore_economico": step1_answers.get("operatore_economico"),
+        "created_by": case.created_by,
         "notes": step1_answers.get("notes"),
+        "case_notes": case.notes,
         "object_description": step3_answers.get("object_description"),
     }
 
@@ -124,6 +146,8 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         total_amount = step3_answers.get("cpv_total_amount") or step2_answers.get(
             "contract_amount_total"
         )
+    if not total_amount:
+        total_amount = v2_state.get("amount") or None
     if total_amount:
         try:
             total_amount = float(total_amount)
@@ -210,25 +234,35 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
 
     sections.append(ReportSection(title="Classificazione", data=classification_data, order=2))
 
-    # Sezione 3: Importi e Date
-    revisable = step5_answers.get("amount_subject_to_revision")
+    # Sezione 3: Importi e Date (fallback al blob V2: il flusso V2 non scrive step 5)
+    revisable = step5_answers.get("amount_subject_to_revision") or v2_state.get("amount")
+    base_period_val = step5_answers.get("base_period") or v2_state.get("base_period")
+    comparison_period_val = step5_answers.get("comparison_period") or v2_state.get(
+        "comparison_period"
+    )
 
     amounts_data = {
         "contract_amount": total_amount,
         "revisable_amount": revisable or total_amount,
-        "base_period": step5_answers.get("base_period"),
-        "comparison_period": step5_answers.get("comparison_period"),
+        "base_period": base_period_val,
+        "comparison_period": comparison_period_val,
     }
 
     sections.append(ReportSection(title="Importi e Date", data=amounts_data, order=3))
 
-    # Sezione 4: Indici ISTAT
-    series_id = step4_answers.get("selected_index_series_id")
-    indices_data = {"synthetic_index_base": None, "synthetic_index_comparison": None}
+    # Sezione 4: Indici ISTAT (incluse serie usate nel confronto: trasparenza legale)
+    saved_result = v2_state.get("result") if isinstance(v2_state.get("result"), dict) else None
+    v2_indices_cfg = v2_state.get("indices_config") if isinstance(
+        v2_state.get("indices_config"), dict
+    ) else None
+    series_id = step4_answers.get("selected_index_series_id") or (
+        v2_indices_cfg.get("single_series_id") if v2_indices_cfg else None
+    )
+    indices_data: dict = {"synthetic_index_base": None, "synthetic_index_comparison": None}
 
     if series_id:
-        base_period_str = step5_answers.get("base_period")
-        comp_period_str = step5_answers.get("comparison_period")
+        base_period_str = base_period_val
+        comp_period_str = comparison_period_val
         for period_str, key in [
             (base_period_str, "synthetic_index_base"),
             (comp_period_str, "synthetic_index_comparison"),
@@ -247,6 +281,29 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
                         indices_data[key] = val
                 except ValueError:
                     pass  # malformed period string: omit synthetic index for this period
+    if indices_data["synthetic_index_base"] is None and saved_result:
+        indices_data["synthetic_index_base"] = saved_result.get("base_value")
+    if indices_data["synthetic_index_comparison"] is None and saved_result:
+        indices_data["synthetic_index_comparison"] = saved_result.get("comparison_value")
+
+    # Ultimo risultato salvato: fonte primaria delle serie effettivamente usate
+    calc_result_row = (
+        db.query(RevisionResult)
+        .filter(RevisionResult.case_id == case_id)
+        .order_by(RevisionResult.created_at.desc())
+        .first()
+    )
+    try:
+        detail = calc_result_row.formula_detail if calc_result_row else None
+        formula_steps = json.loads(detail or "[]")
+        if not isinstance(formula_steps, list):
+            formula_steps = []
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        formula_steps = []
+
+    # saved_result già estratto dal blob V2 sopra; qui solo evidenza serie
+
+    indices_data.update(_extract_series_evidence(formula_steps, saved_result, series_id))
     sections.append(ReportSection(title="Indici ISTAT", data=indices_data, order=4))
 
     # Sezione 5: Parametri Normativi
@@ -272,19 +329,8 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
 
     sections.append(ReportSection(title="Parametri Normativi", data=normative_params, order=5))
 
-    # Sezione 6: Risultato Calcolo
-    calc_result_row = (
-        db.query(RevisionResult)
-        .filter(RevisionResult.case_id == case_id)
-        .order_by(RevisionResult.created_at.desc())
-        .first()
-    )
-
+    # Sezione 6: Risultato Calcolo (riusa riga e passi già caricati in Sezione 4)
     if calc_result_row:
-        try:
-            formula_steps = json.loads(calc_result_row.formula_detail or "[]")
-        except (json.JSONDecodeError, TypeError):
-            formula_steps = []
         calc_data = {
             "variation_percent": calc_result_row.variation_percent,
             "threshold_exceeded": (
@@ -335,6 +381,69 @@ def _get_contract_type_label(contract_type: Optional[str]) -> str:
         "mixed": "Misto servizi-forniture",
     }
     return labels.get(contract_type, contract_type or "Non specificato")
+
+
+def _extract_series_evidence(
+    formula_steps: list, saved_result: dict | None, fallback_series_id: str | None
+) -> dict:
+    """Estrae le serie ISTAT usate nel confronto per il report (trasparenza legale).
+
+    Fonti, in ordine: passi del calcolo salvato in RevisionResult
+    (`details.serie` per il singolo, `details.component_details` per il composito),
+    risultato persistito nello stato wizard-v2 (copre anche il multi-componente),
+    serie selezionata allo step 4 come ultima istanza.
+    """
+    evidence: dict = {}
+
+    def _from_steps(steps: list, entry: dict) -> None:
+        for step in steps or []:
+            details = step.get("details") if isinstance(step, dict) else None
+            if not isinstance(details, dict):
+                continue
+            if details.get("serie") and "series_id" not in entry:
+                entry["series_id"] = details.get("serie")
+            if isinstance(details.get("component_details"), list) and "components" not in entry:
+                entry["components"] = details["component_details"]
+                if details.get("calculation"):
+                    entry["calc_math"] = details["calculation"]
+
+    _from_steps(formula_steps, evidence)
+
+    saved = saved_result if isinstance(saved_result, dict) else {}
+    if "series_id" not in evidence and "components" not in evidence:
+        wcv = saved.get("weighted_component_variations")
+        if isinstance(wcv, list) and wcv:
+            evidence["components"] = wcv
+
+    multi = saved.get("components") if saved.get("is_multi_component") else None
+    if isinstance(multi, list) and multi:
+        groups = []
+        for comp in multi:
+            if not isinstance(comp, dict):
+                continue
+            res = comp.get("result") if isinstance(comp.get("result"), dict) else {}
+            entry: dict = {
+                "description": comp.get("description"),
+                "amount": comp.get("amount"),
+            }
+            _from_steps(res.get("steps") if isinstance(res, dict) else [], entry)
+            if "series_id" not in entry and "components" not in entry and isinstance(res, dict):
+                for cfg_src in (res.get("indices_config"), comp.get("indices_config")):
+                    if isinstance(cfg_src, dict) and cfg_src.get("single_series_id"):
+                        entry["series_id"] = cfg_src["single_series_id"]
+                        break
+            groups.append(entry)
+        if groups:
+            evidence["multi_components"] = groups
+
+    if (
+        fallback_series_id
+        and "series_id" not in evidence
+        and "components" not in evidence
+        and "multi_components" not in evidence
+    ):
+        evidence["series_id"] = fallback_series_id
+    return evidence
 
 
 @router.post("/cases/{case_id}/calculation")

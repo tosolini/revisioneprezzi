@@ -1,4 +1,5 @@
 import React from 'react';
+import { RichNotes } from './NotesEditor';
 
 interface ReportSection {
   title: string;
@@ -16,6 +17,14 @@ interface ComponentRow {
   used_comparison_period?: string | null
   base_exact?: boolean
   comparison_exact?: boolean
+}
+
+interface IndexComponentGroup {
+  description?: string
+  amount?: number
+  series_id?: string
+  components?: ComponentRow[]
+  calc_math?: string
 }
 
 export interface ReportData {
@@ -146,6 +155,13 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             </div>
           )}
 
+          {data.created_by && (
+            <div>
+              <p style={labelStyle}>Creato da</p>
+              <p>{data.created_by}</p>
+            </div>
+          )}
+
           {data.object_description && (
             <div style={{ gridColumn: '1 / -1' }}>
               <p style={labelStyle}>Descrizione oggetto del contratto</p>
@@ -156,7 +172,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           {data.notes && (
             <div style={{ gridColumn: '1 / -1' }}>
               <p style={labelStyle}>Note iniziali</p>
-              <p style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--color-text-muted)' }}>{data.notes}</p>
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}><RichNotes html={data.notes} /></div>
+            </div>
+          )}
+
+          {data.case_notes && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <p style={labelStyle}>Note della pratica</p>
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}><RichNotes html={data.case_notes} /></div>
             </div>
           )}
         </div>
@@ -379,6 +402,12 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             </p>
           </div>
         </div>
+        {data.series_id && (
+          <div style={{ marginTop: 16, background: 'var(--color-bg-offset)', borderRadius: 8, padding: '12px 16px' }}>
+            <p style={{ ...labelStyle, marginBottom: 4 }}>Serie ISTAT utilizzata per il confronto</p>
+            <p style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, margin: 0 }}>{data.series_id}</p>
+          </div>
+        )}
         {data.components && data.components.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
@@ -424,6 +453,40 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                 {data.calc_math}
               </p>
             )}
+          </div>
+        )}
+        {data.multi_components && data.multi_components.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+              Serie ISTAT per componente (Art. 13 multi-oggetto)
+            </p>
+            {data.multi_components.map((g: IndexComponentGroup, gi: number) => (
+              <div key={gi} style={{ marginBottom: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 16px' }}>
+                <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+                  {g.description || `Componente ${gi + 1}`}
+                  {g.amount != null ? ` — € ${Number(g.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : ''}
+                </p>
+                {g.series_id && (
+                  <p style={{ fontFamily: 'monospace', fontSize: 13, margin: 0 }}>Serie ISTAT: <strong>{g.series_id}</strong></p>
+                )}
+                {Array.isArray(g.components) && g.components.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 12 }}>
+                    {g.components.map((c: ComponentRow, ci: number) => (
+                      <div key={ci} style={{ display: 'flex', gap: 12, padding: '2px 0', fontFamily: 'monospace' }}>
+                        <span style={{ minWidth: 190 }}>{c.series_id}</span>
+                        <span>{c.weight}%</span>
+                        <span>I0 {Number(c.base_value ?? 0).toFixed(2)}</span>
+                        <span>It {Number(c.comparison_value ?? 0).toFixed(2)}</span>
+                        <span>Vi {Number(c.variation_percent ?? 0).toFixed(4)}%</span>
+                      </div>
+                    ))}
+                    {g.calc_math && (
+                      <div style={{ fontFamily: 'monospace', marginTop: 6 }}>{g.calc_math}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -22,6 +22,7 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 - **Cataloghi CPV, ATECO, TOL** — consultazione e ricerca
 - **Parser documentale (V2)** — estrazione su richiesta alla creazione pratica — preview e conferma admin prima di avviare il percorso rapido (carica PDF/DOCX opzionale in “Nuova pratica”, verifica i dati trovati e scegli se usare il rapido)
 - **Backup del database** — esportazione e ripristino dal backend (`/api/v1/backup`)
+- **Ente predefinito condiviso** — l'ente impostato in Impostazioni vale per tutti gli utenti e tutti i browser e precompila lo step 1 del wizard
 
 #### Quale percorso scegliere?
 
@@ -29,6 +30,20 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 |----------|---------------|-------|
 | **Percorso rapido (V2, 5 passi)** | Servizi/forniture standard con CPV noto; ideale dopo aver caricato determina/bando e confermato i dati estratti | 1. Tipo contratto → 2. CPV/ATECO → 3. Importo e periodi → 4. Pesi indici → 5. Calcolo |
 | **Percorso completo (V1, 7 passi)** | Casi complessi, lavori con TOL, o quando l'estrazione non trova dati utili | 7 passi con classificazione fine e indici compositi |
+
+### Schermate
+
+![Dashboard pratiche](docs/screenshots/dashboard.png)
+*Dashboard — elenco pratiche con percorsi rapido (V2) e completo (V1).*
+
+![Wizard rapido, tipo di contratto](docs/screenshots/wizard.png)
+*Wizard V2 — scelta del tipo di contratto (soglie e coefficienti legali).*
+
+![Catalogo indici ISTAT](docs/screenshots/catalogo-istat.png)
+*Catalogo ISTAT — serie storiche con import SDMX/CSV e query salvate.*
+
+![Impostazioni, ente condiviso](docs/screenshots/impostazioni.png)
+*Impostazioni — ente predefinito condiviso tra tutti gli utenti e browser.*
 
 ### Stack tecnologico
 

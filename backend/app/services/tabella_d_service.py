@@ -44,6 +44,16 @@ CHECK_DIGIT_VALID = _check_digit_valid()
 # La mappa è completata sui codici PPS presenti in D.2/D.3; i codici senza
 # corrispondenza usano il totale BtoB. Fonte: associazioni Tabella D e serie
 # BtoB disponibili per nome.
+# NOTA PS82: PPS_SERIES_MAP["82"] = "ISTAT_PS_BTOB_SUPP" (Tabella D, supporto
+# funzioni d'ufficio) è distinto da "ISTAT_PS_BUSINESS_82" (serie grezza SDMX
+# per ATECO 82). L'import SDMX di 82 via
+# 145_376_DF_DCSC_PREZPRODSERV_1_7 con chiave Q.IT.SERV_PRIC2_2021.N.82 popola solo
+# BUSINESS_82, non SUPP automaticamente; il wizard cerca SUPP per 82, quindi
+# "PS82 non trova dati" è corretto finché SUPP non ha osservazioni (es. import
+# dedicato o aggregazione). Il fix quarterly frequency-aware risolve il falso
+# negativo per SUPP quando ha dati trimestrali (quarter-start) ma il periodo
+# richiesto dal MonthYearPicker è intra-trimestre (es. 2024-05-01 → normalizzato
+# a 2024-04-01 Q2).
 PPS_SERIES_MAP = {
     "494": "ISTAT_PS_BTOB_TRASP",  # Trasporto di merci su strada e trasloco
     "81": "ISTAT_PS_BTOB_PUL",  # Attività di servizi per edifici e paesaggio
@@ -232,6 +242,20 @@ def resolve_associations(cpv: str, db: Session) -> dict | None:
     if not code:
         return None
 
+    # CPV di raggruppamento ("Si vedano CPV di maggior dettaglio"): nessun
+    # matching automatico, solo scelta manuale dell'indice da parte dell'utente.
+    master_self = (
+        db.query(CpvTabellaDMaster).filter(CpvTabellaDMaster.cpv_code == code).first()
+    )
+    if master_self is not None and master_self.table_class == "CHILDREN":
+        return {
+            "cpv_code": code,
+            "resolved_cpv_code": None,
+            "table_class": None,
+            "associations": [],
+            "children_only": True,
+        }
+
     # 1. Match esatto
     exact = (
         db.query(CpvTabellaDAssociation)
@@ -290,6 +314,7 @@ def resolve_associations(cpv: str, db: Session) -> dict | None:
         "cpv_code": code,
         "resolved_cpv_code": resolved_code,
         "table_class": table_class,
+        "children_only": False,
         "associations": [
             {
                 "index_type": r.index_type,

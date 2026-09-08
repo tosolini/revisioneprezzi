@@ -30,6 +30,7 @@ def list_cases(q: str | None = None, db: Session = Depends(get_db)):
             CaseFile.title.ilike(like),
             CaseFile.notes.ilike(like),
             CaseFile.created_by.ilike(like),
+            CaseFile.cig.ilike(like),
         )
         matching = (
             db.query(WizardAnswer.case_id)

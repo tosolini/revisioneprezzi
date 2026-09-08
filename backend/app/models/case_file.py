@@ -16,6 +16,9 @@ class CaseFile(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
     current_step: Mapped[int] = mapped_column(default=0)
     created_by: Mapped[str | None] = mapped_column(String(255))
+    cig: Mapped[str | None] = mapped_column(String(20))
+    cup: Mapped[str | None] = mapped_column(String(20))
+    stazione_appaltante: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

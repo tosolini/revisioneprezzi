@@ -14,7 +14,13 @@
 | ID Pratica | {{ case.id }} |
 | Creato da | {{ case.created_by or "—" }} |
 | Data creazione | {{ case.created_at.strftime('%d/%m/%Y') if case.created_at else "—" }} |
-| Note | {{ case.notes or "—" }} |
+{% if case.cig %}| CIG | {{ case.cig }} |
+{% endif %}
+{% if case.notes %}
+
+**Note:**
+{{ case.notes | safe }}
+{% endif %}
 
 ---
 
@@ -133,7 +139,7 @@
 
 {% if wizard_answers %}
 {% for ans in wizard_answers %}
-- **Step {{ ans.step }} — {{ ans.field_key }}:** {{ ans.field_value }}
+- **Step {{ ans.step }} — {{ ans.field_key }}:** {% if ans.field_key == 'notes' %}{{ ans.field_value | striptags }}{% else %}{{ ans.field_value }}{% endif %}
 {% endfor %}
 {% else %}
 *Nessuna nota.*

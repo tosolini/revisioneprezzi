@@ -7,6 +7,7 @@ import ReportView from '../components/ReportView'
 import ReportV2View from '../components/ReportV2View'
 import IndexWeightsEditor from '../components/IndexWeightsEditor'
 import WizardTimeline from '../components/WizardTimeline'
+import { parseWizardVersion } from '../components/utils'
 
 interface StepField {
   key: string
@@ -130,6 +131,21 @@ export default function CaseWizard() {
     }
   }, [])
 
+  // Percorso vincolante: una pratica registrata come v2 resta nel wizard rapido.
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    fetch(`/api/v1/cases/${id}/wizard-v2`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => {
+        if (!cancelled && body && parseWizardVersion(body).version === 'v2') {
+          navigate(`/cases/${id}`)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [id])
+
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -188,8 +204,17 @@ export default function CaseWizard() {
       setSavedAnswers(saved)
       setAnswers({ ...saved })
 
-      // Prefill ente from user settings if not already saved
-      if (step === 1 && !saved['ente']) {
+      // Prefill ente/cup dai dati di apertura pratica se non già salvati;
+      // le impostazioni utente restano il fallback per l'ente.
+      if (step === 1) {
+        const prefill: Record<string, string> = {}
+        if (!saved['ente'] && c.stazione_appaltante) prefill.ente = c.stazione_appaltante
+        if (!saved['cup'] && c.cup) prefill.cup = c.cup
+        if (Object.keys(prefill).length > 0) {
+          setAnswers(prev => ({ ...prev, ...prefill }))
+        }
+      }
+      if (step === 1 && !saved['ente'] && !c.stazione_appaltante) {
         const deviceId = localStorage.getItem('device_id')
         if (deviceId) {
           fetch(`/api/v1/settings?device_id=${encodeURIComponent(deviceId)}`)
@@ -348,6 +373,9 @@ export default function CaseWizard() {
                       return { type: 'composite', method: 'weighted_variations', components: componentsCfg }
                     }
                   }
+                  if (mapping && mapping.children_only) {
+                    throw new Error(`CPV ${cpv} di raggruppamento ("Si vedano CPV di maggior dettaglio"): indicare un CPV di maggior dettaglio`)
+                  }
                   const r = await api.indices.forCpv(cpv, contractType)
                   if (r.candidates.length > 0) return { type: 'single', single_series_id: r.candidates[0].id }
                   throw new Error(`Nessun indice risolto per ${cpv}`)
@@ -414,6 +442,7 @@ export default function CaseWizard() {
 
   const fetchCpvMapping = useCallback(async (cpv: string): Promise<{
     table_class: string | null
+    children_only: boolean
     associations: MappingAssocV1[]
   } | null> => {
     try {
@@ -432,11 +461,47 @@ export default function CaseWizard() {
         series_id: a.series_id ?? null,
         available: a.available,
       }))
-      return { table_class: data.table_class || null, associations: assocs }
+      return { table_class: data.table_class || null, children_only: data.children_only === true, associations: assocs }
     } catch {
       return null
     }
   }, [])
+
+  // CPV di raggruppamento (CHILDREN): nessun matching automatico, solo
+  // ricerca manuale dell'indice da parte dell'utente.
+  const [childrenCpv, setChildrenCpv] = useState(false)
+  const [childrenSearch, setChildrenSearch] = useState<{ q: string; results: { id: string; name: string; ateco_label?: string | null }[]; searching: boolean }>({ q: '', results: [], searching: false })
+  const searchChildrenIndices = async () => {
+    const q = childrenSearch.q.trim()
+    if (!q) return
+    setChildrenSearch(prev => ({ ...prev, searching: true }))
+    try {
+      const res = await fetch(`/api/v1/indices/search?q=${encodeURIComponent(q)}`)
+      if (!res.ok) throw new Error('Errore ricerca indici')
+      const body: unknown = await res.json()
+      const parsed = Array.isArray(body)
+        ? body.filter((s): s is Record<string, unknown> => typeof s === 'object' && s !== null).map(s => ({
+            id: String(s['id'] ?? ''),
+            name: String(s['name'] ?? s['id'] ?? ''),
+            ateco_label: typeof s['ateco_label'] === 'string' ? s['ateco_label'] : null,
+          })).filter(s => s.id.length > 0)
+        : []
+      setChildrenSearch({ q, results: parsed, searching: false })
+      setStepConfig(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          fields: prev.fields.map(f =>
+            f.key === 'selected_index_series_id'
+              ? { ...f, options: parsed.map(s => ({ value: s.id, label: s.ateco_label ? `${s.name || s.id} — ${s.ateco_label}` : s.name })) }
+              : f
+          ),
+        }
+      })
+    } catch {
+      setChildrenSearch({ q, results: [], searching: false })
+    }
+  }
 
   const mapAssocsToSeries = (assocs: MappingAssocV1[]): IndexSeries[] =>
     assocs
@@ -463,7 +528,7 @@ export default function CaseWizard() {
         let series: IndexSeries[] = []
         if (m && m.table_class) {
           series = mapAssocsToSeries(m.associations)
-        } else {
+        } else if (!(m && m.children_only)) {
           const r = await api.indices.forCpv(code, contractType)
           series = r.candidates
         }
@@ -511,8 +576,37 @@ export default function CaseWizard() {
           return next
         })
       }
+      setChildrenCpv(false)
       return
     }
+
+    // CPV di raggruppamento ("Si vedano CPV di maggior dettaglio"): nessun
+    // matching automatico — solo ricerca e scelta manuale dell'indice.
+    if (mapping && mapping.children_only) {
+      setChildrenCpv(true)
+      setCpvIndices([])
+      setTabellaDAssociations([])
+      setWarnings(['CPV di raggruppamento Tabella D ("Si vedano CPV di maggior dettaglio"): nessun indice automatico. Indicare un CPV di maggior dettaglio, oppure cercare e scegliere manualmente l\u2019indice.'])
+      setAnswers(prev => {
+        const next = { ...prev }
+        delete next.selected_index_series_id
+        delete next.index_weights
+        return next
+      })
+      setStepConfig(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          fields: prev.fields.map(f =>
+            f.key === 'selected_index_series_id'
+              ? { ...f, options: [] }
+              : f
+          ),
+        }
+      })
+      return
+    }
+    setChildrenCpv(false)
 
     // CPV fuori Tabella D: candidati famiglia (Art. 11.4)
     const r = await api.indices.forCpv(cpv, contractType)
@@ -714,6 +808,7 @@ export default function CaseWizard() {
     navigate(`/cases/${id}/wizard/${s}`)
   }
 
+
   if (loading) {
     return <div style={{ color: 'var(--color-text-muted)', padding: 24 }}>Caricamento step...</div>
   }
@@ -914,6 +1009,45 @@ export default function CaseWizard() {
               />
             )
           })}
+
+        {/* CPV di raggruppamento: ricerca manuale indice, nessun matching automatico */}
+        {step === 4 && childrenCpv && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                type="text"
+                value={childrenSearch.q}
+                onChange={e => setChildrenSearch(prev => ({ ...prev, q: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') void searchChildrenIndices() }}
+                placeholder="Cerca indice ISTAT (es. alimentari, 0111)…"
+                style={{
+                  flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 6,
+                  border: '1px solid var(--color-border)', background: 'var(--color-bg-input)',
+                  color: 'var(--color-text-primary)', fontSize: 13,
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void searchChildrenIndices()}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+                }}
+              >
+                Cerca
+              </button>
+            </div>
+            {childrenSearch.searching && (
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Ricerca indici…</div>
+            )}
+            {!childrenSearch.searching && childrenSearch.q.trim() !== '' && childrenSearch.results.length === 0 && (
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nessun indice trovato: provare un altro termine.</div>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+              I risultati popolano la tendina "indice" dello step: la scelta resta all'utente.
+            </div>
+          </div>
+        )}
 
         {/* Forzatura Art. 11.5 — solo step 4, editor pesi attivo (D.2 ponderata / D.3) */}
         {step === 4 && stepConfig.step === 4 && weightEditorActive && !overrideActive && (

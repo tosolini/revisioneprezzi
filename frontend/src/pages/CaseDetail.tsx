@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { api, CaseDetail as CaseDetailType } from '../api/client'
-import { formatDate, statusLabel } from '../components/utils'
+import { formatDate, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
+import { RichNotes, isEmptyHtml } from '../components/NotesEditor'
+import type { WizardVersionInfo } from '../components/utils'
 
 export default function CaseDetail() {
   const { id } = useParams()
@@ -9,7 +11,7 @@ export default function CaseDetail() {
   const [c, setC] = useState<CaseDetailType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [v2Step, setV2Step] = useState<number | null>(null)
+  const [v2Info, setV2Info] = useState<WizardVersionInfo | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -24,15 +26,12 @@ export default function CaseDetail() {
     fetch(`/api/v1/cases/${id}/wizard-v2`)
       .then(res => {
         if (!res.ok) throw new Error('no v2')
-        return res.json() as Promise<Record<string, unknown>>
+        return res.json()
       })
       .then(body => {
-        const state = body['state'] as Record<string, unknown> | undefined
-        const step = state?.['current_step']
-        if (typeof step === 'number' && step > 1) setV2Step(step)
-        else setV2Step(null)
+        setV2Info(parseWizardVersion(body))
       })
-      .catch(() => setV2Step(null))
+      .catch(() => setV2Info(null))
   }, [id, c])
 
   if (loading) return <div style={{ color: 'var(--color-text-muted)' }}>Caricamento...</div>
@@ -40,7 +39,17 @@ export default function CaseDetail() {
   if (!c) return <div style={{ color: 'var(--color-text-muted)' }}>Pratica non trovata</div>
 
   const isFresh = c.current_step === 0 || c.current_step === 1
-  const continuedInV2 = v2Step != null && v2Step > 1
+  const continuedInV2 = v2Info != null && isV2Draft(v2Info)
+  const enterWizard = async (version: 'v1' | 'v2') => {
+    if (!id) return
+    try {
+      await api.wizard.setVersion(id, version)
+    } catch {
+      // ignora: la navigazione resta valida comunque
+    }
+    if (version === 'v2') navigate(`/cases/${id}/wizard-v2`)
+    else navigate(`/cases/${id}/wizard/${c?.current_step || 1}`)
+  }
   const isDraft = c.status === 'draft'
 
   return (
@@ -71,11 +80,13 @@ export default function CaseDetail() {
           <tbody>
             {[
               ['ID', c.id],
+              ['CIG', c.cig || '—'],
+              ['CUP', c.cup || '—'],
+              ['Stazione appaltante', c.stazione_appaltante || '—'],
               ['Creato da', c.created_by || '—'],
               ['Creato il', formatDate(c.created_at)],
               ['Ultimo aggiornamento', formatDate(c.updated_at)],
               ['Step corrente', String(c.current_step)],
-              ['Note', c.notes || '—'],
             ].map(([label, val]) => (
               <tr key={label}>
                 <td style={{ padding: '6px 12px 6px 0', color: 'var(--color-text-muted)', fontWeight: 600, width: 180 }}>
@@ -84,6 +95,14 @@ export default function CaseDetail() {
                 <td style={{ padding: '6px 0' }}>{val}</td>
               </tr>
             ))}
+            {c.notes && !isEmptyHtml(c.notes) && (
+              <tr>
+                <td style={{ padding: '6px 12px 6px 0', color: 'var(--color-text-muted)', fontWeight: 600, width: 180 }}>
+                  Note
+                </td>
+                <td style={{ padding: '6px 0', fontSize: 14 }}><RichNotes html={c.notes} /></td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -94,13 +113,13 @@ export default function CaseDetail() {
             {isFresh ? (
               <>
                 <button
-                  onClick={() => navigate(`/cases/${id}/wizard-v2`)}
+                  onClick={() => void enterWizard('v2')}
                   style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
                 >
                   Percorso rapido (5 passi)
                 </button>
                 <button
-                  onClick={() => navigate(`/cases/${id}/wizard/1`)}
+                  onClick={() => void enterWizard('v1')}
                   style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                 >
                   Percorso completo (7 passi)

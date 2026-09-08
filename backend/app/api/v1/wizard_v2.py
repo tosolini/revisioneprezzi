@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -62,6 +63,50 @@ class WizardV2Response(BaseModel):
     case_id: str
     title: str
     state: WizardV2State
+    wizard_version: str | None = None
+    has_v2_state: bool = False
+
+
+WIZARD_VERSION_KEY = "wizard_version"
+
+
+def _set_wizard_version(db: Session, case_id: UUID, version: str) -> None:
+    """Registra quale wizard (v1 7 passi / v2 5 passi) sta usando la pratica."""
+    row = (
+        db.query(WizardAnswer)
+        .filter(
+            WizardAnswer.case_id == case_id,
+            WizardAnswer.step == 0,
+            WizardAnswer.field_key == WIZARD_VERSION_KEY,
+        )
+        .first()
+    )
+    if row:
+        row.field_value = version
+    else:
+        db.add(
+            WizardAnswer(
+                case_id=case_id,
+                step=0,
+                field_key=WIZARD_VERSION_KEY,
+                field_value=version,
+            )
+        )
+
+
+def _get_wizard_version(db: Session, case_id: UUID) -> str | None:
+    row = (
+        db.query(WizardAnswer)
+        .filter(
+            WizardAnswer.case_id == case_id,
+            WizardAnswer.step == 0,
+            WizardAnswer.field_key == WIZARD_VERSION_KEY,
+        )
+        .first()
+    )
+    if row and row.field_value in ("v1", "v2"):
+        return row.field_value
+    return None
 
 
 router = APIRouter(prefix="/cases/{case_id}/wizard-v2", tags=["wizard-v2"])
@@ -218,6 +263,8 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
         case_id=str(case.id),
         title=case.title,
         state=state,
+        wizard_version=_get_wizard_version(db, case_id),
+        has_v2_state=saved is not None,
     )
 
 
@@ -299,5 +346,21 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
     if payload.current_step >= 5 and payload.result is not None:
         case.status = "completed"
 
+    _set_wizard_version(db, case_id, "v2")
     db.commit()
     return {"status": "ok", "case_id": str(case_id)}
+
+
+class WizardVersionSave(BaseModel):
+    version: Literal["v1", "v2"]
+
+
+@router.put("/version")
+def save_wizard_version(case_id: UUID, payload: WizardVersionSave, db: Session = Depends(get_db)):
+    """Registra quale wizard usa la pratica, senza toccare lo stato (nessun side effect)."""
+    case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    _set_wizard_version(db, case_id, payload.version)
+    db.commit()
+    return {"status": "ok", "case_id": str(case_id), "wizard_version": payload.version}

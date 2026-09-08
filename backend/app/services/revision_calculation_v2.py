@@ -10,6 +10,8 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from app.models.index_observation import IndexObservation
+from app.models.index_series import IndexSeries
+
 
 getcontext().prec = 28
 
@@ -48,44 +50,164 @@ def _add_months(d: date, n: int) -> date:
     return date(d.year + m // 12, m % 12 + 1, d.day)
 
 
-def _missing_months(used: date, requested: date) -> list[str]:
-    """Mesi solari non registrati tra il periodo usato e quello richiesto.
+def _add_quarters(d: date, n: int) -> date:
+    """Somma n trimestri (3 mesi) a una data quarter-start."""
+    m = d.month - 1 + n * 3
+    return date(d.year + m // 12, m % 12 + 1, 1)
+
+
+def _quarter_start(d: date) -> date:
+    """Mappa qualsiasi giorno del trimestre al suo quarter-start (01-01/04-01/07-01/10-01)."""
+    month = ((d.month - 1) // 3) * 3 + 1
+    return date(d.year, month, 1)
+
+
+def _normalize_to_frequency(target: date, freq: str | None) -> date:
+    """Normalizza target alla granularità della serie: quarterly→quarter-start."""
+    if freq == "quarterly":
+        return _quarter_start(target)
+    if freq == "annual" or freq == "yearly":
+        return date(target.year, 1, 1)
+    return date(target.year, target.month, 1)
+
+
+def _resolve_series_frequency(
+    db: Session, series_id: str, cache: dict[str, str] | None = None
+) -> str:
+    """Risolove frequency per serie_id con fallback euristico PPS → quarterly."""
+    if cache is not None and series_id in cache:
+        return cache[series_id]
+    series = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+    freq: str | None = None
+    if series and series.frequency:
+        freq = series.frequency.lower()
+    elif series and series.classification_ref == "ps_business":
+        freq = "quarterly"
+    elif series_id.startswith("ISTAT_PS_BUSINESS_") or series_id.startswith("ISTAT_PS_BTOB_"):
+        freq = "quarterly"
+    else:
+        freq = "monthly"
+    if freq == "yearly":
+        freq = "annual"
+    if freq not in ("monthly", "quarterly", "annual"):
+        freq = "monthly"
+    if cache is not None:
+        cache[series_id] = freq
+    return freq
+
+
+def _freq_batch(db: Session, series_ids: list[str]) -> dict[str, str]:
+    """Batch fetch frequency per series_ids, con fallback PPS."""
+    if not series_ids:
+        return {}
+    rows = db.query(IndexSeries).filter(IndexSeries.id.in_(series_ids)).all()
+    by_id: dict[str, IndexSeries] = {r.id: r for r in rows}
+    out: dict[str, str] = {}
+    for sid in series_ids:
+        s = by_id.get(sid)
+        if s and s.frequency:
+            f = s.frequency.lower()
+            if f == "yearly":
+                f = "annual"
+            if f not in ("monthly", "quarterly", "annual"):
+                f = "monthly"
+            out[sid] = f
+        elif s and s.classification_ref == "ps_business":
+            out[sid] = "quarterly"
+        elif sid.startswith("ISTAT_PS_BUSINESS_") or sid.startswith("ISTAT_PS_BTOB_"):
+            out[sid] = "quarterly"
+        else:
+            out[sid] = "monthly"
+    return out
+
+
+def _format_quarter(d: date) -> str:
+    q = (d.month - 1) // 3 + 1
+    return f"{d.year}-Q{q}"
+
+
+def _missing_months(used: date, requested: date, freq: str | None = "monthly") -> list[str]:
+    """Mesi/trimestri non registrati tra periodo usato e richiesto.
 
     Fallback all'indietro (usato 2026-06, richiesto 2026-08) →
     ['2026-07', '2026-08']; fallback in avanti (usato 2026-06, richiesto
     2026-03) → ['2026-03', '2026-04', '2026-05']. Il periodo usato è escluso,
-    quello richiesto sempre incluso (è il periodo che manca)."""
+    quello richiesto sempre incluso. Per freq quarterly itera a passi di
+    3 mesi e formatta come YYYY-Qn.
+    """
+    # Normalizza entrambi alla frequenza per coerenza
+    norm_freq = (freq or "monthly").lower()
+    if norm_freq == "yearly":
+        norm_freq = "annual"
+    if norm_freq == "quarterly":
+        # Entrambi dovrebbero già essere quarter-start, ma normalizziamo
+        used_n = _quarter_start(used)
+        req_n = _quarter_start(requested)
+        months: list[str] = []
+        cur = used_n
+        direction = 1 if used_n <= req_n else -1
+        while True:
+            cur = _add_quarters(cur, direction)
+            if direction > 0 and cur > req_n:
+                break
+            if direction < 0 and cur < req_n:
+                break
+            months.append(_format_quarter(cur))
+        return sorted(months)
+    # monthly / annual
     months: list[str] = []
     cur = used
-    direction = 1 if used <= requested else -1
+    # Ensure month-start for comparison (annual treated as Jan)
+    if norm_freq == "annual":
+        cur = date(cur.year, 1, 1)
+        requested = date(requested.year, 1, 1)
+    else:
+        cur = date(cur.year, cur.month, 1)
+        requested = date(requested.year, requested.month, 1)
+    direction = 1 if cur <= requested else -1
     while True:
         cur = _add_months(cur, direction)
         if direction > 0 and cur > requested:
             break
         if direction < 0 and cur < requested:
             break
-        months.append(cur.isoformat()[:7])
+        if norm_freq == "annual":
+            months.append(cur.isoformat()[:4])
+        else:
+            months.append(cur.isoformat()[:7])
     return sorted(months)  # ordine cronologico indipendente dalla direzione del fallback
 
 
 def _get_index_observation(
-    db: Session, series_id: str, period: date
+    db: Session, series_id: str, period: date, frequency: str | None = None
 ) -> tuple[float | None, date | None, bool]:
-    """Recupera l'osservazione ISTAT per serie e periodo.
+    """Recupera l'osservazione ISTAT per serie e periodo (frequency-aware).
 
     Ritorna ``(valore, periodo_usato, esatto)`` dove ``periodo_usato`` è il
     periodo dell'osservazione effettivamente utilizzata (può differire da
     ``period`` per fallback) ed ``esatto`` indica se esiste l'osservazione
     definitiva nel periodo richiesto.
 
+    Se ``frequency`` è ``quarterly`` il ``period`` viene normalizzato al
+    quarter-start prima di exact/fallback. Se None, risolve da DB con fallback
+    euristico PPS→quarterly.
+
     Strategia (coerente con il calcolo): osservazione esatta definitiva,
     altrimenti la più vicina precedente, altrimenti la più vicina successiva.
     """
+    freq = frequency
+    if freq is None:
+        freq = _resolve_series_frequency(db, series_id)
+    else:
+        freq = freq.lower()
+        if freq == "yearly":
+            freq = "annual"
+    norm_period = _normalize_to_frequency(period, freq)
     obs = (
         db.query(IndexObservation)
         .filter(
             IndexObservation.series_id == series_id,
-            IndexObservation.ref_period == period,
+            IndexObservation.ref_period == norm_period,
             IndexObservation.is_definitive.is_(True),
         )
         .first()
@@ -97,7 +219,7 @@ def _get_index_observation(
         db.query(IndexObservation)
         .filter(
             IndexObservation.series_id == series_id,
-            IndexObservation.ref_period <= period,
+            IndexObservation.ref_period <= norm_period,
             IndexObservation.is_definitive.is_(True),
         )
         .order_by(IndexObservation.ref_period.desc())
@@ -110,7 +232,7 @@ def _get_index_observation(
         db.query(IndexObservation)
         .filter(
             IndexObservation.series_id == series_id,
-            IndexObservation.ref_period >= period,
+            IndexObservation.ref_period >= norm_period,
             IndexObservation.is_definitive.is_(True),
         )
         .order_by(IndexObservation.ref_period.asc())
@@ -133,12 +255,19 @@ def calculate_period_coverage(
     (periodo usato, valore ed esattezza rispetto al periodo richiesto).
     ``satisfied`` = entrambi i periodi coperti con osservazione esatta.
     ``missing`` = nessuna osservazione definitiva disponibile (il calcolo
-    fallirebbe per questa serie).
+    fallirebbe per questa serie). Frequency-aware: normalizza i periodi
+    richiesti alla frequenza della serie (quarterly→quarter-start).
     """
+    freq_by_id = _freq_batch(db, list(components.keys()))
     coverage = []
     for series_id, weight in components.items():
-        base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
-        comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
+        freq = freq_by_id.get(series_id, "monthly")
+        base_value, used_base, base_exact = _get_index_observation(
+            db, series_id, base_period, freq
+        )
+        comp_value, used_comp, comp_exact = _get_index_observation(
+            db, series_id, comparison_period, freq
+        )
         coverage.append(
             {
                 "series_id": series_id,
@@ -149,7 +278,7 @@ def calculate_period_coverage(
                     "value": base_value,
                     "exact": base_exact,
                     "missing_months": (
-                        _missing_months(used_base, base_period)
+                        _missing_months(used_base, base_period, freq)
                         if used_base and not base_exact
                         else []
                     ),
@@ -160,7 +289,7 @@ def calculate_period_coverage(
                     "value": comp_value,
                     "exact": comp_exact,
                     "missing_months": (
-                        _missing_months(used_comp, comparison_period)
+                        _missing_months(used_comp, comparison_period, freq)
                         if used_comp and not comp_exact
                         else []
                     ),
@@ -172,59 +301,12 @@ def calculate_period_coverage(
     return coverage
 
 
-def _get_index_observation(
-    db: Session, series_id: str, period: date
-) -> tuple[float | None, date | None, bool]:
-    """Recupera l'osservazione ISTAT per serie e periodo.
-
-    Ritorna ``(valore, periodo_usato, esatto)`` dove ``periodo_usato`` è il
-    periodo dell'osservazione effettivamente utilizzata (può differire da
-    ``period`` per fallback) ed ``esatto`` indica se esiste l'osservazione
-    definitiva nel periodo richiesto.
-    """
-    obs = (
-        db.query(IndexObservation)
-        .filter(
-            IndexObservation.series_id == series_id,
-            IndexObservation.ref_period == period,
-            IndexObservation.is_definitive.is_(True),
-        )
-        .first()
-    )
-    if obs:
-        return obs.value, obs.ref_period, True
-
-    before = (
-        db.query(IndexObservation)
-        .filter(
-            IndexObservation.series_id == series_id,
-            IndexObservation.ref_period <= period,
-            IndexObservation.is_definitive.is_(True),
-        )
-        .order_by(IndexObservation.ref_period.desc())
-        .first()
-    )
-    if before:
-        return before.value, before.ref_period, False
-
-    after = (
-        db.query(IndexObservation)
-        .filter(
-            IndexObservation.series_id == series_id,
-            IndexObservation.ref_period >= period,
-            IndexObservation.is_definitive.is_(True),
-        )
-        .order_by(IndexObservation.ref_period.asc())
-        .first()
-    )
-    if after:
-        return after.value, after.ref_period, False
-    return None, None, False
-
-
-def _get_index_value(db: Session, series_id: str, period: date) -> float | None:
-    """Recupera valore indice ISTAT per serie e periodo specifico (con fallback)."""
-    value, _used, _exact = _get_index_observation(db, series_id, period)
+def _get_index_value(
+    db: Session, series_id: str, period: date, frequency: str | None = None
+) -> float | None:
+    """Recupera valore indice ISTAT per serie/periodo (con fallback frequency-aware)."""
+    # Se frequency non passata, _get_index_observation la risolve da DB
+    value, _used, _exact = _get_index_observation(db, series_id, period, frequency)
     return value
 
 
@@ -235,7 +317,8 @@ def _periods_evidence(
     di serie: periodo usato (ultima osservazione disponibile considerata),
     esattezza e mesi solari non registrati. Per il periodo di confronto la
     segnalazione risponde a: "il calcolo non ha registrato quei mesi, quindi
-    è partito dall'osservazione di <periodo usato>"."""
+    è partito dall'osservazione di <periodo usato>". Frequency-aware."""
+    freq_by_id = _freq_batch(db, series_ids)
     base_used: set[str] = set()
     comp_used: set[str] = set()
     base_missing: set[str] = set()
@@ -243,18 +326,19 @@ def _periods_evidence(
     base_exact_all = True
     comp_exact_all = True
     for series_id in series_ids:
-        _bv, used_base, base_exact = _get_index_observation(db, series_id, base_period)
-        _cv, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
+        freq = freq_by_id.get(series_id, "monthly")
+        _bv, used_base, base_exact = _get_index_observation(db, series_id, base_period, freq)
+        _cv, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period, freq)
         if used_base:
             base_used.add(used_base.isoformat())
             if not base_exact:
-                base_missing.update(_missing_months(used_base, base_period))
+                base_missing.update(_missing_months(used_base, base_period, freq))
         if not base_exact:
             base_exact_all = False
         if used_comp:
             comp_used.add(used_comp.isoformat())
             if not comp_exact:
-                comp_missing.update(_missing_months(used_comp, comparison_period))
+                comp_missing.update(_missing_months(used_comp, comparison_period, freq))
         if not comp_exact:
             comp_exact_all = False
     return {
@@ -294,7 +378,9 @@ def calculate_synthetic_index(
     synthetic = 0.0
 
     for series_id, weight in indices.items():
-        value = _get_index_value(db, series_id, period)
+        # frequency-aware lookup
+        freq = _resolve_series_frequency(db, series_id)
+        value = _get_index_value(db, series_id, period, freq)
         if value is None:
             errors.append(f"Indice {series_id} non trovato per {period}")
             continue
@@ -327,9 +413,15 @@ def calculate_weighted_variation(
     details = []
     weighted_sum = 0.0
 
+    freq_by_id = _freq_batch(db, list(components.keys()))
     for series_id, weight in components.items():
-        base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
-        comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
+        freq = freq_by_id.get(series_id, "monthly")
+        base_value, used_base, base_exact = _get_index_observation(
+            db, series_id, base_period, freq
+        )
+        comp_value, used_comp, comp_exact = _get_index_observation(
+            db, series_id, comparison_period, freq
+        )
         if base_value is None or comp_value is None:
             missing = []
             if base_value is None:
@@ -354,10 +446,12 @@ def calculate_weighted_variation(
                 "base_exact": base_exact,
                 "comparison_exact": comp_exact,
                 "missing_base_months": (
-                    _missing_months(used_base, base_period) if used_base and not base_exact else []
+                    _missing_months(used_base, base_period, freq)
+                    if used_base and not base_exact
+                    else []
                 ),
                 "missing_comparison_months": (
-                    _missing_months(used_comp, comparison_period)
+                    _missing_months(used_comp, comparison_period, freq)
                     if used_comp and not comp_exact
                     else []
                 ),
@@ -431,8 +525,13 @@ def calculate_price_revision(
 
     if index_type == "single":
         series_id = indices_config["single_series_id"]
-        base_value, used_base, base_exact = _get_index_observation(db, series_id, base_period)
-        comp_value, used_comp, comp_exact = _get_index_observation(db, series_id, comparison_period)
+        freq_single = _resolve_series_frequency(db, series_id)
+        base_value, used_base, base_exact = _get_index_observation(
+            db, series_id, base_period, freq_single
+        )
+        comp_value, used_comp, comp_exact = _get_index_observation(
+            db, series_id, comparison_period, freq_single
+        )
 
         if base_value is None or comp_value is None:
             missing_parts = []

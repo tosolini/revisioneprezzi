@@ -6,7 +6,7 @@ import TolSelector from '../components/TolSelector'
 import ReportV2View from '../components/ReportV2View'
 import CpvSearchModal from '../components/CpvSearchModal'
 import WizardTimeline from '../components/WizardTimeline'
-import { asNullableString, asNumber, isRecord } from '../components/utils'
+import { asNullableString, asNumber, isRecord, parseWizardVersion } from '../components/utils'
 interface TolSelection {
   code: string
   weight: number
@@ -107,6 +107,7 @@ interface IndexSeriesOption {
   id: string
   name: string
   frequency?: string | null
+  ateco_label?: string | null
 }
 
 type ReportViewProps = ComponentProps<typeof ReportV2View>['reportData']
@@ -114,6 +115,7 @@ type ReportViewProps = ComponentProps<typeof ReportV2View>['reportData']
 interface CpvMapping {
   resolved_cpv_code: string | null
   table_class: string | null
+  childrenOnly: boolean
   associations: MappingAssoc[]
   familyCandidates: IndexSeriesOption[]
   mode: 'single' | 'weighted'
@@ -133,13 +135,35 @@ interface PeriodCoverage {
 
 const COV_MONTH_NAMES = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
 
-const fmtCovMonth = (ym: string): string =>
-  `${COV_MONTH_NAMES[parseInt(ym.slice(5, 7), 10)] || ''} ${ym.slice(0, 4)}`
+const QUARTER_LABELS = ['', 'Q1', 'Q2', 'Q3', 'Q4'] as const
+
+function normalizeToQuarterStart(ymd: string): string {
+  // ymd atteso YYYY-MM-DD (o YYYY-MM); mappa al quarter-start 01-01/04-01/07-01/10-01
+  if (!ymd || ymd.length < 7) return ymd
+  const mm = parseInt(ymd.slice(5, 7), 10)
+  if (!(mm >= 1 && mm <= 12)) return ymd
+  const qMonth = mm <= 3 ? '01' : mm <= 6 ? '04' : mm <= 9 ? '07' : '10'
+  return `${ymd.slice(0, 4)}-${qMonth}-01`
+}
+
+const fmtCovMonth = (ym: string): string => {
+  // Supporta sia YYYY-MM / YYYY-MM-DD (mensile) sia YYYY-Qn (trimestrale)
+  if (ym.includes('-Q')) {
+    const [year, qPart] = ym.split('-Q')
+    const qNum = parseInt(qPart, 10)
+    const label = QUARTER_LABELS[qNum] || `Q${qNum}`
+    return `${label} ${year}`
+  }
+  const mm = ym.slice(5, 7)
+  const monthName = COV_MONTH_NAMES[parseInt(mm, 10)] || ''
+  return `${monthName} ${ym.slice(0, 4)}`.trim()
+}
 
 const fmtCovMonths = (months: string[]): string =>
   months.length > 8
     ? months.slice(0, 6).map(fmtCovMonth).join(', ') + ` … e altri ${months.length - 6} mesi`
     : months.map(fmtCovMonth).join(', ')
+
 
 // Mappa divisione ATECO → lettera sezione (nota Tabella D, Art. 11.2)
 const IR_DIVISION_TO_SECTION: [number, number, string][] = [
@@ -325,6 +349,10 @@ export default function CaseWizardV2() {
       })
       .then(body => {
         if (!isRecord(body)) throw new Error('Errore caricamento wizard')
+        if (parseWizardVersion(body).version === 'v1') {
+          navigate(`/cases/${id}`)
+          return
+        }
         const s = isRecord(body['state']) ? body['state'] : {}
         const rawSelections = Array.isArray(s['cpv_selections']) ? s['cpv_selections'] : []
         const cpvSelections: CpvSelection[] = rawSelections.length > 0
@@ -678,6 +706,7 @@ export default function CaseWizardV2() {
         next[sel.cpv_code] = {
           resolved_cpv_code: asNullableString(body['resolved_cpv_code']),
           table_class: tableClass,
+          childrenOnly: body['children_only'] === true,
           associations: assocs,
           familyCandidates: [],
           mode: tableClass === 'D2' ? 'single' : 'weighted',
@@ -721,6 +750,13 @@ export default function CaseWizardV2() {
       setPeriodCoverage(null)
       return
     }
+    // PPS quarterly: backend atteso Q-start, UI resta mensile — normalizza solo il payload se almeno un CPV è PPS
+    const hasPpsQuarterly = data.cpv_selections.some(sel => {
+      const m = mappings[sel.cpv_code]
+      return !!m?.associations.some(a => a.index_type === 'PPS' && !!a.series_id)
+    })
+    const payloadBase = hasPpsQuarterly ? normalizeToQuarterStart(data.base_period) : data.base_period
+    const payloadComparison = hasPpsQuarterly ? normalizeToQuarterStart(data.comparison_period) : data.comparison_period
     setCoverageLoading(true)
     try {
       const res = await fetch('/api/v1/calculation/v2/coverage', {
@@ -728,8 +764,8 @@ export default function CaseWizardV2() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           components: series,
-          base_period: data.base_period,
-          comparison_period: data.comparison_period,
+          base_period: payloadBase,
+          comparison_period: payloadComparison,
         }),
       })
       if (!res.ok) {
@@ -862,6 +898,30 @@ export default function CaseWizardV2() {
     }
   }
 
+  // Ricerca manuale indice ISTAT per CPV di raggruppamento (CHILDREN):
+  // nessun matching automatico, solo scelta utente.
+  const [indexSearch, setIndexSearch] = useState<Record<string, { q: string; results: IndexSeriesOption[]; searching: boolean }>>({})
+  const searchIndices = async (cpv: string) => {
+    const q = (indexSearch[cpv]?.q || '').trim()
+    if (!q) return
+    setIndexSearch(prev => ({ ...prev, [cpv]: { q, results: prev[cpv]?.results || [], searching: true } }))
+    try {
+      const res = await fetch(`/api/v1/indices/search?q=${encodeURIComponent(q)}`)
+      if (!res.ok) throw new Error('Errore ricerca indici')
+      const body: unknown = await res.json()
+      const parsed: IndexSeriesOption[] = Array.isArray(body)
+        ? body.filter(isRecord).map(s => ({
+            id: String(s['id'] ?? ''),
+            name: String(s['name'] ?? s['id'] ?? ''),
+            ateco_label: typeof s['ateco_label'] === 'string' ? s['ateco_label'] : null,
+          })).filter(s => s.id.length > 0)
+        : []
+      setIndexSearch(prev => ({ ...prev, [cpv]: { q, results: parsed, searching: false } }))
+    } catch {
+      setIndexSearch(prev => ({ ...prev, [cpv]: { q, results: [], searching: false } }))
+    }
+  }
+
   // ----- Step 4 validation -----
   const mappingIssues = (): string[] => {
     const issues: string[] = []
@@ -929,6 +989,13 @@ export default function CaseWizardV2() {
     // Conserva l'indices_config effettivamente usato per il calcolo (non quello stantio in data)
     let calcIndicesConfig: IndicesConfig | null = null
     let calcComponents: Array<{ amount: number; indices_config: IndicesConfig; description: string }> | null = null
+    // PPS quarterly: backend atteso Q-start, UI resta mensile — normalizza solo il payload se almeno un CPV è PPS
+    const hasPpsQuarterlyForCalc = data.contract_type !== 'works' && data.cpv_selections.some(sel => {
+      const m = mappings[sel.cpv_code]
+      return !!m?.associations.some(a => a.index_type === 'PPS' && !!a.series_id)
+    })
+    const calcBasePeriod = hasPpsQuarterlyForCalc ? normalizeToQuarterStart(data.base_period) : data.base_period
+    const calcComparisonPeriod = hasPpsQuarterlyForCalc ? normalizeToQuarterStart(data.comparison_period) : data.comparison_period
 
     try {
       let response: Response
@@ -971,8 +1038,8 @@ export default function CaseWizardV2() {
             body: JSON.stringify({
               contract_type: data.contract_type,
               amount: data.amount,
-              base_period: data.base_period,
-              comparison_period: data.comparison_period,
+              base_period: calcBasePeriod,
+              comparison_period: calcComparisonPeriod,
               indices_config: indicesConfig,
             }),
           })
@@ -997,8 +1064,8 @@ export default function CaseWizardV2() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contract_type: data.contract_type,
-              base_period: data.base_period,
-              comparison_period: data.comparison_period,
+              base_period: calcBasePeriod,
+              comparison_period: calcComparisonPeriod,
               components,
             }),
           })
@@ -1135,6 +1202,7 @@ export default function CaseWizardV2() {
         }
         return sec
       })
+      setReportData({ ...report, sections })
     } catch (err) {
       console.error('Errore caricamento report:', err)
     }
@@ -1318,6 +1386,69 @@ export default function CaseWizardV2() {
       return <div style={{ fontSize: 13, color: 'var(--color-text-error)' }}>Mapping non disponibile</div>
     }
 
+    if (mapping.childrenOnly) {
+      const s = indexSearch[sel.cpv_code]
+      return (
+        <div>
+          <div style={{
+            padding: '10px 12px', background: 'var(--color-bg-warning)',
+            color: 'var(--color-text-warning)', borderRadius: 8, fontSize: 13, marginBottom: 10,
+          }}>
+            CPV di raggruppamento Tabella D ("Si vedano CPV di maggior dettaglio"): nessun indice automatico. Indicare un CPV di maggior dettaglio, oppure cercare e scegliere manualmente l'indice.
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input
+              type="text"
+              value={s?.q || ''}
+              onChange={e => {
+                const q = e.target.value
+                setIndexSearch(prev => ({ ...prev, [sel.cpv_code]: { q, results: prev[sel.cpv_code]?.results || [], searching: false } }))
+              }}
+              onKeyDown={e => { if (e.key === 'Enter') void searchIndices(sel.cpv_code) }}
+              placeholder="Cerca indice ISTAT (es. alimentari, 0111)…"
+              style={{
+                flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 6,
+                border: '1px solid var(--color-border)', background: 'var(--color-bg-input)',
+                color: 'var(--color-text-primary)', fontSize: 13,
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => void searchIndices(sel.cpv_code)}
+              style={{
+                padding: '6px 12px', borderRadius: 6, border: '1px solid var(--color-border)',
+                background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+              }}
+            >
+              Cerca
+            </button>
+          </div>
+          {s?.searching && (
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Ricerca indici…</div>
+          )}
+          {s && !s.searching && s.q.trim() !== '' && s.results.length === 0 && (
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nessun indice trovato: provare un altro termine.</div>
+          )}
+          {s && s.results.length > 0 && (
+            <select
+              value={mapping.manualSingle || ''}
+              onChange={e => setManualSingle(sel.cpv_code, e.target.value || null)}
+              style={{
+                width: '100%', padding: '8px 12px', borderRadius: 6,
+                border: '1px solid var(--color-border)', background: 'var(--color-bg-input)',
+                color: 'var(--color-text-primary)', fontSize: 13,
+              }}
+            >
+              <option value="">— Seleziona indice —</option>
+              {s.results.map(r => (
+                <option key={r.id} value={r.id}>{r.ateco_label ? `${r.name || r.id} — ${r.ateco_label}` : (r.name || r.id)}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )
+    }
+
     if (mapping.table_class === null) {
       return (
         <div>
@@ -1432,62 +1563,6 @@ export default function CaseWizardV2() {
       case 1:
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {(data.cpv_selections.length === 0 && data.amount === 0 && data.contract_type === '' && !initialLoading) && (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'flex-start',
-                  padding: '12px 14px',
-                  borderRadius: 12,
-                  background: 'var(--color-bg-card)',
-                  border: '1px solid var(--color-border-light)',
-                  boxShadow: '0 1px 2px var(--color-shadow)',
-                }}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 999,
-                    background: 'var(--color-bg-info)',
-                    border: '1px solid var(--color-border-info)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 14,
-                    flexShrink: 0,
-                  }}
-                  aria-hidden
-                >
-                  ✦
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1.35 }}>
-                    Percorso rapido (5 passi) — ideale per servizi e forniture standard
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.45, marginTop: 2 }}>
-                    Hai aperto la pratica senza dati estratti. Se è un lavoro complesso, puoi passare al percorso completo in un click.
-                  </div>
-                </div>
-                <button
-                  onClick={() => { if (id) navigate(`/cases/${id}/wizard/1`) }}
-                  style={{
-                    padding: '7px 12px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    background: 'var(--color-bg-card)',
-                    color: 'var(--color-text-primary)',
-                    border: '1.5px solid var(--color-border)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                >
-                  Passa a 7 passi
-                </button>
-              </div>
-            )}
             <div>
               <div
                 style={{

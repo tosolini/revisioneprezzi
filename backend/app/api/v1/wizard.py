@@ -9,6 +9,7 @@ from app.models.contract_context import ContractContext
 from app.models.cpv_assignment import CpvAssignment
 from app.models.cpv_catalog import CpvCatalog
 from app.models.wizard_answer import WizardAnswer
+from app.api.v1.wizard_v2 import _set_wizard_version
 from app.schemas.wizard import WizardAnswerResponse, WizardStepSave
 
 router = APIRouter(prefix="/cases/{case_id}/wizard", tags=["wizard"])
@@ -31,6 +32,10 @@ def save_wizard_step(
         answers.append(answer)
 
     case.current_step = step
+
+    # Il salvataggio di risposte V1 marca la pratica come percorso completo (7 passi),
+    # così il resume non la dirotta sul wizard V2.
+    _set_wizard_version(db, case_id, "v1")
 
     if step == 2:
         _sync_contract_context(case_id, payload.answers, db)

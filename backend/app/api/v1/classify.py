@@ -92,6 +92,7 @@ def cpv_index_mapping(payload: CpvIndexMappingRequest, db: Session = Depends(get
             "resolved_cpv_code": None,
             "table_class": None,
             "associations": [],
+            "children_only": False,
         }
     associations = []
     for assoc in result["associations"]:
@@ -102,10 +103,11 @@ def cpv_index_mapping(payload: CpvIndexMappingRequest, db: Session = Depends(get
                 "series_id": series["series_id"],
                 "available": series["available"],
             }
-        )
+    )
     return {
         "cpv_code": result["cpv_code"],
         "resolved_cpv_code": result["resolved_cpv_code"],
         "table_class": result["table_class"],
+        "children_only": result.get("children_only", False),
         "associations": associations,
     }

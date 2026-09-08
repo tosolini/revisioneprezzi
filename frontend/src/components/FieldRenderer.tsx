@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import NotesEditor from './NotesEditor'
 
 interface FieldConfig {
   key: string
@@ -207,6 +208,18 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
       )
     }
 
+    case 'richtext':
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor={id} style={labelStyle}>
+            {field.label}{field.required && ' *'}
+          </label>
+          <NotesEditor value={value} onChange={v => onChange(field.key, v)} placeholder={field.label} />
+          {field.hint && <div style={hintStyle}>{field.hint}</div>}
+          {error && <div style={errorStyle}>{error}</div>}
+        </div>
+      )
+
     case 'textarea':
       return (
         <div style={{ marginBottom: 16 }}>
@@ -221,7 +234,6 @@ export default function FieldRenderer({ field, value, onChange, error }: Props) 
           {error && <div style={errorStyle}>{error}</div>}
         </div>
       )
-
     case 'date':
       return (
         <div style={{ marginBottom: 16 }}>

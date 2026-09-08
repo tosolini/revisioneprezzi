@@ -23,6 +23,9 @@ export interface CaseItem {
 }
 
 export interface CaseDetail extends CaseItem {
+  cig: string | null
+  cup: string | null
+  stazione_appaltante: string | null
   notes: string | null
   updated_at: string
 }
@@ -109,7 +112,7 @@ export const api = {
     list: () => request<CaseItem[]>('/cases'),
     search: (q: string) => request<CaseItem[]>(`/cases?q=${encodeURIComponent(q)}`),
     get: (id: string) => request<CaseDetail>(`/cases/${id}`),
-    create: (data: { title: string; notes?: string; created_by?: string }) =>
+    create: (data: { title: string; notes?: string; created_by?: string; cig?: string; cup?: string; stazione_appaltante?: string }) =>
       request<CaseDetail>('/cases', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<CaseDetail>) =>
       request<CaseDetail>(`/cases/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -126,6 +129,11 @@ export const api = {
       }),
     get: (caseId: string, step: number) =>
       request<WizardAnswer[]>(`/cases/${caseId}/wizard/${step}`),
+    setVersion: (caseId: string, version: 'v1' | 'v2') =>
+      request<{ status: string; wizard_version: string }>(`/cases/${caseId}/wizard-v2/version`, {
+        method: 'PUT',
+        body: JSON.stringify({ version }),
+      }),
   },
   classify: (data: { cpv_primary: string; contract_type?: string; labour_intensive?: boolean }) =>
     request<ClassifyResult>('/classify', { method: 'POST', body: JSON.stringify(data) }),
