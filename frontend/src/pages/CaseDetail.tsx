@@ -189,7 +189,7 @@ export default function CaseDetail() {
                 onClick={() => void enterWizard('unified')}
                 style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
               >
-                Apri wizard unificato (5 passi) →
+                Continua Procedura
               </button>
             ) : continuedInV2 ? (
               <button
@@ -208,12 +208,14 @@ export default function CaseDetail() {
             )}
           </>
         )}
-        <button
-          onClick={() => navigate(`/cases/${id}/report`)}
-          style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
-        >
-          Vedi report
-        </button>
+        {c.status === 'completed' && (
+          <button
+            onClick={() => navigate(`/cases/${id}/report`)}
+            style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+          >
+            Vedi report
+          </button>
+        )}
         <button
           onClick={() => { if (confirm('Eliminare questa pratica?')) api.cases.delete(id!).then(() => navigate('/')) }}
           style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-error)', border: '1px solid var(--color-border-error)' }}

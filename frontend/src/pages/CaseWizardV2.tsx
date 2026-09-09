@@ -427,6 +427,156 @@ function FlagSelect({
     </div>
   )
 }
+
+function DateField({
+  id,
+  value,
+  onChange,
+  onBlur,
+}: {
+  id?: string
+  value: string
+  onChange: (v: string) => void
+  onBlur?: () => void
+}) {
+  // Testo libero gg/mm/aaaa con auto-advance: digitando si passa da
+  // giorno→mese→anno senza cliccare. L'input nativo non lo permette
+  // (segmenti non controllabili), quindi tre campi numerici.
+  const fromValue = (v: string): [string, string, string] => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+    return m ? [m[3], m[2], m[1]] : ['', '', '']
+  }
+  const [parts, setParts] = useState<[string, string, string]>(() => fromValue(value))
+  const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
+  const lastProp = useRef(value)
+
+  useEffect(() => {
+    // Riallineamento da fuori (es. termine proposto dalla derivazione)
+    if (value !== lastProp.current) {
+      lastProp.current = value
+      setParts(fromValue(value))
+    }
+  }, [value])
+
+  const emit = (next: [string, string, string]) => {
+    const [d, m, y] = next
+    if (!d && !m && !y) {
+      if (value !== '') onChange('')
+      return
+    }
+    if (d.length === 2 && m.length === 2 && y.length === 4) {
+      const iso = `${y}-${m}-${d}`
+      if (iso !== value) onChange(iso)
+    }
+  }
+
+  const editSegment = (i: number, raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, i === 2 ? 4 : 2)
+    const next: [string, string, string] = [...parts] as [string, string, string]
+    next[i] = digits
+    setParts(next)
+    emit(next)
+    if (i < 2 && digits.length === 2) refs[i + 1].current?.focus()
+  }
+
+  const backStep = (i: number, key: string) => {
+    if (key === 'Backspace' && parts[i] === '' && i > 0) refs[i - 1].current?.focus()
+  }
+
+  const commit = () => {
+    // Solo a uscita dal gruppo: mai validare mentre si passa tra i segmenti.
+    let [d, m, y] = parts
+    if (!d && !m && !y) {
+      if (value !== '') onChange('')
+    } else if (y.length === 4 && +m >= 1 && +m <= 12 && +d >= 1) {
+      const last = new Date(+y, +m, 0).getDate()
+      const dd = String(Math.min(+d, last)).padStart(2, '0')
+      const mm = m.padStart(2, '0')
+      const iso = `${y}-${mm}-${dd}`
+      if (iso !== value) onChange(iso)
+      setParts([dd, mm, y])
+    } else {
+      // Parziale o non valido: nessun salvataggio sporco, torna al valore valido.
+      setParts(fromValue(value))
+    }
+    onBlur?.()
+  }
+
+  const pasteFull = (text: string): boolean => {
+    const m = text.match(/(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/) || text.match(/(\d{4})-(\d{2})-(\d{2})/)
+    if (!m) return false
+    const [d, mo, y] = m[0].includes('-') && m[0].length === 10 && m[0][4] === '-'
+      ? [m[0].slice(8, 10), m[0].slice(5, 7), m[0].slice(0, 4)]
+      : [m[1].padStart(2, '0'), m[2].padStart(2, '0'), m[3]]
+    if (+mo < 1 || +mo > 12 || +d < 1) return false
+    const last = new Date(+y, +mo, 0).getDate()
+    const dd = String(Math.min(+d, last)).padStart(2, '0')
+    setParts([dd, mo.padStart(2, '0'), y])
+    onChange(`${y}-${mo.padStart(2, '0')}-${dd}`)
+    return true
+  }
+
+  const segStyle: React.CSSProperties = {
+    padding: '10px 12px',
+    border: '1.5px solid var(--color-border)',
+    borderRadius: 10,
+    fontSize: 14,
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+    background: 'var(--color-bg-input)',
+    color: 'var(--color-text-primary)',
+    outline: 'none',
+    textAlign: 'center',
+  }
+
+  return (
+    <div
+      style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+      onBlur={e => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) commit()
+      }}
+      onPaste={e => {
+        const text = e.clipboardData.getData('text')
+        if (pasteFull(text)) e.preventDefault()
+      }}
+    >
+      <input
+        id={id}
+        aria-label="Giorno"
+        placeholder="GG"
+        inputMode="numeric"
+        value={parts[0]}
+        onChange={e => editSegment(0, e.target.value)}
+        onKeyDown={e => backStep(0, e.key)}
+        ref={refs[0]}
+        style={{ ...segStyle, width: 64 }}
+      />
+      <span aria-hidden style={{ color: 'var(--color-text-light)' }}>/</span>
+      <input
+        aria-label="Mese"
+        placeholder="MM"
+        inputMode="numeric"
+        value={parts[1]}
+        onChange={e => editSegment(1, e.target.value)}
+        onKeyDown={e => backStep(1, e.key)}
+        ref={refs[1]}
+        style={{ ...segStyle, width: 64 }}
+      />
+      <span aria-hidden style={{ color: 'var(--color-text-light)' }}>/</span>
+      <input
+        aria-label="Anno"
+        placeholder="AAAA"
+        inputMode="numeric"
+        value={parts[2]}
+        onChange={e => editSegment(2, e.target.value)}
+        onKeyDown={e => backStep(2, e.key)}
+        ref={refs[2]}
+        style={{ ...segStyle, width: 84 }}
+      />
+    </div>
+  )
+}
+
 export default function CaseWizardV2() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -2283,13 +2433,11 @@ export default function CaseWizardV2() {
                   <label htmlFor="stipulation-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                     Data stipula
                   </label>
-                  <input
+                  <DateField
                     id="stipulation-date"
-                    type="date"
                     value={data.stipulation_date}
-                    onChange={e => setDataField('stipulation_date', e.target.value)}
+                    onChange={v => setDataField('stipulation_date', v)}
                     onBlur={handleContractDateBlur}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
                   />
                   <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
                     Se vuota, il periodo base resta da compilare a mano.
@@ -2299,13 +2447,11 @@ export default function CaseWizardV2() {
                   <label htmlFor="execution-start-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                     Data avvio esecuzione
                   </label>
-                  <input
+                  <DateField
                     id="execution-start-date"
-                    type="date"
                     value={data.execution_start_date}
-                    onChange={e => setDataField('execution_start_date', e.target.value)}
+                    onChange={v => setDataField('execution_start_date', v)}
                     onBlur={handleContractDateBlur}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
                   />
                   <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
                     Se vuota, il periodo di confronto resta da compilare a mano.
@@ -2330,13 +2476,11 @@ export default function CaseWizardV2() {
                   <label htmlFor="contract-end-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                     Termine contratto
                   </label>
-                  <input
+                  <DateField
                     id="contract-end-date"
-                    type="date"
                     value={data.contract_end_date}
-                    onChange={e => setDataField('contract_end_date', e.target.value)}
+                    onChange={v => setDataField('contract_end_date', v)}
                     onBlur={handleContractDateBlur}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
