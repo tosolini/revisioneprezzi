@@ -139,7 +139,7 @@ export default function CaseDetail() {
           </tbody>
         </table>
       </div>
-        {editingMeta && (
+        {isDraft && editingMeta && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             <input
               placeholder="Lotto / Contratto"
@@ -172,7 +172,7 @@ export default function CaseDetail() {
         )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-        {!editingMeta && (
+        {isDraft && !editingMeta && (
           <button
             onClick={() => {
               setMetaDraft({ lotto: lotto || '', operatore_economico: operatore || '' })
