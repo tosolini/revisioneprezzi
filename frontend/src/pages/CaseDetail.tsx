@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { api, CaseDetail as CaseDetailType } from '../api/client'
 import { formatDate, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
-import { RichNotes, isEmptyHtml } from '../components/NotesEditor'
+import NotesEditor, { RichNotes, isEmptyHtml } from '../components/NotesEditor'
 import type { WizardVersionInfo } from '../components/utils'
 
 export default function CaseDetail() {
@@ -15,7 +15,7 @@ export default function CaseDetail() {
   const [lotto, setLotto] = useState<string | null>(null)
   const [operatore, setOperatore] = useState<string | null>(null)
   const [editingMeta, setEditingMeta] = useState(false)
-  const [metaDraft, setMetaDraft] = useState({ lotto: '', operatore_economico: '' })
+  const [metaDraft, setMetaDraft] = useState({ title: '', created_by: '', cig: '', cup: '', stazione_appaltante: '', lotto: '', operatore_economico: '', notes: '' })
   const [metaSaving, setMetaSaving] = useState(false)
 
   useEffect(() => {
@@ -66,12 +66,26 @@ export default function CaseDetail() {
   }
   const saveMeta = async () => {
     if (!id) return
+    const title = metaDraft.title.trim()
+    if (!title) {
+      setError('Il titolo è obbligatorio')
+      return
+    }
     setMetaSaving(true)
     try {
+      const updated = await api.cases.update(id, {
+        title,
+        created_by: metaDraft.created_by.trim() || null,
+        cig: metaDraft.cig.trim() || null,
+        cup: metaDraft.cup.trim() || null,
+        stazione_appaltante: metaDraft.stazione_appaltante.trim() || null,
+        notes: !isEmptyHtml(metaDraft.notes) ? metaDraft.notes : null,
+      })
       const m = await api.wizard.practiceMeta.save(id, {
         lotto: metaDraft.lotto.trim() || null,
         operatore_economico: metaDraft.operatore_economico.trim() || null,
       })
+      setC(updated)
       setLotto(m.lotto)
       setOperatore(m.operatore_economico)
       setEditingMeta(false)
@@ -140,26 +154,40 @@ export default function CaseDetail() {
         </table>
       </div>
         {isDraft && editingMeta && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-            <input
-              placeholder="Lotto / Contratto"
-              value={metaDraft.lotto}
-              onChange={e => setMetaDraft(prev => ({ ...prev, lotto: e.target.value }))}
-              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit' }}
-            />
-            <input
-              placeholder="Operatore economico"
-              value={metaDraft.operatore_economico}
-              onChange={e => setMetaDraft(prev => ({ ...prev, operatore_economico: e.target.value }))}
-              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit' }}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: 16, borderRadius: 12, background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)' }}>
+            {([
+              ['Titolo *', 'title'],
+              ['Creato da', 'created_by'],
+              ['CIG', 'cig'],
+              ['CUP', 'cup'],
+              ['Stazione appaltante', 'stazione_appaltante'],
+              ['Lotto / Contratto', 'lotto'],
+              ['Operatore economico', 'operatore_economico'],
+            ] as Array<[string, keyof typeof metaDraft]>).map(([label, key]) => (
+              <div key={key}>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                  {label}
+                </label>
+                <input
+                  value={metaDraft[key]}
+                  onChange={e => setMetaDraft(prev => ({ ...prev, [key]: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}
+                />
+              </div>
+            ))}
+            <div>
+              <label style={{ display: 'block', marginBottom: 4, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                Note
+              </label>
+              <NotesEditor value={metaDraft.notes} onChange={v => setMetaDraft(prev => ({ ...prev, notes: v }))} placeholder="Note (opzionale)" />
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => void saveMeta()}
                 disabled={metaSaving}
                 style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
               >
-                {metaSaving ? 'Salvataggio…' : 'Salva lotto / operatore'}
+                {metaSaving ? 'Salvataggio…' : 'Salva dati pratica'}
               </button>
               <button
                 onClick={() => setEditingMeta(false)}
@@ -175,12 +203,21 @@ export default function CaseDetail() {
         {isDraft && !editingMeta && (
           <button
             onClick={() => {
-              setMetaDraft({ lotto: lotto || '', operatore_economico: operatore || '' })
+              setMetaDraft({
+                title: c.title || '',
+                created_by: c.created_by || '',
+                cig: c.cig || '',
+                cup: c.cup || '',
+                stazione_appaltante: c.stazione_appaltante || '',
+                lotto: lotto || '',
+                operatore_economico: operatore || '',
+                notes: c.notes || '',
+              })
               setEditingMeta(true)
             }}
             style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
           >
-            Modifica lotto / operatore
+            Modifica dati pratica
           </button>
         )}
         {isDraft && (

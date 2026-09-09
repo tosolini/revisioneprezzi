@@ -16,10 +16,8 @@ class CaseUpdate(BaseModel):
     title: str | None = None
     status: str | None = None
     current_step: int | None = None
+    created_by: str | None = None
     cig: str | None = None
-    cup: str | None = None
-    stazione_appaltante: str | None = None
-    notes: str | None = None
 
 
 class CaseResponse(BaseModel):
