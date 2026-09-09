@@ -3,10 +3,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir --upgrade pip setuptools>=83.0.0 && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip uninstall -y pip setuptools
 COPY . .
 # Run as an unprivileged user instead of root.
 RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8002/docs')"
 EXPOSE 8002
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]

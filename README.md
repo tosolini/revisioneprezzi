@@ -6,38 +6,35 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture e lavori**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Supporta sia il wizard classico a 7 passi (V1) sia il wizard semplificato a 5 passi (V2) con supporto TOL per i lavori.
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.0** — wizard unificato a 5 passi (il percorso V1 a 7 passi resta disponibile per le pratiche esistenti).
 
 ### Funzionalità principali
 
-- **Wizard guidato** — due percorsi: V1 a 7 passi (`/cases/:id/wizard/:step`) e V2 a 5 passi (`/cases/:id/wizard-v2`, con supporto TOL per i lavori)
+- **Wizard unificato** — un solo ingresso (`Continua Procedura`, `/cases/:id/wizard-v2`): riepilogo pratica in sola lettura, tipo contratto (lavori/servizi/forniture/**misto**) con flag operativi non bloccanti, date stipula/avvio/termine + durata con derivazione automatica e calendario, importi e periodi, pesi indici, calcolo. La route V1 (`/cases/:id/wizard/:step`) resta per le pratiche esistenti
 - **Mapping CPV → Tabella D** — associazione CPV → indici ISTAT (serie singola o media ponderata, Art. 11 e Allegato II.2-bis), con fallback sui candidati di famiglia (Art. 11.4) e forzatura indice singolo motivata (Art. 11.5)
 - **Motore di calcolo** — media ponderata delle variazioni (Tabella D) e indice sintetico (TOL), applicazione della formula legale (soglia 5%, coefficiente 80% per servizi/forniture; 3%/90% per lavori), calcolo multi-componente (Art. 13)
 - **Trasparenza sui dati ISTAT** — i periodi richiesti senza dato vengono segnalati con i mesi non registrati e il periodo effettivamente usato (fallback)
 - **Vincolo sull'ordine dei periodi** — il periodo base deve precedere il confronto; l'inversione è bloccata con messaggio esplicativo (override riservato, non esposto in UI)
-- **Report V2 strutturato** — dossier di revisione completo (e report Markdown classico) con passaggi di calcolo, pronto per stampa/PDF
+- **Report V2 strutturato** — dossier completo (e report Markdown classico) con tabella di calcolo leggibile passo-passo (formula, quota eccedente, coefficiente, dettaglio per componente Art. 13), date/flag di contratto e lotto; pronto per stampa/PDF
 - **Audit logging** — ogni operazione significativa è tracciata (import, svuotamenti, eliminazione query SDMX)
 - **Catalogo ISTAT** — gestione indici: import CSV, import da query SDMX asincrono con salvataggio automatico delle query, **strategie riscrittura `startPeriod`/`endPeriod`** (riscarica con `fixed`/`earliest`/`expand_1y`/`expand_5y` per inizio più vecchio e `fixed`/`last_month_end`/`today` per fine), riscarica e gestione provenienza per serie, ricerca per gruppo, svuotamento con doppia conferma; **guardie di integrità** con payload strutturato (`unfiltered_dimensions` + `example_url`) e box esplicativo che indica quali valori si mescolerebbero nella serie esistente; **tooltip ATECO** per `wages_ateco` — la tabella mostra su `ISTAT_WAGES_ATECO_*` (es. `951`) la descrizione ATECO (`[951] Riparazione di computer e di apparecchiature per le comunicazioni`) come `title` nativo su Codice/Nome e come etichetta inline, risolta via `ateco_catalog` con fallback `Tabella D` (`/api/v1/indices/by-group/{group}` e `/api/v1/indices/search` espongono `ateco_label`)
 - **UX modali** — tutte le modali SDMX/CSV/svuotamento con `maxHeight:90vh`, scroll interno e header/footer sticky: mai bloccate fuori viewport anche con errori lunghi
 - **Cataloghi CPV, ATECO, TOL** — consultazione e ricerca
-- **Parser documentale (V2)** — estrazione su richiesta alla creazione pratica — preview e conferma admin prima di avviare il percorso rapido (carica PDF/DOCX opzionale in “Nuova pratica”, verifica i dati trovati e scegli se usare il rapido)
+- **Parser documentale** — alla creazione pratica si può caricare un PDF/DOCX: anteprima dei dati trovati (CIG/CUP/oggetto/CPV/importo/durata/date in italiano normalizzate in ISO, durata calcolata da avvio→termine) e ingresso diretto nel wizard unificato
 - **Backup del database** — esportazione e ripristino dal backend (`/api/v1/backup`)
-- **Ente predefinito condiviso** — l'ente impostato in Impostazioni vale per tutti gli utenti e tutti i browser e precompila lo step 1 del wizard
+- **Ente predefinito condiviso** — l'ente impostato in Impostazioni vale per tutti gli utenti e tutti i browser e precompila la Stazione Appaltante nel modale "Nuova pratica"
 
-#### Quale percorso scegliere?
+#### Quale percorso?
 
-| Percorso | Quando usarlo | Passi |
-|----------|---------------|-------|
-| **Percorso rapido (V2, 5 passi)** | Servizi/forniture standard con CPV noto; ideale dopo aver caricato determina/bando e confermato i dati estratti | 1. Tipo contratto → 2. CPV/ATECO → 3. Importo e periodi → 4. Pesi indici → 5. Calcolo |
-| **Percorso completo (V1, 7 passi)** | Casi complessi, lavori con TOL, o quando l'estrazione non trova dati utili | 7 passi con classificazione fine e indici compositi |
+Le pratiche nuove entrano direttamente nel **wizard unificato (5 passi)**: 1. Inquadramento (tipo + riepilogo pratica) → 2. CPV/ATECO o TOL → 3. Importi, date e periodi → 4. Pesi indici → 5. Calcolo e report. Il **percorso completo V1 (7 passi)** resta per le pratiche create prima della 1.2.0.
 
 ### Schermate
 
 ![Dashboard pratiche](docs/screenshots/dashboard.png)
-*Dashboard — elenco pratiche con percorsi rapido (V2) e completo (V1).*
+*Dashboard — elenco pratiche con ingresso al wizard unificato.*
 
-![Wizard rapido, tipo di contratto](docs/screenshots/wizard.png)
-*Wizard V2 — scelta del tipo di contratto (soglie e coefficienti legali).*
+![Wizard unificato, inquadramento](docs/screenshots/wizard.png)
+*Wizard unificato — riepilogo pratica e tipo di contratto (soglie e coefficienti legali).*
 
 ![Catalogo indici ISTAT](docs/screenshots/catalogo-istat.png)
 *Catalogo ISTAT — serie storiche con import SDMX/CSV e query salvate.*
@@ -176,7 +173,10 @@ Endpoint principali:
 |--------|------|-------------|
 | GET | `/health` | Health check |
 | POST | `/api/v1/cases` | Crea nuova pratica |
-| POST | `/api/v1/cases/{id}/wizard/{step}` | Salva risposte wizard |
+| POST | `/api/v1/cases/{id}/extract` | Estrae dati da PDF/DOCX (CIG/CUP/oggetto/CPV/importo/durata/date ISO) |
+| GET/PUT | `/api/v1/cases/{id}/practice-meta` | Lotto e operatore economico della pratica |
+| PUT | `/api/v1/cases/{id}/wizard-v2` | Salva stato wizard unificato |
+| POST | `/api/v1/cases/{id}/wizard/{step}` | Salva risposte wizard (V1, legacy) |
 | POST | `/api/v1/classify` | Classifica CPV → Tabella D |
 | POST | `/api/v1/calculation/v2/calculate` | Calcola revisione (serie singola o composita) |
 | POST | `/api/v1/calculation/v2/calculate/multi-component` | Calcolo multi-componente (Art. 13) |
@@ -239,6 +239,14 @@ L'"Aggiorna" salva solo URL e strategie: per ri-scaricare i dati si usa il pulsa
   segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
   `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
   puntuali, ma non è esposto in alcuna interfaccia.
+
+## Novità nella 1.2.0
+
+- **Wizard unificato**: le pratiche nuove entrano direttamente nel wizard a 5 passi (`Continua Procedura`); niente più scelta rapido/completo né anagrafiche duplicate. Riepilogo pratica in sola lettura, tipo contratto esteso al **misto**, flag di durata/istantanea come dato operativo non bloccante, date stipula/avvio/termine + durata con derivazione automatica e calendario con auto-avanzamento GG/MM/AAAA.
+- **Dettaglio pratica**: modifica di tutti i dati iniziali in bozza (titolo, CIG/CUP, stazione, lotto, operatore, note); "Vedi report" solo a procedura completata; date con ora e minuti.
+- **Report completo**: lotto, flag e date anche nel report; tabella di calcolo leggibile (formula, quota eccedente, coefficiente, dettaglio Art. 13).
+- **Parser documentale**: date italiane normalizzate in ISO, durata calcolata da avvio→termine, pattern tolleranti per CIG/CUP/oggetto/importo.
+- **Sicurezza**: runtime non-root su tutti i servizi, `pip`/`setuptools` e tool di build fuori dalle immagini prod, healthcheck; scan Trivy senza HIGH/CRITICAL sul frontend e senza secret nel repo.
 
 ---
 

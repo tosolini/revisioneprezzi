@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useTheme } from '../theme'
-
-function getDeviceId(): string {
-  let id = localStorage.getItem('device_id')
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem('device_id', id)
-  }
-  return id
-}
+import { getDeviceId } from '../components/utils'
 
 const GROUP_OPTIONS = [
   { value: 'ppi', label: 'Prezzi alla produzione industria (PPI)' },

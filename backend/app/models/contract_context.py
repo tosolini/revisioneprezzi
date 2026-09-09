@@ -22,6 +22,7 @@ class ContractContext(Base):
     instant_execution: Mapped[bool | None] = mapped_column(Boolean)
     stipulation_date: Mapped[date | None] = mapped_column(Date)
     execution_start_date: Mapped[date | None] = mapped_column(Date)
+    contract_end_date: Mapped[date | None] = mapped_column(Date)
     duration_months: Mapped[int | None] = mapped_column()
     contract_amount_total: Mapped[float | None] = mapped_column(Float)
     amount_subject_to_revision: Mapped[float | None] = mapped_column(Float)

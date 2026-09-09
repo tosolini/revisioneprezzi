@@ -8,10 +8,20 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends && \
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 && \
+    apt-get purge -y --auto-remove curl gnupg && \
     rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir --upgrade pip setuptools>=84.0.0 && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip uninstall -y pip setuptools
 COPY . .
+# Run as an unprivileged user instead of root (parser già così).
+# PYTHONDONTWRITEBYTECODE: /app è bind-mounted, niente .pyc spazzatura.
+ENV PYTHONDONTWRITEBYTECODE=1
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"
 
 EXPOSE 8000
 

@@ -14,7 +14,15 @@ PARSER_URL = "http://parser:8002"
 
 STEP_KEYS: dict[int, set[str]] = {
     1: {"ente", "cig", "cup", "operatore_economico", "object_description"},
-    2: {"contract_type", "stipulation_date", "duration_months", "contract_amount_total"},
+    2: {
+        "contract_type",
+        "stipulation_date",
+        "execution_start_date",
+        "contract_end_date",
+        "duration_months",
+        "contract_amount_total",
+        "amount_subject_to_revision",
+    },
     3: {"cpv_primary"},
 }
 
@@ -65,13 +73,18 @@ def extract_document(case_id: UUID, file: UploadFile = File(...), db: Session = 
         "durata_mesi": "duration_months",
         "natura": "contract_type",
         "data_stipula": "stipulation_date",
+        "data_inizio": "execution_start_date",
+        "data_fine": "contract_end_date",
         "operatore_economico": "operatore_economico",
     }
-
     for parser_key, wizard_key in field_map.items():
         val = fields.get(parser_key)
         if val is not None:
             wizard_data[wizard_key] = str(val)
+    # L'importo totale estratto vale anche come assoggettabile (prefill V1 step 5).
+    total = wizard_data.get("contract_amount_total")
+    if total and not wizard_data.get("amount_subject_to_revision"):
+        wizard_data["amount_subject_to_revision"] = total
 
     if wizard_data.get("contract_type"):
         natura_map = {

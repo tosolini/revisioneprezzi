@@ -47,12 +47,12 @@ def test_version_markers_and_endpoint(client: TestClient, db: Session):
     assert resp.json()["wizard_version"] is None
     assert resp.json()["has_v2_state"] is False
 
-    resp = client.put(f"/api/v1/cases/{case_id}/wizard-v2/version", json={"version": "v2"})
+    resp = client.put(f"/api/v1/cases/{case_id}/wizard-v2/version", json={"version": "unified"})
     assert resp.status_code == 200
-    assert resp.json()["wizard_version"] == "v2"
+    assert resp.json()["wizard_version"] == "unified"
 
     resp = client.get(f"/api/v1/cases/{case_id}/wizard-v2")
-    assert resp.json()["wizard_version"] == "v2"
+    assert resp.json()["wizard_version"] == "unified"
     assert resp.json()["has_v2_state"] is False
 
     resp = client.put(f"/api/v1/cases/{case_id}/wizard-v2/version", json={"version": "v3"})
@@ -67,12 +67,12 @@ def test_version_markers_and_endpoint(client: TestClient, db: Session):
     resp = client.get(f"/api/v1/cases/{case_id}/wizard-v2")
     assert resp.json()["wizard_version"] == "v1"
 
-    # Il salvataggio V2 marca v2 e crea lo stato salvato.
+    # Il salvataggio unificato marca unified e crea lo stato salvato.
     resp = client.put(
         f"/api/v1/cases/{case_id}/wizard-v2",
         json={"current_step": 2, "contract_type": "services", "amount": 1000.0},
     )
     assert resp.status_code == 200
     resp = client.get(f"/api/v1/cases/{case_id}/wizard-v2")
-    assert resp.json()["wizard_version"] == "v2"
+    assert resp.json()["wizard_version"] == "unified"
     assert resp.json()["has_v2_state"] is True

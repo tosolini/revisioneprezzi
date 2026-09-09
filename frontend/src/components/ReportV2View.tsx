@@ -38,6 +38,53 @@ interface ReportV2ViewProps {
   reportData: ReportData;
 }
 
+interface CalcStepLike {
+  step?: number
+  description?: string
+  formula?: string
+  calculation?: string
+  result?: string
+  details?: Record<string, unknown>
+}
+
+const fmtDetailValue = (v: unknown): string => {
+  if (v == null) return '—'
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v)
+  return JSON.stringify(v)
+}
+
+const renderCalcStepExtras = (step: CalcStepLike): React.ReactNode => {
+  const details = step.details ?? {}
+  const lines: string[] = []
+  if (step.step === 0) {
+    for (const key of ['tipo_contratto', 'soglia_attivazione', 'coefficiente_riconoscimento', 'riferimento']) {
+      if (details[key] != null) lines.push(`${key}: ${fmtDetailValue(details[key])}`)
+    }
+  }
+  if (step.step === 1) {
+    for (const key of ['serie', 'periodo_base', 'valore_base', 'periodo_confronto', 'valore_confronto']) {
+      if (details[key] != null) lines.push(`${key}: ${fmtDetailValue(details[key])}`)
+    }
+    for (const key of ['used_base_period', 'used_comparison_period']) {
+      if (details[key] != null) lines.push(`${key}: ${fmtDetailValue(details[key])}`)
+    }
+  }
+  const calc = typeof details['calculation'] === 'string' && details['calculation']
+    ? details['calculation'] as string
+    : (typeof step.calculation === 'string' ? step.calculation : null)
+  if (lines.length === 0 && !calc) return null
+  return (
+    <div style={{ marginTop: 6, fontSize: 11, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {lines.map((line, i) => (
+        <div key={i} style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{line}</div>
+      ))}
+      {calc && (
+        <div style={{ fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{calc}</div>
+      )}
+    </div>
+  )
+}
+
 const sectionStyle: React.CSSProperties = {
   background: 'var(--color-bg-card)',
   borderRadius: 12,
@@ -140,11 +187,24 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               <p>{data.cup}</p>
             </div>
           )}
+          {data.lotto && (
+            <div>
+              <p style={labelStyle}>Lotto</p>
+              <p>{data.lotto}</p>
+            </div>
+          )}
 
-          {data.station && (
-            <div style={{ gridColumn: '1 / -1' }}>
-              <p style={labelStyle}>Stazione Appaltante</p>
-              <p>{data.station}</p>
+          {data.is_duration_contract != null && (
+            <div>
+              <p style={labelStyle}>Contratto di durata</p>
+              <p>{data.is_duration_contract === true ? 'Sì' : 'No'}</p>
+            </div>
+          )}
+
+          {data.instant_execution != null && (
+            <div>
+              <p style={labelStyle}>Esecuzione istantanea</p>
+              <p>{data.instant_execution === true ? 'Sì' : 'No'}</p>
             </div>
           )}
 
@@ -354,12 +414,46 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div>
             <p style={labelStyle}>Periodo Confronto (Rilevazione)</p>
             <p style={{ margin: 0 }}>
-              {data.comparison_period 
+              {data.comparison_period
                 ? new Date(data.comparison_period).toLocaleDateString('it-IT')
                 : 'N/A'
               }
             </p>
           </div>
+
+          {data.stipulation_date && (
+            <div>
+              <p style={labelStyle}>Data stipula</p>
+              <p style={{ margin: 0 }}>
+                {new Date(data.stipulation_date).toLocaleDateString('it-IT')}
+              </p>
+            </div>
+          )}
+
+          {data.execution_start_date && (
+            <div>
+              <p style={labelStyle}>Data avvio esecuzione</p>
+              <p style={{ margin: 0 }}>
+                {new Date(data.execution_start_date).toLocaleDateString('it-IT')}
+              </p>
+            </div>
+          )}
+
+          {data.contract_end_date && (
+            <div>
+              <p style={labelStyle}>Termine contratto</p>
+              <p style={{ margin: 0 }}>
+                {new Date(data.contract_end_date).toLocaleDateString('it-IT')}
+              </p>
+            </div>
+          )}
+
+          {data.duration_months != null && (
+            <div>
+              <p style={labelStyle}>Durata (mesi)</p>
+              <p style={{ margin: 0 }}>{data.duration_months}</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -620,6 +714,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                   <tr style={{ background: 'var(--color-bg-offset)' }}>
                     <th style={{ ...thStyle, width: 60 }}>Step</th>
                     <th style={thStyle}>Descrizione</th>
+                    <th style={thStyle}>Formula</th>
                     <th style={thStyle}>Risultato</th>
                   </tr>
                 </thead>
@@ -629,25 +724,81 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                       <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{step.step}</td>
                       <td style={tdStyle}>
                         {step.description}
+                        {renderCalcStepExtras(step)}
                         {Array.isArray(step.details?.component_details) && (
                           <div style={{ marginTop: 8, fontSize: 11 }}>
                             {step.details.component_details.map((c: ComponentRow, j: number) => (
                               <div key={j} style={{ display: 'flex', gap: 12, padding: '2px 0', fontFamily: 'monospace' }}>
                                 <span style={{ minWidth: 190 }}>{c.series_id}</span>
                                 <span>{c.weight}%</span>
-                                <span>I0 {c.base_value}</span>
-                                <span>It {c.comparison_value}</span>
+                                <span>I0 {c.base_value}{c.base_exact === false && c.used_base_period ? ` (usato ${c.used_base_period})` : ''}</span>
+                                <span>It {c.comparison_value}{c.comparison_exact === false && c.used_comparison_period ? ` (usato ${c.used_comparison_period})` : ''}</span>
                                 <span>Vi {c.variation_percent}%</span>
                                 <span>→ {c.contribution_percent}%</span>
                               </div>
                             ))}
-                            {step.details.calculation && (
-                              <div style={{ fontFamily: 'monospace', marginTop: 6 }}>{step.details.calculation}</div>
-                            )}
                           </div>
                         )}
                       </td>
+                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>
+                        {typeof step.details?.formula === 'string' && step.details.formula
+                          ? step.details.formula
+                          : (step.formula || '—')}
+                      </td>
                       <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>{step.result}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {(data.excess_percent != null || data.recognition_percent != null) && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {data.excess_percent != null && (
+              <div>
+                <p style={labelStyle}>Quota eccedente</p>
+                <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                  {Number(data.excess_percent).toFixed(4)}%
+                </p>
+              </div>
+            )}
+            {data.recognition_percent != null && (
+              <div>
+                <p style={labelStyle}>Coefficiente riconoscimento</p>
+                <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                  {Number(data.recognition_percent).toFixed(2)}%
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {Array.isArray(data.components) && data.components.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+              Dettaglio per componente (Art. 13 multi-oggetto)
+            </p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #e5e7eb' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg-offset)' }}>
+                    <th style={thStyle}>Descrizione</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Variazione %</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Importo €</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.components.map((comp: any, idx: number) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={tdStyle}>{comp.description || `Componente ${idx + 1}`}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
+                        {comp.variation_percent != null ? `${Number(comp.variation_percent) >= 0 ? '+' : ''}${Number(comp.variation_percent).toFixed(4)}%` : '—'}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
+                        {comp.revision_amount != null ? `€ ${Number(comp.revision_amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -11,7 +11,7 @@ export function asNullableString(value: unknown): string | null {
 }
 
 
-export type WizardVersion = 'v1' | 'v2'
+export type WizardVersion = 'v1' | 'v2' | 'unified'
 
 export interface WizardVersionInfo {
   version: WizardVersion | null
@@ -23,7 +23,7 @@ export function parseWizardVersion(body: unknown): WizardVersionInfo {
   const fallback: WizardVersionInfo = { version: null, hasV2State: false, v2Step: 1 }
   if (!isRecord(body)) return fallback
   const raw = body['wizard_version']
-  const version: WizardVersion | null = raw === 'v1' || raw === 'v2' ? raw : null
+  const version: WizardVersion | null = raw === 'v1' || raw === 'v2' || raw === 'unified' ? raw : null
   const hasV2State = body['has_v2_state'] === true
   let v2Step = 1
   if (isRecord(body['state'])) {
@@ -34,15 +34,17 @@ export function parseWizardVersion(body: unknown): WizardVersionInfo {
 }
 
 export function isV2Draft(info: WizardVersionInfo): boolean {
-  if (info.version === 'v2') return true
+  if (info.version === 'v2' || info.version === 'unified') return true
   if (info.version === 'v1') return false
   // Senza marcatore esplicito conta solo uno stato V2 davvero salvato con
   // avanzamento: i dati ricostruiti dalle risposte V1 non bastano.
   return info.hasV2State && info.v2Step > 1
 }
+
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('it-IT', {
+  return new Date(iso).toLocaleString('it-IT', {
     day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   })
 }
 
@@ -53,4 +55,13 @@ export function statusLabel(status: string): string {
     completed: 'Completato',
   }
   return map[status] || status
+}
+
+export function getDeviceId(): string {
+  let id = localStorage.getItem('device_id')
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem('device_id', id)
+  }
+  return id
 }

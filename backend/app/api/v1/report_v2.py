@@ -70,6 +70,18 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         .all()
     }
 
+    # Pratica unificata 1.2.0: lotto/operatore vivono come righe KV step 0
+    # scritte dal modale pratica; fallback allo step 1 legacy per storicità.
+    step0_answers = {
+        a.field_key: a.field_value
+        for a in db.query(WizardAnswer)
+        .filter(
+            WizardAnswer.case_id == case_id,
+            WizardAnswer.step == 0,
+            WizardAnswer.field_key.notin_(["wizard_v2_state", "wizard_version"]),
+        )
+        .all()
+    }
     # Also read step 2 answers for contract_type from wizard (backup)
     step2_answers = {
         a.field_key: a.field_value
@@ -77,7 +89,6 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         .filter(WizardAnswer.case_id == case_id, WizardAnswer.step == 2)
         .all()
     }
-    ct = step2_answers.get("contract_type") or (contract.contract_type if contract else None)
 
     # Read step 3 answers for object_description and cpv_total_amount
     step3_answers = {
@@ -106,6 +117,11 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
                 v2_state = parsed_state
         except (json.JSONDecodeError, TypeError, AttributeError):
             pass  # corrupt saved state: report uses step answers only
+    ct = (
+        step2_answers.get("contract_type")
+        or v2_state.get("contract_type")
+        or (contract.contract_type if contract else None)
+    )
 
     contract_data = {
         "case_number": str(case.id),
@@ -115,7 +131,23 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         "cig": case.cig or step1_answers.get("cig"),
         "cup": case.cup or step1_answers.get("cup"),
         "station": case.stazione_appaltante or step1_answers.get("ente"),
-        "operatore_economico": step1_answers.get("operatore_economico"),
+        "lotto": step0_answers.get("lotto") or step1_answers.get("lotto"),
+        "is_duration_contract": _as_flag(
+            _first_present(
+                contract.is_duration_contract if contract else None,
+                v2_state.get("is_duration_contract"),
+                step2_answers.get("is_duration_contract"),
+            )
+        ),
+        "instant_execution": _as_flag(
+            _first_present(
+                contract.instant_execution if contract else None,
+                v2_state.get("instant_execution"),
+                step2_answers.get("instant_execution"),
+            )
+        ),
+        "operatore_economico": step0_answers.get("operatore_economico")
+        or step1_answers.get("operatore_economico"),
         "created_by": case.created_by,
         "notes": step1_answers.get("notes"),
         "case_notes": case.notes,
@@ -246,6 +278,33 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         "revisable_amount": revisable or total_amount,
         "base_period": base_period_val,
         "comparison_period": comparison_period_val,
+        "stipulation_date": _as_iso(
+            _first_present(
+                contract.stipulation_date if contract else None,
+                v2_state.get("stipulation_date"),
+                step2_answers.get("stipulation_date"),
+            )
+        ),
+        "execution_start_date": _as_iso(
+            _first_present(
+                contract.execution_start_date if contract else None,
+                v2_state.get("execution_start_date"),
+                step2_answers.get("execution_start_date"),
+            )
+        ),
+        "contract_end_date": _as_iso(
+            _first_present(
+                contract.contract_end_date if contract else None,
+                v2_state.get("contract_end_date"),
+            )
+        ),
+        "duration_months": _as_int(
+            _first_present(
+                contract.duration_months if contract else None,
+                v2_state.get("duration_months"),
+                step2_answers.get("duration_months"),
+            )
+        ),
     }
 
     sections.append(ReportSection(title="Importi e Date", data=amounts_data, order=3))
@@ -339,6 +398,9 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
             )
             if calc_result_row.variation_percent is not None
             else None,
+            "threshold_percent": calc_result_row.threshold_percent,
+            "excess_percent": calc_result_row.excess_percent,
+            "recognition_percent": calc_result_row.recognition_percent,
             "revision_amount": calc_result_row.revision_amount,
             "revision_type": (
                 "aumento"
@@ -348,14 +410,19 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
                 else None
             ),
             "formula_steps": formula_steps,
+            "components": _multi_component_rows(saved_result),
         }
     else:
         calc_data = {
             "variation_percent": None,
             "threshold_exceeded": None,
+            "threshold_percent": None,
+            "excess_percent": None,
+            "recognition_percent": None,
             "revision_amount": None,
             "revision_type": None,
             "formula_steps": [],
+            "components": _multi_component_rows(saved_result),
         }
 
     sections.append(ReportSection(title="Risultato Calcolo", data=calc_data, order=6))
@@ -381,6 +448,67 @@ def _get_contract_type_label(contract_type: Optional[str]) -> str:
         "mixed": "Misto servizi-forniture",
     }
     return labels.get(contract_type, contract_type or "Non specificato")
+
+
+def _first_present(*values: object) -> object:
+    """Primo valore non-None (catena ContractContext → blob → legacy)."""
+    for v in values:
+        if v is not None:
+            return v
+    return None
+
+
+def _as_flag(value: object) -> bool | None:
+    """bool|None per S1: assente → None (—), altrimenti semantica V1."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return value
+    return str(value) in ("true", "True", "1")
+
+
+def _as_iso(value: object) -> str | None:
+    """Data → ISO YYYY-MM-DD; assente → None (chiave null, cella saltata)."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
+
+
+def _as_int(value: object) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(float(str(value)))
+    except (ValueError, TypeError):
+        return None
+
+
+def _multi_component_rows(saved_result: dict | None) -> list | None:
+    """Righe per-componente Art. 13 da blob V2 (is_multi_component)."""
+    saved = saved_result if isinstance(saved_result, dict) else {}
+    if not saved.get("is_multi_component"):
+        return None
+    multi = saved.get("components")
+    if not isinstance(multi, list):
+        return None
+    rows = []
+    for comp in multi:
+        if not isinstance(comp, dict):
+            continue
+        res = comp.get("result") if isinstance(comp.get("result"), dict) else {}
+        rows.append(
+            {
+                "description": comp.get("description"),
+                "amount": comp.get("amount"),
+                "variation_percent": res.get("variation_percent"),
+                "revision_amount": res.get("revision_amount"),
+            }
+        )
+    return rows or None
 
 
 def _extract_series_evidence(
