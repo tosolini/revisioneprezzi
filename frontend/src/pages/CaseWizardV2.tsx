@@ -428,6 +428,115 @@ function FlagSelect({
   )
 }
 
+const MONTH_NAMES_IT = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
+]
+
+function CalendarPopup({ value, onPick, onClose }: {
+  value: string
+  onPick: (iso: string) => void
+  onClose: () => void
+}) {
+  // Calendario in-app: niente nativo, niente stati incastrati.
+  // Toggle, selezione, overlay e Escape sono tutti stato React.
+  const initial = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? { y: parseInt(value.slice(0, 4), 10), m: parseInt(value.slice(5, 7), 10) }
+    : (() => {
+      const now = new Date()
+      return { y: now.getFullYear(), m: now.getMonth() + 1 }
+    })()
+  const [view, setView] = useState(initial)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const shift = (delta: number) => {
+    setView(prev => {
+      const total = prev.y * 12 + (prev.m - 1) + delta
+      return { y: Math.floor(total / 12), m: (total % 12) + 1 }
+    })
+  }
+  const startOffset = (new Date(view.y, view.m - 1, 1).getDay() + 6) % 7
+  const daysInMonth = new Date(view.y, view.m, 0).getDate()
+  const cells: (number | null)[] = [
+    ...Array<null>(startOffset).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+  const pad = (v: number) => String(v).padStart(2, '0')
+  const close = () => onClose()
+
+  return (
+    <>
+      <div
+        aria-hidden
+        onClick={close}
+        style={{ position: 'fixed', inset: 0, zIndex: 40, cursor: 'default' }}
+      />
+      <div
+        role="dialog"
+        aria-label="Scegli la data"
+        style={{
+          position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+          width: 264, padding: 12, borderRadius: 12,
+          background: 'var(--color-bg-card)', border: '1.5px solid var(--color-border)',
+          boxShadow: '0 12px 32px var(--color-shadow)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <button type="button" aria-label="Mese precedente" onClick={() => shift(-1)}
+            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: 14 }}>
+            ‹
+          </button>
+          <strong style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+            {MONTH_NAMES_IT[view.m - 1]} {view.y}
+          </strong>
+          <button type="button" aria-label="Mese successivo" onClick={() => shift(1)}
+            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: 14 }}>
+            ›
+          </button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
+          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((w, i) => (
+            <span key={i} style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-light)', padding: '4px 0' }}>{w}</span>
+          ))}
+          {cells.map((d, i) => {
+            if (d === null) return <span key={i} />
+            const iso = `${view.y}-${pad(view.m)}-${pad(d)}`
+            const selected = value === iso
+            const today = new Date()
+            const isToday = d === today.getDate() && view.m === today.getMonth() + 1 && view.y === today.getFullYear()
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  onPick(iso)
+                  close()
+                }}
+                style={{
+                  padding: '6px 0', borderRadius: 8, fontSize: 12, cursor: 'pointer',
+                  border: selected ? 'none' : isToday ? '1px solid var(--color-primary)' : '1px solid transparent',
+                  background: selected ? 'var(--color-primary)' : 'transparent',
+                  color: selected ? 'var(--color-primary-text)' : 'var(--color-text-primary)',
+                  fontWeight: selected || isToday ? 700 : 400,
+                }}
+              >
+                {d}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
 function DateField({
   id,
   value,
@@ -447,9 +556,9 @@ function DateField({
     return m ? [m[3], m[2], m[1]] : ['', '', '']
   }
   const [parts, setParts] = useState<[string, string, string]>(() => fromValue(value))
+  const [open, setOpen] = useState(false)
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
   const lastProp = useRef(value)
-
   useEffect(() => {
     // Riallineamento da fuori (es. termine proposto dalla derivazione)
     if (value !== lastProp.current) {
@@ -533,7 +642,10 @@ function DateField({
     <div
       style={{ display: 'flex', gap: 6, alignItems: 'center' }}
       onBlur={e => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) commit()
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setOpen(false)
+          commit()
+        }
       }}
       onPaste={e => {
         const text = e.clipboardData.getData('text')
@@ -573,20 +685,32 @@ function DateField({
         ref={refs[2]}
         style={{ ...segStyle, width: 84 }}
       />
-      <input
-        type="date"
-        className="rp-date-native"
-        title="Scegli dal calendario"
-        aria-label="Scegli dal calendario"
-        value={value}
-        onChange={e => {
-          const v = e.target.value
-          if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-            setParts([v.slice(8, 10), v.slice(5, 7), v.slice(0, 4)])
-            if (v !== value) onChange(v)
-          }
-        }}
-      />
+      <span style={{ position: 'relative', display: 'inline-flex' }}>
+        <button
+          type="button"
+          title="Scegli dal calendario"
+          aria-label="Scegli dal calendario"
+          aria-expanded={open}
+          onClick={() => setOpen(prev => !prev)}
+          style={{
+            width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+            border: '1.5px solid var(--color-border)', background: 'var(--color-bg-card)',
+            cursor: 'pointer', fontSize: 16,
+          }}
+        >
+          📅
+        </button>
+        {open && (
+          <CalendarPopup
+            value={value}
+            onPick={iso => {
+              setParts([iso.slice(8, 10), iso.slice(5, 7), iso.slice(0, 4)])
+              if (iso !== value) onChange(iso)
+            }}
+            onClose={() => setOpen(false)}
+          />
+        )}
+      </span>
     </div>
   )
 }
