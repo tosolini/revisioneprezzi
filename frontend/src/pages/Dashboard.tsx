@@ -252,9 +252,16 @@ export default function Dashboard() {
       const cpvStr = typeof cpv === 'string' ? cpv.trim() : String(cpv).trim()
       const amount = cleanImporto(extractPreview['importo_complessivo'])
       const contractType = mapNatura(extractPreview['natura'])
+      const asDate = (v: unknown): string | null =>
+        typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null
+      const durationRaw = extractPreview['durata_mesi']
       const payload: Record<string, unknown> = {
         current_step: 1,
         contract_type: contractType || '',
+        stipulation_date: asDate(extractPreview['data_stipula']),
+        execution_start_date: asDate(extractPreview['data_inizio']),
+        contract_end_date: asDate(extractPreview['data_fine']),
+        duration_months: typeof durationRaw === 'number' && Number.isInteger(durationRaw) && durationRaw >= 0 ? durationRaw : null,
         cpv_code: cpvStr || null,
         cpv_description: (extractPreview['oggetto'] as string) || null,
         cpv_selections: cpvStr ? [{ cpv_code: cpvStr, description: (extractPreview['oggetto'] as string) || undefined }] : [],
@@ -587,6 +594,14 @@ export default function Dashboard() {
                   return String(v)
                 })()],
                 ['Oggetto', extractPreview['oggetto'] ?? extractPreview['object_description']],
+                ...(['Stipula|data_stipula', 'Avvio|data_inizio', 'Termine|data_fine'].map(spec => {
+                  const [label, key] = spec.split('|') as [string, string]
+                  const v = extractPreview[key]
+                  const shown = typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+                    ? new Date(v).toLocaleDateString('it-IT')
+                    : '— non trovato'
+                  return [label, shown] as [string, unknown]
+                })),
               ] as Array<[string, unknown]>).map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', gap: 12 }}>
                   <span style={{ width: 90, color: 'var(--color-text-muted)', fontWeight: 600, flexShrink: 0 }}>{label}:</span>

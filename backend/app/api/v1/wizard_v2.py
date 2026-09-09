@@ -214,6 +214,14 @@ def _fill_from_projections(
         parsed_dur = _parse_duration(step2["duration_months"])
         if parsed_dur is not None:
             _set("duration_months", parsed_dur)
+    if not state.amount:
+        for key in ("amount_subject_to_revision", "contract_amount_total"):
+            if step2.get(key):
+                try:
+                    state.amount = float(step2[key])
+                    break
+                except (ValueError, TypeError):
+                    continue
 
 
 router = APIRouter(prefix="/cases/{case_id}/wizard-v2", tags=["wizard-v2"])

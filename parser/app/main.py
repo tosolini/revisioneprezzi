@@ -1,5 +1,7 @@
 import os
+import re
 import tempfile
+from datetime import date as _date
 from typing import Optional
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -67,8 +69,55 @@ def clean_durata(raw: Optional[str]) -> Optional[int]:
     except ValueError:
         return None
 
+MESE_ISO = {
+    "gennaio": "01", "febbraio": "02", "marzo": "03", "aprile": "04",
+    "maggio": "05", "giugno": "06", "luglio": "07", "agosto": "08",
+    "settembre": "09", "ottobre": "10", "novembre": "11", "dicembre": "12",
+}
+
+
+def clean_data(raw: Optional[str]) -> Optional[str]:
+    """'1 gennaio 2024' o ISO → YYYY-MM-DD; resto → None (mai sporco)."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if "-" in s and len(s) >= 8 and s[0].isdigit():
+        try:
+            return _date.fromisoformat(s[:10]).isoformat()
+        except ValueError:
+            return None
+    m = re.match(r"(\d{1,2})\s+([A-Za-zàèéìòù]+)\s+(\d{4})$", s, re.IGNORECASE)
+    if not m:
+        return None
+    month = MESE_ISO.get(m.group(2).lower())
+    if not month:
+        return None
+    try:
+        return _date(int(m.group(3)), int(month), int(m.group(1))).isoformat()
+    except ValueError:
+        return None
+
+
+def months_between(start_iso: Optional[str], end_iso: Optional[str]) -> Optional[int]:
+    """Mesi interi fra due ISO (floor, >=0); None se non confrontabili."""
+    if not start_iso or not end_iso:
+        return None
+    try:
+        a = _date.fromisoformat(start_iso[:10])
+        b = _date.fromisoformat(end_iso[:10])
+    except ValueError:
+        return None
+    months = (b.year - a.year) * 12 + (b.month - a.month)
+    if b.day < a.day:
+        months -= 1
+    return months if months >= 0 else None
 
 def build_result(raw_text: str, matched: dict) -> ExtractionResult:
+    stipula = clean_data(matched.get("data_stipula"))
+    inizio = clean_data(matched.get("data_inizio"))
+    fine = clean_data(matched.get("data_fine"))
+    # Durata esplicita vince; altrimenti mesi interi avvio→termine.
+    durata = clean_durata(matched.get("durata_mesi")) or months_between(inizio, fine)
     return ExtractionResult(
         ente=matched.get("ente"),
         cig=matched.get("cig"),
@@ -76,9 +125,11 @@ def build_result(raw_text: str, matched: dict) -> ExtractionResult:
         oggetto=matched.get("oggetto"),
         cpv_primary=matched.get("cpv"),
         importo_complessivo=clean_importo(matched.get("importo_complessivo")),
-        durata_mesi=clean_durata(matched.get("durata_mesi")),
+        durata_mesi=durata,
         natura=matched.get("natura"),
-        data_stipula=matched.get("data_stipula"),
+        data_stipula=stipula,
+        data_inizio=inizio,
+        data_fine=fine,
         operatore_economico=matched.get("operatore_economico"),
         raw_text=raw_text,
     )

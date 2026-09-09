@@ -12,6 +12,8 @@ class ExtractionResult(BaseModel):
     durata_mesi: Optional[int] = None
     natura: Optional[str] = None
     data_stipula: Optional[str] = None
+    data_inizio: Optional[str] = None
+    data_fine: Optional[str] = None
     operatore_economico: Optional[str] = None
     raw_text: str
 
