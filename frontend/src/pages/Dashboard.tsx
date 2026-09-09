@@ -57,8 +57,6 @@ export default function Dashboard() {
   const [extractPreview, setExtractPreview] = useState<ExtractFields | null>(null)
   const [createdCaseId, setCreatedCaseId] = useState<string | null>(null)
   const [showExtractPreview, setShowExtractPreview] = useState(false)
-  const [showPathChoice, setShowPathChoice] = useState(false)
-  const [pathChoice, setPathChoice] = useState<'rapido' | 'completo'>('rapido')
   const load = async (q?: string) => {
     try {
       setLoading(true)
@@ -137,9 +135,7 @@ export default function Dashboard() {
     setExtractPreview(null)
     setExtractLoading(false)
     setShowExtractPreview(false)
-    setShowPathChoice(false)
     setCreatedCaseId(null)
-    setPathChoice('rapido')
     setCreating(false)
   }
 
@@ -201,33 +197,44 @@ export default function Dashboard() {
             setShowExtractPreview(true)
             setShowCreate(false)
           } else {
-            // nessun dato utile -> fallback selettore manuale
+            // nessun dato utile -> wizard unificato diretto (input a mano)
             setExtractPreview(null)
-            setExtractError('Non siamo riusciti a estrarre dati utili — prosegui con il percorso che preferisci.')
-            const natura = String(fields['natura'] ?? '').toLowerCase()
-            setPathChoice(natura.includes('lavor') ? 'completo' : 'rapido')
-            setShowPathChoice(true)
+            const newId = c.id
             setShowCreate(false)
+            resetCreateForm()
+            await load(searchQuery.trim() || undefined)
+            try {
+              await api.wizard.setVersion(newId, 'unified')
+            } catch {
+              // ignora: il resume usa l'euristica di fallback
+            }
+            navigate(`/cases/${newId}/wizard-v2`)
+            return
           }
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e)
-          if (msg.includes('413') || msg.toLowerCase().includes('troppo grande')) {
-            setExtractError('File troppo grande (limite 20 MB). Prosegui scegliendo il percorso manualmente.')
-          } else {
-            setExtractError(msg + ' — prosegui con il percorso completo o rapido.')
-          }
-          // decide default path
-          setPathChoice('rapido')
-          setShowPathChoice(true)
+          // Estrazione fallita: la pratica resta in bozza, avviso in dashboard.
           setShowCreate(false)
+          resetCreateForm()
+          setError(msg.includes('413') || msg.toLowerCase().includes('troppo grande')
+            ? 'File troppo grande (limite 20 MB). La pratica è in bozza: aprila per inserimento manuale.'
+            : `${msg} — la pratica è in bozza: aprila per inserimento manuale.`)
         } finally {
           setExtractLoading(false)
         }
       } else {
-        // nessun file -> selettore esplicito
-        setPathChoice('rapido')
-        setShowPathChoice(true)
+        // nessun file -> wizard unificato diretto
+        const newId = c.id
         setShowCreate(false)
+        resetCreateForm()
+        await load(searchQuery.trim() || undefined)
+        try {
+          await api.wizard.setVersion(newId, 'unified')
+        } catch {
+          // ignora: il resume usa l'euristica di fallback
+        }
+        navigate(`/cases/${newId}/wizard-v2`)
+        return
       }
       await load(searchQuery.trim() || undefined)
     } catch (e: unknown) {
@@ -284,21 +291,6 @@ export default function Dashboard() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     }
-  }
-
-  const confirmPathChoice = async () => {
-    if (!createdCaseId) return
-    const id = createdCaseId
-    const choice = pathChoice
-    resetCreateForm()
-    // Scelta esplicita del percorso: la registra così il resume la rispetta.
-    try {
-      await api.wizard.setVersion(id, choice === 'rapido' ? 'unified' : 'v1')
-    } catch {
-      // ignora: il resume usa l'euristica di fallback
-    }
-    if (choice === 'rapido') navigate(`/cases/${id}/wizard-v2`)
-    else navigate(`/cases/${id}/wizard/1`)
   }
 
   const continueWizard = async (caseId: string, currentStep: number) => {
@@ -625,92 +617,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Modal scelta percorso quando nessun file o extract vuoto/fallito */}
-      {showPathChoice && createdCaseId && !showExtractPreview && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16,
-        }}>
-          <div style={{
-            background: 'var(--color-bg-card)', borderRadius: 12, padding: 24, maxWidth: 520, width: '100%',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto',
-          }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 0, color: 'var(--color-text-primary)' }}>Scegli il percorso</h2>
-            {extractError && (
-              <div style={{ marginBottom: 12, padding: 10, background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)', borderRadius: 8, fontSize: 13 }}>
-                {extractError}
-              </div>
-            )}
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.4 }}>
-              Due modi per arrivare al calcolo. Scegli quello più adatto a questa pratica.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              <label style={{
-                display: 'flex', gap: 12, padding: 14, borderRadius: 10,
-                border: pathChoice === 'rapido' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                background: pathChoice === 'rapido' ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
-                cursor: 'pointer',
-              }}>
-                <input
-                  type="radio"
-                  name="pathChoice"
-                  checked={pathChoice === 'rapido'}
-                  onChange={() => setPathChoice('rapido')}
-                  style={{ marginTop: 2 }}
-                />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)' }}>
-                    Consigliato: Percorso rapido — 5 passi
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                    Ideale per servizi e forniture standard. CPV, importo e periodi in pochi passaggi.
-                  </div>
-                </div>
-              </label>
-              <label style={{
-                display: 'flex', gap: 12, padding: 14, borderRadius: 10,
-                border: pathChoice === 'completo' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                background: pathChoice === 'completo' ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
-                cursor: 'pointer',
-              }}>
-                <input
-                  type="radio"
-                  name="pathChoice"
-                  checked={pathChoice === 'completo'}
-                  onChange={() => setPathChoice('completo')}
-                  style={{ marginTop: 2 }}
-                />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)' }}>
-                    Percorso completo — 7 passi
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                    Per casi complessi o lavori: classificazione fine, TOL e indici compositi.
-                  </div>
-                </div>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={confirmPathChoice} style={{ ...btnStyle, flex: 1 }}>
-                Crea e apri
-              </button>
-              <button
-                onClick={() => {
-                  setShowPathChoice(false)
-                  setCreatedCaseId(null)
-                }}
-                style={{ ...btnStyle, background: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)' }}
-              >
-                Annulla
-              </button>
-            </div>
-            <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-text-light)', textAlign: 'center' }}>
-              La pratica è già salvata in bozza — la ritrovi in elenco anche se annulli.
-            </div>
-          </div>
-        </div>
-      )}
-
       {loading ? (
         <div style={{ color: 'var(--color-text-muted)' }}>Caricamento...</div>
       ) : cases.length === 0 ? (
@@ -770,28 +676,16 @@ export default function Dashboard() {
                 </span>
                 {isDraft ? (
                   displayCurrent <= 1 ? (
-                  <>
-                    <button
-                      onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'unified') }}
-                      title="Percorso rapido (5 passi)"
-                      style={{
-                        padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer',
-                      }}
-                    >
-                      Rapido (5 passi)
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'v1') }}
-                      title="Percorso completo (7 passi)"
-                      style={{
-                        padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer',
-                      }}
-                    >
-                      Completo (7 passi)
-                    </button>
-                  </>
+                  <button
+                    onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'unified') }}
+                    title="Apri il wizard unificato (5 passi)"
+                    style={{
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    Apri wizard →
+                  </button>
                   ) : (
                   <button
                     onClick={e => {

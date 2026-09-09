@@ -185,20 +185,12 @@ export default function CaseDetail() {
         {isDraft && (
           <>
             {isFresh ? (
-              <>
-                <button
-                  onClick={() => void enterWizard('unified')}
-                  style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
-                >
-                  Percorso rapido (5 passi)
-                </button>
-                <button
-                  onClick={() => void enterWizard('v1')}
-                  style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
-                >
-                  Percorso completo (7 passi)
-                </button>
-              </>
+              <button
+                onClick={() => void enterWizard('unified')}
+                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
+              >
+                Apri wizard unificato (5 passi) →
+              </button>
             ) : continuedInV2 ? (
               <button
                 onClick={() => navigate(`/cases/${id}/wizard-v2`)}

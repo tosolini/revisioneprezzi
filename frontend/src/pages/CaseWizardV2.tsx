@@ -1914,7 +1914,7 @@ export default function CaseWizardV2() {
               </div>
             )}
             <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-light)', lineHeight: 1.5 }}>
-              Suggerimento: per servizi/forniture standard il <strong style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>percorso rapido</strong> è più veloce; per lavori complessi usa il percorso completo (7 passi).
+              Suggerimento: per servizi/forniture standard bastano CPV e periodi; per lavori usa il tipo Lavori con classificazione TOL.
             </p>
           </div>
         )
