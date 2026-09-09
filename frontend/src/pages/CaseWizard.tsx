@@ -131,14 +131,15 @@ export default function CaseWizard() {
     }
   }, [])
 
-  // Percorso vincolante: una pratica registrata come v2 resta nel wizard rapido.
+  // Percorso vincolante: una pratica registrata come v2/unified resta nel wizard unificato.
   useEffect(() => {
     if (!id) return
     let cancelled = false
     fetch(`/api/v1/cases/${id}/wizard-v2`)
       .then(res => (res.ok ? res.json() : null))
       .then(body => {
-        if (!cancelled && body && parseWizardVersion(body).version === 'v2') {
+        const v = body ? parseWizardVersion(body).version : null
+        if (!cancelled && (v === 'v2' || v === 'unified')) {
           navigate(`/cases/${id}`)
         }
       })

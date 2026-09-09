@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -35,7 +36,7 @@ def list_cases(q: str | None = None, db: Session = Depends(get_db)):
         matching = (
             db.query(WizardAnswer.case_id)
             .filter(
-                WizardAnswer.step == 1,
+                WizardAnswer.step.in_([0, 1]),
                 WizardAnswer.field_key.in_(["cig", "operatore_economico", "ente", "cup", "lotto"]),
                 WizardAnswer.field_value.ilike(like),
             )
@@ -74,6 +75,78 @@ def delete_case(case_id: UUID, db: Session = Depends(get_db)):
     db.delete(case)
     db.commit()
     return Response(status_code=204)
+
+
+class PracticeMetaSave(BaseModel):
+    lotto: str | None = None
+    operatore_economico: str | None = None
+
+
+@router.get("/{case_id}/practice-meta")
+def get_practice_meta(case_id: UUID, db: Session = Depends(get_db)):
+    """Lotto/operatore della pratica (KV step 0, fallback step 1 legacy)."""
+    case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    rows = {
+        (a.step, a.field_key): (a.field_value or "")
+        for a in db.query(WizardAnswer)
+        .filter(
+            WizardAnswer.case_id == case_id,
+            WizardAnswer.step.in_([0, 1]),
+            WizardAnswer.field_key.in_(["lotto", "operatore_economico"]),
+        )
+        .all()
+    }
+    return {
+        "lotto": rows.get((0, "lotto")) or rows.get((1, "lotto")) or None,
+        "operatore_economico": rows.get((0, "operatore_economico"))
+        or rows.get((1, "operatore_economico"))
+        or None,
+    }
+
+
+@router.put("/{case_id}/practice-meta")
+def save_practice_meta(case_id: UUID, payload: PracticeMetaSave, db: Session = Depends(get_db)):
+    """Scrive lotto/operatore come righe KV step 0 (modale pratica, non wizard).
+
+    Upsert per chiave; stringa vuota/None cancella la riga. Non tocca
+    wizard_version né current_step: il modale non è un percorso wizard.
+    """
+    case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    for key, value in (
+        ("lotto", payload.lotto),
+        ("operatore_economico", payload.operatore_economico),
+    ):
+        row = (
+            db.query(WizardAnswer)
+            .filter(
+                WizardAnswer.case_id == case_id,
+                WizardAnswer.step == 0,
+                WizardAnswer.field_key == key,
+            )
+            .first()
+        )
+        text = (value or "").strip()
+        if not text:
+            if row:
+                db.delete(row)
+            continue
+        if row:
+            row.field_value = text
+        else:
+            db.add(
+                WizardAnswer(
+                    case_id=case_id,
+                    step=0,
+                    field_key=key,
+                    field_value=text,
+                )
+            )
+    db.commit()
+    return get_practice_meta(case_id, db)
 
 
 @router.post("/delete-drafts")

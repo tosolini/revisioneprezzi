@@ -1,6 +1,8 @@
+export type ContractTypeValue = 'works' | 'services' | 'supplies' | 'mixed' | ''
+
 interface ContractTypeSelectorProps {
-  value: 'works' | 'services' | 'supplies' | ''
-  onChange: (type: 'works' | 'services' | 'supplies') => void
+  value: ContractTypeValue
+  onChange: (type: 'works' | 'services' | 'supplies' | 'mixed') => void
   disabled?: boolean
 }
 
@@ -29,6 +31,15 @@ const CONTRACT_TYPES = [
     icon: '📦',
     short: 'CPV',
     description: 'Beni, forniture e somministrazioni',
+    classification: 'Common Procurement Vocabulary',
+    meta: 'Soglia 5% · 80% riconosciuto',
+  },
+  {
+    value: 'mixed' as const,
+    label: 'Misto',
+    icon: '🧩',
+    short: 'CPV',
+    description: 'Servizi e forniture combinati',
     classification: 'Common Procurement Vocabulary',
     meta: 'Soglia 5% · 80% riconosciuto',
   },

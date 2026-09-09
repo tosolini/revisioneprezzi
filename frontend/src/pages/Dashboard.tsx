@@ -38,6 +38,8 @@ export default function Dashboard() {
   const [cig, setCig] = useState('')
   const [cup, setCup] = useState('')
   const [stazioneAppaltante, setStazioneAppaltante] = useState('')
+  const [lotto, setLotto] = useState('')
+  const [operatore, setOperatore] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -127,6 +129,8 @@ export default function Dashboard() {
     setCig('')
     setCup('')
     setStazioneAppaltante('')
+    setLotto('')
+    setOperatore('')
     setNotes('')
     setUploadFile(null)
     setExtractError('')
@@ -152,14 +156,23 @@ export default function Dashboard() {
     setExtractError('')
     try {
       const c = await api.cases.create({ title, created_by: createdBy || undefined, cig: cig.trim() || undefined, cup: cup.trim() || undefined, stazione_appaltante: stazioneAppaltante.trim() || undefined, notes: !isEmptyHtml(notes) ? notes : undefined })
-      setCreatedCaseId(c.id)
       // clear form inputs now but keep modal context for branching
+      const metaLotto = lotto.trim()
+      const metaOperatore = operatore.trim()
       setTitle('')
       setCreatedBy('')
       setCig('')
       setCup('')
       setStazioneAppaltante('')
+      setLotto('')
+      setOperatore('')
       setNotes('')
+      if (metaLotto || metaOperatore) {
+        await api.wizard.practiceMeta.save(c.id, {
+          lotto: metaLotto || null,
+          operatore_economico: metaOperatore || null,
+        }).catch(() => {})
+      }
       if (uploadFile) {
         setExtractLoading(true)
         try {
@@ -280,7 +293,7 @@ export default function Dashboard() {
     resetCreateForm()
     // Scelta esplicita del percorso: la registra così il resume la rispetta.
     try {
-      await api.wizard.setVersion(id, choice === 'rapido' ? 'v2' : 'v1')
+      await api.wizard.setVersion(id, choice === 'rapido' ? 'unified' : 'v1')
     } catch {
       // ignora: il resume usa l'euristica di fallback
     }
@@ -309,15 +322,15 @@ export default function Dashboard() {
     navigate(`/cases/${caseId}/wizard/${currentStep}`)
   }
 
-  const enterWizard = async (caseId: string, version: 'v1' | 'v2') => {
+  const enterWizard = async (caseId: string, version: 'v1' | 'v2' | 'unified') => {
     // Scelta esplicita del percorso dalla card: la registra così il resume la rispetta.
     try {
       await api.wizard.setVersion(caseId, version)
     } catch {
       // ignora: la navigazione resta valida comunque
     }
-    if (version === 'v2') navigate(`/cases/${caseId}/wizard-v2`)
-    else navigate(`/cases/${caseId}/wizard/1`)
+    if (version === 'v1') navigate(`/cases/${caseId}/wizard/1`)
+    else navigate(`/cases/${caseId}/wizard-v2`)
   }
 
   const formatPreviewValue = (v: unknown): string => {
@@ -430,6 +443,16 @@ export default function Dashboard() {
           <input
             placeholder="CUP (opzionale)"
             value={cup} onChange={e => setCup(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            placeholder="Lotto / Contratto (opzionale)"
+            value={lotto} onChange={e => setLotto(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            placeholder="Operatore economico (opzionale)"
+            value={operatore} onChange={e => setOperatore(e.target.value)}
             style={inputStyle}
           />
           <div style={{ marginBottom: 4 }}>
@@ -749,7 +772,7 @@ export default function Dashboard() {
                   displayCurrent <= 1 ? (
                   <>
                     <button
-                      onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'v2') }}
+                      onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'unified') }}
                       title="Percorso rapido (5 passi)"
                       style={{
                         padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,

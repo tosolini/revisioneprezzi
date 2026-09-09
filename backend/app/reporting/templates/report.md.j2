@@ -34,6 +34,7 @@
 | Esecuzione istantanea | {{ "Sì" if contract.instant_execution else "No" if contract.instant_execution is not none else "—" }} |
 | Data stipula | {{ contract.stipulation_date.strftime('%d/%m/%Y') if contract.stipulation_date else "—" }} |
 | Data avvio esecuzione | {{ contract.execution_start_date.strftime('%d/%m/%Y') if contract.execution_start_date else "—" }} |
+| Data fine contratto | {{ contract.contract_end_date.strftime('%d/%m/%Y') if contract.contract_end_date else "—" }} |
 | Durata (mesi) | {{ contract.duration_months or "—" }} |
 | Importo complessivo (€) | {{ "%.2f"|format(contract.contract_amount_total) if contract.contract_amount_total else "—" }} |
 | Importo assoggettabile (€) | {{ "%.2f"|format(contract.amount_subject_to_revision) if contract.amount_subject_to_revision else "—" }} |

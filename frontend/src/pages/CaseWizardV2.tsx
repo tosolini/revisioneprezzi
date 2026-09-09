@@ -81,7 +81,13 @@ interface CalcResultLike {
 }
 
 interface WizardData {
-  contract_type: 'works' | 'services' | 'supplies' | ''
+  contract_type: 'works' | 'services' | 'supplies' | 'mixed' | ''
+  is_duration_contract: boolean | null
+  instant_execution: boolean | null
+  stipulation_date: string
+  execution_start_date: string
+  contract_end_date: string
+  duration_months: number | null
   tol_selections?: TolSelection[]
   cpv_selections: CpvSelection[]
   ateco_selections: AtecoSelection[]
@@ -92,6 +98,19 @@ interface WizardData {
   comparison_period: string
   indices_config?: IndicesConfig
   result?: CalcResultLike | null
+}
+
+interface PracticeMeta {
+  lotto: string | null
+  operatore_economico: string | null
+}
+
+interface CaseSummary {
+  title: string
+  cig: string | null
+  cup: string | null
+  stazione_appaltante: string | null
+  created_by: string | null
 }
 
 interface MappingAssoc {
@@ -163,6 +182,83 @@ const fmtCovMonths = (months: string[]): string =>
   months.length > 8
     ? months.slice(0, 6).map(fmtCovMonth).join(', ') + ` … e altri ${months.length - 6} mesi`
     : months.map(fmtCovMonth).join(', ')
+function addMonthsToDateStr(ymd: string, n: number): string | null {
+  // ymd YYYY-MM-DD + n mesi → YYYY-MM-DD (giorno conservato, clamp a fine mese)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  if (!m || !Number.isInteger(n) || n < 0) return null
+  const day = parseInt(m[3], 10)
+  const total = parseInt(m[1], 10) * 12 + (parseInt(m[2], 10) - 1) + n
+  const y = Math.floor(total / 12)
+  const mo = (total % 12) + 1
+  const lastDay = new Date(y, mo, 0).getDate()
+  const d = Math.min(day, lastDay)
+  const pad = (v: number) => String(v).padStart(2, '0')
+  return `${y}-${pad(mo)}-${pad(d)}`
+}
+
+function diffMonthsFloor(start: string, end: string): number | null {
+  // Mesi interi (floor) fra due YYYY-MM-DD, >= 0; null se non confrontabili
+  const a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start)
+  const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(end)
+  if (!a || !b) return null
+  const months = (parseInt(b[1], 10) - parseInt(a[1], 10)) * 12 + (parseInt(b[2], 10) - parseInt(a[2], 10))
+  if (months < 0) return null
+  const dayDiff = parseInt(b[3], 10) - parseInt(a[3], 10)
+  const floored = dayDiff < 0 ? months - 1 : months
+  return floored < 0 ? null : floored
+}
+interface ReportComponentRow {
+  description: string
+  amount: number
+  variation_percent: number | null
+  revision_amount: number | null
+}
+
+function normalizeReportComponents(raw: unknown): ReportComponentRow[] | null {
+  if (!Array.isArray(raw)) return null
+  const rows: ReportComponentRow[] = []
+  for (const item of raw) {
+    if (!isRecord(item)) continue
+    const res = isRecord(item['result']) ? item['result'] : {}
+    const variation = res['variation_percent']
+    const revision = res['revision_amount']
+    const amount = item['amount']
+    rows.push({
+      description: typeof item['description'] === 'string' ? item['description'] : '',
+      amount: typeof amount === 'number' ? amount : 0,
+      variation_percent: typeof variation === 'number' ? variation : null,
+      revision_amount: typeof revision === 'number' ? revision : null,
+    })
+  }
+  return rows.length > 0 ? rows : null
+}
+
+function normalizeContractType(raw: unknown): WizardData['contract_type'] {
+  // Vocabolario canonico 1.2.0 + normalizzazione forme legacy V1
+  if (raw === 'works' || raw === 'services' || raw === 'supplies' || raw === 'mixed') return raw
+  if (raw === 'service') return 'services'
+  if (raw === 'supply') return 'supplies'
+  return ''
+}
+
+function parseFlagValue(raw: unknown): boolean | null {
+  if (raw === true || raw === 'true' || raw === 'True' || raw === '1' || raw === 1) return true
+  if (raw === false || raw === 'false' || raw === 'False' || raw === '0' || raw === 0) return false
+  return null
+}
+
+function parseDateStr(raw: unknown): string {
+  return typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : ''
+}
+
+function parseDuration(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) return raw
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const n = Number(raw)
+    if (Number.isInteger(n) && n >= 0) return n
+  }
+  return null
+}
 
 
 // Mappa divisione ATECO → lettera sezione (nota Tabella D, Art. 11.2)
@@ -282,6 +378,55 @@ function MonthYearPicker({
     </div>
   )
 }
+
+function FlagSelect({
+  label,
+  hint,
+  value,
+  onChange,
+  id,
+}: {
+  label: string
+  hint?: string
+  value: boolean | null
+  onChange: (v: boolean | null) => void
+  id?: string
+}) {
+  const selectStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 12px',
+    border: '1.5px solid var(--color-border)',
+    borderRadius: 10,
+    fontSize: 14,
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+    background: 'var(--color-bg-input)',
+    color: 'var(--color-text-primary)',
+    outline: 'none',
+  }
+  return (
+    <div>
+      <label htmlFor={id} style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value === null ? '' : String(value)}
+        onChange={e => onChange(e.target.value === '' ? null : e.target.value === 'true')}
+        style={selectStyle}
+      >
+        <option value="">Non specificato</option>
+        <option value="true">Sì</option>
+        <option value="false">No</option>
+      </select>
+      {hint && (
+        <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+          {hint}
+        </p>
+      )}
+    </div>
+  )
+}
 export default function CaseWizardV2() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -313,6 +458,12 @@ export default function CaseWizardV2() {
 
   const [data, setData] = useState<WizardData>({
     contract_type: '',
+    is_duration_contract: null,
+    instant_execution: null,
+    stipulation_date: '',
+    execution_start_date: '',
+    contract_end_date: '',
+    duration_months: null,
     cpv_selections: [],
     ateco_selections: [],
     amount: 0,
@@ -329,6 +480,8 @@ export default function CaseWizardV2() {
   const [coverageLoading, setCoverageLoading] = useState(false)
   const [sdmxReloading, setSdmxReloading] = useState<Record<string, boolean>>({})
   const [sdmxReloadMsg, setSdmxReloadMsg] = useState<Record<string, { status: 'done' | 'error'; msg: string }>>({})
+  const [practiceMeta, setPracticeMeta] = useState<PracticeMeta>({ lotto: null, operatore_economico: null })
+  const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [cpvModalOpen, setCpvModalOpen] = useState(false)
   const [atecoSuggestions, setAtecoSuggestions] = useState<{ code: string; description: string }[]>([])
   const [activeAtecoIndex, setActiveAtecoIndex] = useState<number | null>(null)
@@ -372,10 +525,21 @@ export default function CaseWizardV2() {
           .filter(isRecord)
           .map(x => ({ ateco_code: String(x['ateco_code'] ?? ''), weight: asNumber(x['weight']) ?? 0 }))
           .filter(x => x.ateco_code.length > 0)
+        const stipulation = parseDateStr(s['stipulation_date'])
+        const execStart = parseDateStr(s['execution_start_date'])
+        const endDate = parseDateStr(s['contract_end_date'])
+        // Riuso V1: prefill-if-empty base ← stipula, confronto ← avvio
+        // (Campi restano editabili, nessuna validazione incrociata.)
+        const rawBase = typeof s['base_period'] === 'string' ? s['base_period'] : ''
+        const rawComparison = typeof s['comparison_period'] === 'string' ? s['comparison_period'] : ''
         setData({
-          contract_type: s['contract_type'] === 'works' || s['contract_type'] === 'supplies' || s['contract_type'] === 'services'
-            ? s['contract_type']
-            : '',
+          contract_type: normalizeContractType(s['contract_type']),
+          is_duration_contract: parseFlagValue(s['is_duration_contract']),
+          instant_execution: parseFlagValue(s['instant_execution']),
+          stipulation_date: stipulation,
+          execution_start_date: execStart,
+          contract_end_date: endDate,
+          duration_months: parseDuration(s['duration_months']),
           tol_selections: Array.isArray(s['tol_selections'])
             ? s['tol_selections'].filter(isRecord).map(x => ({
                 code: String(x['code'] ?? ''),
@@ -387,8 +551,8 @@ export default function CaseWizardV2() {
           cpv_code: cpvSelections[0]?.cpv_code || '',
           cpv_description: cpvSelections[0]?.description || '',
           amount: asNumber(s['amount']) ?? 0,
-          base_period: typeof s['base_period'] === 'string' ? s['base_period'] : '',
-          comparison_period: typeof s['comparison_period'] === 'string' ? s['comparison_period'] : '',
+          base_period: rawBase || (stipulation ? `${stipulation.slice(0, 7)}-01` : ''),
+          comparison_period: rawComparison || (execStart ? `${execStart.slice(0, 7)}-01` : ''),
           indices_config: isRecord(s['indices_config']) ? s['indices_config'] as unknown as IndicesConfig : undefined,
           result: isRecord(s['result']) ? s['result'] as unknown as CalcResultLike : null,
         })
@@ -405,6 +569,30 @@ export default function CaseWizardV2() {
         setError('Impossibile caricare i dati della pratica')
         setInitialLoading(false)
       })
+    // Riepilogo pratica step 0 (sola lettura, fonte unica CaseFile + KV step 0)
+    fetch(`/api/v1/cases/${id}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => {
+        if (!isRecord(body)) return
+        setCaseSummary({
+          title: typeof body['title'] === 'string' ? body['title'] : '',
+          cig: typeof body['cig'] === 'string' ? body['cig'] : null,
+          cup: typeof body['cup'] === 'string' ? body['cup'] : null,
+          stazione_appaltante: typeof body['stazione_appaltante'] === 'string' ? body['stazione_appaltante'] : null,
+          created_by: typeof body['created_by'] === 'string' ? body['created_by'] : null,
+        })
+      })
+      .catch(() => {})
+    fetch(`/api/v1/cases/${id}/practice-meta`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => {
+        if (!isRecord(body)) return
+        setPracticeMeta({
+          lotto: typeof body['lotto'] === 'string' ? body['lotto'] : null,
+          operatore_economico: typeof body['operatore_economico'] === 'string' ? body['operatore_economico'] : null,
+        })
+      })
+      .catch(() => {})
   }, [id])
 
   const saveWizardState = useCallback(async (nextStep?: number) => {
@@ -418,6 +606,12 @@ export default function CaseWizardV2() {
         body: JSON.stringify({
           current_step: nextStep ?? currentStep,
           contract_type: d.contract_type,
+          is_duration_contract: d.is_duration_contract,
+          instant_execution: d.instant_execution,
+          stipulation_date: d.stipulation_date || null,
+          execution_start_date: d.execution_start_date || null,
+          contract_end_date: d.contract_end_date || null,
+          duration_months: d.duration_months,
           tol_selections: d.tol_selections || [],
           cpv_code: primary?.cpv_code || d.cpv_code || null,
           cpv_description: primary?.description || d.cpv_description || null,
@@ -436,6 +630,30 @@ export default function CaseWizardV2() {
   }, [id, currentStep])
   const setDataField = <K extends keyof WizardData>(field: K, value: WizardData[K]) => {
     setData(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Derivazione chiusa avvio/durata/termine (nessun overwrite automatico):
+  // su blur, se avvio+durata e termine vuoto → propone termine; se
+  // avvio+termine e durata vuota → propone durata; se tutti e tre incoerenti
+  // → solo warning inline, i valori utente restano. Prefill-if-empty V1:
+  // base ← stipula, confronto ← avvio.
+  const handleContractDateBlur = () => {
+    const d = dataRef.current
+    const next = { ...d }
+    if (!next.base_period && next.stipulation_date.length >= 7) {
+      next.base_period = `${next.stipulation_date.slice(0, 7)}-01`
+    }
+    if (!next.comparison_period && next.execution_start_date.length >= 7) {
+      next.comparison_period = `${next.execution_start_date.slice(0, 7)}-01`
+    }
+    if (next.execution_start_date && next.duration_months != null && !next.contract_end_date) {
+      const t = addMonthsToDateStr(next.execution_start_date, next.duration_months)
+      if (t) next.contract_end_date = t
+    } else if (next.execution_start_date && next.contract_end_date && next.duration_months == null) {
+      const m = diffMonthsFloor(next.execution_start_date, next.contract_end_date)
+      if (m != null) next.duration_months = m
+    }
+    setData(next)
   }
 
   // ----- Step 2: gestione CPV e ATECO -----
@@ -985,6 +1203,11 @@ export default function CaseWizardV2() {
   const executeCalculation = async () => {
     setLoading(true)
     setError('')
+    if (!data.contract_type) {
+      setLoading(false)
+      setError('Seleziona il tipo di contratto al passo 1 prima di calcolare')
+      return
+    }
 
     // Conserva l'indices_config effettivamente usato per il calcolo (non quello stantio in data)
     let calcIndicesConfig: IndicesConfig | null = null
@@ -1076,7 +1299,11 @@ export default function CaseWizardV2() {
 
       if (!response.ok) {
         const body: unknown = await response.json()
-        const detail = isRecord(body) && typeof body['detail'] === 'string' ? body['detail'] : 'Errore calcolo'
+        const rawDetail: unknown = isRecord(body) ? body['detail'] : undefined
+        const detail = typeof rawDetail === 'string' ? rawDetail
+          : Array.isArray(rawDetail)
+            ? rawDetail.map(d => isRecord(d) && typeof d['msg'] === 'string' ? String(d['msg']) : JSON.stringify(d)).join('\n')
+            : 'Errore calcolo'
         throw new Error(detail)
       }
 
@@ -1095,6 +1322,12 @@ export default function CaseWizardV2() {
           body: JSON.stringify({
             current_step: 5,
             contract_type: data.contract_type,
+            is_duration_contract: data.is_duration_contract,
+            instant_execution: data.instant_execution,
+            stipulation_date: data.stipulation_date || null,
+            execution_start_date: data.execution_start_date || null,
+            contract_end_date: data.contract_end_date || null,
+            duration_months: data.duration_months,
             tol_selections: data.tol_selections || [],
             cpv_code: data.cpv_selections[0]?.cpv_code || null,
             cpv_description: data.cpv_selections[0]?.description || null,
@@ -1198,7 +1431,7 @@ export default function CaseWizardV2() {
             const hasBackendVariation = (secData as any).variation_percent != null
             if (hasBackendVariation) return sec
           }
-          return { ...sec, data: { variation_percent: (effective as any).variation_percent, threshold_exceeded: (effective as any).threshold_exceeded, revision_amount: (effective as any).revision_amount, revision_type: (effective as any).revision_type, formula_steps: (effective as any).steps || [] } }
+          return { ...sec, data: { variation_percent: (effective as any).variation_percent, threshold_exceeded: (effective as any).threshold_exceeded, threshold_percent: (effective as any).threshold_percent ?? (secData as any).threshold_percent ?? null, excess_percent: (effective as any).excess_percent ?? (secData as any).excess_percent ?? null, recognition_percent: (effective as any).recognition_percent ?? (secData as any).recognition_percent ?? null, revision_amount: (effective as any).revision_amount, revision_type: (effective as any).revision_type, formula_steps: (effective as any).steps || [], components: normalizeReportComponents((effective as any).components) ?? (secData as any).components ?? null } }
         }
         return sec
       })
@@ -1221,7 +1454,7 @@ export default function CaseWizardV2() {
         return data.amount > 0 && data.base_period !== '' && data.comparison_period !== ''
           && data.base_period <= data.comparison_period
       case 4:
-        return data.cpv_selections.length > 0 && !mappingLoading && mappingIssues().length === 0
+        return data.contract_type !== '' && data.cpv_selections.length > 0 && !mappingLoading && mappingIssues().length === 0
       default:
         return true
     }
@@ -1617,10 +1850,69 @@ export default function CaseWizardV2() {
                 La scelta determina soglie, coefficienti e classificazione (CPV o TOL) dei passi successivi. Potrai modificarla in seguito.
               </p>
             </div>
+            <div style={{ padding: 16, borderRadius: 12, background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 10 }}>
+                Pratica — riepilogo
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Oggetto</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', textAlign: 'right' }}>{caseSummary?.title || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>CIG</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace' }}>{caseSummary?.cig || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>CUP</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace' }}>{caseSummary?.cup || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Stazione appaltante</span>
+                  <span style={{ textAlign: 'right' }}>{caseSummary?.stazione_appaltante || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Lotto</span>
+                  <span style={{ textAlign: 'right' }}>{practiceMeta.lotto || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Operatore economico</span>
+                  <span style={{ textAlign: 'right' }}>{practiceMeta.operatore_economico || '—'}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/cases/${id}`)}
+                style={{ marginTop: 12, padding: '8px 14px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Modifica in Dettaglio pratica
+              </button>
+            </div>
             <ContractTypeSelector
               value={data.contract_type}
               onChange={(type) => setDataField('contract_type', type)}
             />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <FlagSelect
+                id="flag-duration"
+                label="Contratto di durata?"
+                hint="Dato operativo: nessun effetto su validazione o calcolo."
+                value={data.is_duration_contract}
+                onChange={v => setDataField('is_duration_contract', v)}
+              />
+              <FlagSelect
+                id="flag-instant"
+                label="Esecuzione istantanea?"
+                hint="Dato operativo: nessun effetto su validazione o calcolo."
+                value={data.instant_execution}
+                onChange={v => setDataField('instant_execution', v)}
+              />
+            </div>
+            {data.instant_execution === true && (
+              <div style={{ padding: '10px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5, background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)', border: '1px solid var(--color-border-warning)' }}>
+                La revisione prezzi potrebbe non essere applicabile secondo l’Allegato II.2-bis. Confermare per proseguire con motivazione.
+              </div>
+            )}
             <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-light)', lineHeight: 1.5 }}>
               Suggerimento: per servizi/forniture standard il <strong style={{ color: 'var(--color-text-muted)', fontWeight: 700 }}>percorso rapido</strong> è più veloce; per lavori complessi usa il percorso completo (7 passi).
             </p>
@@ -1986,6 +2278,74 @@ export default function CaseWizardV2() {
                   Solo la quota soggetta a revisione (al netto di oneri non rivalutabili).
                 </p>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div>
+                  <label htmlFor="stipulation-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                    Data stipula
+                  </label>
+                  <input
+                    id="stipulation-date"
+                    type="date"
+                    value={data.stipulation_date}
+                    onChange={e => setDataField('stipulation_date', e.target.value)}
+                    onBlur={handleContractDateBlur}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                    Se vuota, il periodo base resta da compilare a mano.
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="execution-start-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                    Data avvio esecuzione
+                  </label>
+                  <input
+                    id="execution-start-date"
+                    type="date"
+                    value={data.execution_start_date}
+                    onChange={e => setDataField('execution_start_date', e.target.value)}
+                    onBlur={handleContractDateBlur}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                    Se vuota, il periodo di confronto resta da compilare a mano.
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="duration-months" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                    Durata contrattuale (mesi)
+                  </label>
+                  <input
+                    id="duration-months"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={data.duration_months ?? ''}
+                    onChange={e => setDataField('duration_months', e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onBlur={handleContractDateBlur}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contract-end-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                    Termine contratto
+                  </label>
+                  <input
+                    id="contract-end-date"
+                    type="date"
+                    value={data.contract_end_date}
+                    onChange={e => setDataField('contract_end_date', e.target.value)}
+                    onBlur={handleContractDateBlur}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+              {data.execution_start_date && data.contract_end_date && data.duration_months != null
+                && addMonthsToDateStr(data.execution_start_date, data.duration_months) !== data.contract_end_date && (
+                <div style={{ padding: '9px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)', border: '1px solid var(--color-border-warning)', lineHeight: 1.4 }}>
+                  Termine incoerente con avvio + durata (atteso {addMonthsToDateStr(data.execution_start_date, data.duration_months) || '—'}): i valori inseriti restano così come sono.
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
@@ -2102,11 +2462,10 @@ export default function CaseWizardV2() {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 10 }}>
                 Riepilogo configurazione
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Tipo contratto</span>
                   <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {data.contract_type === 'works' ? 'Lavori' : data.contract_type === 'services' ? 'Servizi' : 'Forniture'}
+                    {data.contract_type === 'works' ? 'Lavori' : data.contract_type === 'services' ? 'Servizi' : data.contract_type === 'supplies' ? 'Forniture' : data.contract_type === 'mixed' ? 'Misto' : 'Non selezionato'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
@@ -2126,7 +2485,6 @@ export default function CaseWizardV2() {
                   </span>
                 </div>
               </div>
-            </div>
 
             {mappingIssues().length > 0 && (
               <div

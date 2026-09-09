@@ -1,4 +1,5 @@
 import logging
+from datetime import date as _date
 from typing import Literal
 from uuid import UUID
 
@@ -47,6 +48,15 @@ class IndicesConfigSchema(BaseModel):
 class WizardV2State(BaseModel):
     current_step: int = 1
     contract_type: str = ""
+    # Inquadramento V1 conservato come dato operativo (nessuna funzione su
+    # validazione/calcolo): opzionali, mai bloccanti.
+    is_duration_contract: bool | None = None
+    instant_execution: bool | None = None
+    # Dati contrattuali step 3: date ISO YYYY-MM-DD, durata in mesi interi.
+    stipulation_date: str | None = None
+    execution_start_date: str | None = None
+    contract_end_date: str | None = None
+    duration_months: int | None = None
     tol_selections: list[TolSelectionSchema] = []
     cpv_code: str | None = None
     cpv_description: str | None = None
@@ -69,6 +79,28 @@ class WizardV2Response(BaseModel):
 
 WIZARD_VERSION_KEY = "wizard_version"
 
+WIZARD_VERSIONS = ("v1", "v2", "unified")
+
+# Vocabolario canonico chiuso 1.2.0: unione V1 {service,supply,mixed} + V2
+# {works,services,supplies}. In scrittura solo canonico; in lettura le forme
+# legacy service/supply sono normalizzate.
+CANONICAL_CONTRACT_TYPES = ("works", "services", "supplies", "mixed")
+
+_LEGACY_CONTRACT_TYPE = {"service": "services", "supply": "supplies"}
+
+
+def normalize_contract_type(value: str | None) -> str:
+    """Riporta una forma legacy al vocabolario canonico (write-canonical)."""
+    if not value:
+        return ""
+    return _LEGACY_CONTRACT_TYPE.get(value, value)
+
+
+def _parse_flag(value: object) -> bool | None:
+    """Semantica di parsing V1 (wizard.py): truthy set chiuso, resto False."""
+    if value is None or value == "":
+        return None
+    return value in ("true", "True", "1", True, 1)
 
 def _set_wizard_version(db: Session, case_id: UUID, version: str) -> None:
     """Registra quale wizard (v1 7 passi / v2 5 passi) sta usando la pratica."""
@@ -104,9 +136,84 @@ def _get_wizard_version(db: Session, case_id: UUID) -> str | None:
         )
         .first()
     )
-    if row and row.field_value in ("v1", "v2"):
+    if row and row.field_value in WIZARD_VERSIONS:
         return row.field_value
     return None
+
+
+def _parse_iso_date(value: object) -> _date | None:
+    """YYYY-MM-DD → date; stringhe vuote/malformate → None (mai eccezioni)."""
+    if value is None:
+        return None
+    if isinstance(value, _date):
+        return value
+    s = str(value).strip()
+    if not s:
+        return None
+    try:
+        return _date.fromisoformat(s[:10])
+    except ValueError:
+        return None
+
+
+def _parse_duration(value: object) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        n = int(float(str(value).strip()))
+    except (ValueError, TypeError):
+        return None
+    return n if n >= 0 else None
+
+
+def _fill_from_projections(
+    state: WizardV2State,
+    contract: ContractContext | None,
+    step2: dict[str, str],
+    *,
+    gaps_only: bool,
+) -> None:
+    """Ricostruisce inquadramento + date da ContractContext con fallback alle
+    risposte legacy step 2 (pratiche V1 esistenti: date visibili subito senza
+    reinserimento). Con gaps_only=True riempie solo i campi assenti del blob."""
+
+    def _set(attr: str, value: object) -> None:
+        if gaps_only and getattr(state, attr) not in (None, ""):
+            return
+        setattr(state, attr, value)
+
+    if contract is not None:
+        if contract.contract_type:
+            _set("contract_type", normalize_contract_type(contract.contract_type))
+        if contract.is_duration_contract is not None:
+            _set("is_duration_contract", contract.is_duration_contract)
+        if contract.instant_execution is not None:
+            _set("instant_execution", contract.instant_execution)
+        if contract.stipulation_date is not None:
+            _set("stipulation_date", contract.stipulation_date.isoformat())
+        if contract.execution_start_date is not None:
+            _set("execution_start_date", contract.execution_start_date.isoformat())
+        if contract.contract_end_date is not None:
+            _set("contract_end_date", contract.contract_end_date.isoformat())
+        if contract.duration_months is not None:
+            _set("duration_months", contract.duration_months)
+        if not gaps_only and contract.amount_subject_to_revision:
+            state.amount = contract.amount_subject_to_revision
+
+    if step2.get("contract_type"):
+        _set("contract_type", normalize_contract_type(step2["contract_type"]))
+    for key in ("is_duration_contract", "instant_execution"):
+        if key in step2:
+            _set(key, _parse_flag(step2[key]))
+    for key in ("stipulation_date", "execution_start_date", "contract_end_date"):
+        if step2.get(key):
+            parsed = _parse_iso_date(step2[key])
+            if parsed is not None:
+                _set(key, parsed.isoformat())
+    if step2.get("duration_months"):
+        parsed_dur = _parse_duration(step2["duration_months"])
+        if parsed_dur is not None:
+            _set("duration_months", parsed_dur)
 
 
 router = APIRouter(prefix="/cases/{case_id}/wizard-v2", tags=["wizard-v2"])
@@ -138,13 +245,17 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
         except Exception:
             _LOG.debug("wizard_v2_state parse failed, falling back to default", exc_info=True)
             pass  # intentionally ignore corrupt saved state: reconstruct from contract/tol/cpv
+    contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
+    step2_answers = {
+        a.field_key: a.field_value
+        for a in db.query(WizardAnswer)
+        .filter(
+            WizardAnswer.case_id == case_id,
+            WizardAnswer.step == 2,
+        )
+        .all()
+    }
     if not saved:
-        contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
-        if contract:
-            state.contract_type = contract.contract_type or ""
-            if contract.amount_subject_to_revision:
-                state.amount = contract.amount_subject_to_revision
-
         tol_asgn = db.query(TolAssignment).filter(TolAssignment.case_id == case_id).all()
         if tol_asgn:
             state.tol_selections = [
@@ -230,8 +341,15 @@ def get_wizard_v2_state(case_id: UUID, db: Session = Depends(get_db)) -> WizardV
 
         state.current_step = case.current_step or 1
 
+        _fill_from_projections(state, contract, step2_answers, gaps_only=False)
+    else:
+        # Blob di pratiche unificate precedenti: normalizza il tipo e riempie
+        # solo i campi nuovi assenti (mai overwrite dei valori utente).
+        state.contract_type = normalize_contract_type(state.contract_type)
+        _fill_from_projections(state, contract, step2_answers, gaps_only=True)
+
     # Sincronizzazione retro-compat: cpv_selections ↔ cpv_code/description.
-    if state.contract_type in ("services", "supplies"):
+    if state.contract_type in ("services", "supplies", "mixed"):
         if not state.cpv_selections:
             all_cpv = (
                 db.query(CpvAssignment)
@@ -276,6 +394,9 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
 
     import json
 
+    # Write-canonical: il blob conserva solo il vocabolario chiuso 1.2.0.
+    payload.contract_type = normalize_contract_type(payload.contract_type)
+
     existing = (
         db.query(WizardAnswer)
         .filter(
@@ -297,6 +418,7 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
             )
         )
 
+
     if payload.contract_type:
         contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
         if not contract:
@@ -305,6 +427,16 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
         contract.contract_type = payload.contract_type
         if payload.amount > 0:
             contract.amount_subject_to_revision = payload.amount
+        # Specchio pieno del blob (None compreso): il blob è fonte, la
+        # proiezione lo segue così il fallback GET non resuscita valori
+        # cancellati. I flag restano puro dato operativo: nessun effetto su
+        # validazione, branching o calcolo.
+        contract.is_duration_contract = payload.is_duration_contract
+        contract.instant_execution = payload.instant_execution
+        contract.stipulation_date = _parse_iso_date(payload.stipulation_date)
+        contract.execution_start_date = _parse_iso_date(payload.execution_start_date)
+        contract.contract_end_date = _parse_iso_date(payload.contract_end_date)
+        contract.duration_months = payload.duration_months
 
     if payload.contract_type == "works" and payload.tol_selections:
         db.query(TolAssignment).filter(TolAssignment.case_id == case_id).delete()
@@ -317,7 +449,7 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
                 )
             )
 
-    if payload.contract_type in ("services", "supplies") and (
+    if payload.contract_type in ("services", "supplies", "mixed") and (
         payload.cpv_selections or payload.cpv_code
     ):
         db.query(CpvAssignment).filter(CpvAssignment.case_id == case_id).delete()
@@ -346,13 +478,13 @@ def save_wizard_v2_state(case_id: UUID, payload: WizardV2State, db: Session = De
     if payload.current_step >= 5 and payload.result is not None:
         case.status = "completed"
 
-    _set_wizard_version(db, case_id, "v2")
+    _set_wizard_version(db, case_id, "unified")
     db.commit()
     return {"status": "ok", "case_id": str(case_id)}
 
 
 class WizardVersionSave(BaseModel):
-    version: Literal["v1", "v2"]
+    version: Literal["v1", "v2", "unified"]
 
 
 @router.put("/version")

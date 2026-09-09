@@ -129,11 +129,20 @@ export const api = {
       }),
     get: (caseId: string, step: number) =>
       request<WizardAnswer[]>(`/cases/${caseId}/wizard/${step}`),
-    setVersion: (caseId: string, version: 'v1' | 'v2') =>
+    setVersion: (caseId: string, version: 'v1' | 'v2' | 'unified') =>
       request<{ status: string; wizard_version: string }>(`/cases/${caseId}/wizard-v2/version`, {
         method: 'PUT',
         body: JSON.stringify({ version }),
       }),
+    practiceMeta: {
+      get: (caseId: string) =>
+        request<{ lotto: string | null; operatore_economico: string | null }>(`/cases/${caseId}/practice-meta`),
+      save: (caseId: string, data: { lotto?: string | null; operatore_economico?: string | null }) =>
+        request<{ lotto: string | null; operatore_economico: string | null }>(`/cases/${caseId}/practice-meta`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+    },
   },
   classify: (data: { cpv_primary: string; contract_type?: string; labour_intensive?: boolean }) =>
     request<ClassifyResult>('/classify', { method: 'POST', body: JSON.stringify(data) }),

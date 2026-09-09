@@ -44,8 +44,8 @@ class CalculationRequest(BaseModel):
 
     contract_type: str = Field(
         ...,
-        pattern="^(works|services|supplies)$",
-        description="Tipo contratto: works|services|supplies",
+        pattern="^(works|services|supplies|mixed)$",
+        description="Tipo contratto: works|services|supplies|mixed",
     )
     amount: float = Field(..., gt=0, description="Importo assoggettabile a revisione")
     base_period: date = Field(..., description="Periodo base (data aggiudicazione)")
@@ -65,7 +65,7 @@ class CalculationRequest(BaseModel):
 class MultiComponentRequest(BaseModel):
     """Richiesta calcolo multi-componente (Art. 13)"""
 
-    contract_type: str = Field(..., pattern="^(works|services|supplies)$")
+    contract_type: str = Field(..., pattern="^(works|services|supplies|mixed)$")
     base_period: date
     comparison_period: date
     components: list[dict] = Field(
@@ -260,7 +260,7 @@ def get_normative_parameters(contract_type: str) -> dict:
     Ritorna i parametri normativi per un tipo di contratto
 
     Path params:
-    - contract_type: works|services|supplies
+    - contract_type: works|services|supplies|mixed
 
     Returns:
         threshold_percent, recognition_rate_percent, reference
@@ -270,7 +270,7 @@ def get_normative_parameters(contract_type: str) -> dict:
     if contract_type not in NORMATIVE_PARAMS:
         raise HTTPException(
             status_code=400,
-            detail="Tipo contratto non valido. Valori ammessi: works, services, supplies",
+            detail="Tipo contratto non valido. Valori ammessi: works, services, supplies, mixed",
         )
 
     return NORMATIVE_PARAMS[contract_type]

@@ -15,7 +15,7 @@ from app.models.index_series import IndexSeries
 
 getcontext().prec = 28
 
-ContractType = Literal["works", "services", "supplies"]
+ContractType = Literal["works", "services", "supplies", "mixed"]
 
 
 # Parametri normativi secondo Art. 3, comma 2-3
@@ -34,6 +34,13 @@ NORMATIVE_PARAMS = {
         "threshold_percent": 5.0,
         "recognition_rate_percent": 80.0,
         "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Forniture",
+    },
+    # Misto servizi-forniture (V1): entrambe le componenti ricadono in
+    # soglia 5% / riconoscimento 80%, stessi parametri.
+    "mixed": {
+        "threshold_percent": 5.0,
+        "recognition_rate_percent": 80.0,
+        "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Misto servizi-forniture",
     },
 }
 

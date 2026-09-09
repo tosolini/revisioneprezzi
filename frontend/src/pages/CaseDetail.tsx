@@ -12,6 +12,11 @@ export default function CaseDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [v2Info, setV2Info] = useState<WizardVersionInfo | null>(null)
+  const [lotto, setLotto] = useState<string | null>(null)
+  const [operatore, setOperatore] = useState<string | null>(null)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [metaDraft, setMetaDraft] = useState({ lotto: '', operatore_economico: '' })
+  const [metaSaving, setMetaSaving] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -19,6 +24,15 @@ export default function CaseDetail() {
       .then(setC)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
+  }, [id])
+  useEffect(() => {
+    if (!id) return
+    api.wizard.practiceMeta.get(id)
+      .then(m => {
+        setLotto(m.lotto)
+        setOperatore(m.operatore_economico)
+      })
+      .catch(() => {})
   }, [id])
 
   useEffect(() => {
@@ -40,15 +54,32 @@ export default function CaseDetail() {
 
   const isFresh = c.current_step === 0 || c.current_step === 1
   const continuedInV2 = v2Info != null && isV2Draft(v2Info)
-  const enterWizard = async (version: 'v1' | 'v2') => {
+  const enterWizard = async (version: 'v1' | 'v2' | 'unified') => {
     if (!id) return
     try {
       await api.wizard.setVersion(id, version)
     } catch {
       // ignora: la navigazione resta valida comunque
     }
-    if (version === 'v2') navigate(`/cases/${id}/wizard-v2`)
-    else navigate(`/cases/${id}/wizard/${c?.current_step || 1}`)
+    if (version === 'v1') navigate(`/cases/${id}/wizard/${c?.current_step || 1}`)
+    else navigate(`/cases/${id}/wizard-v2`)
+  }
+  const saveMeta = async () => {
+    if (!id) return
+    setMetaSaving(true)
+    try {
+      const m = await api.wizard.practiceMeta.save(id, {
+        lotto: metaDraft.lotto.trim() || null,
+        operatore_economico: metaDraft.operatore_economico.trim() || null,
+      })
+      setLotto(m.lotto)
+      setOperatore(m.operatore_economico)
+      setEditingMeta(false)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setMetaSaving(false)
+    }
   }
   const isDraft = c.status === 'draft'
 
@@ -83,6 +114,8 @@ export default function CaseDetail() {
               ['CIG', c.cig || '—'],
               ['CUP', c.cup || '—'],
               ['Stazione appaltante', c.stazione_appaltante || '—'],
+              ['Lotto', lotto || '—'],
+              ['Operatore economico', operatore || '—'],
               ['Creato da', c.created_by || '—'],
               ['Creato il', formatDate(c.created_at)],
               ['Ultimo aggiornamento', formatDate(c.updated_at)],
@@ -106,6 +139,47 @@ export default function CaseDetail() {
           </tbody>
         </table>
       </div>
+        {editingMeta ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+            <input
+              placeholder="Lotto / Contratto"
+              value={metaDraft.lotto}
+              onChange={e => setMetaDraft(prev => ({ ...prev, lotto: e.target.value }))}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit' }}
+            />
+            <input
+              placeholder="Operatore economico"
+              value={metaDraft.operatore_economico}
+              onChange={e => setMetaDraft(prev => ({ ...prev, operatore_economico: e.target.value }))}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => void saveMeta()}
+                disabled={metaSaving}
+                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
+              >
+                {metaSaving ? 'Salvataggio…' : 'Salva lotto / operatore'}
+              </button>
+              <button
+                onClick={() => setEditingMeta(false)}
+                style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setMetaDraft({ lotto: lotto || '', operatore_economico: operatore || '' })
+              setEditingMeta(true)
+            }}
+            style={{ ...btnStyle, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', marginTop: 12 }}
+          >
+            Modifica lotto / operatore
+          </button>
+        )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {isDraft && (
@@ -113,7 +187,7 @@ export default function CaseDetail() {
             {isFresh ? (
               <>
                 <button
-                  onClick={() => void enterWizard('v2')}
+                  onClick={() => void enterWizard('unified')}
                   style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
                 >
                   Percorso rapido (5 passi)
