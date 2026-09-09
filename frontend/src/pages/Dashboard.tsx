@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, CaseItem } from '../api/client'
-import { formatDate, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
+import { formatDate, getDeviceId, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
 import NotesEditor, { isEmptyHtml } from '../components/NotesEditor'
 
 type ExtractFields = Record<string, unknown>
@@ -353,7 +353,18 @@ export default function Dashboard() {
             </button>
           )}
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => {
+              setShowCreate(true)
+              // Default da Impostazioni (DB): non sovrascrive un valore già digitato.
+              if (!stazioneAppaltante) {
+                api.settings.get(getDeviceId())
+                  .then(d => {
+                    const pre = d.preferences?.prefilled_ente
+                    if (pre) setStazioneAppaltante(prev => prev || pre)
+                  })
+                  .catch(() => {})
+              }
+            }}
             style={{
               padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-primary-text)',
               border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
