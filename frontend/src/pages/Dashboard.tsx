@@ -71,9 +71,11 @@ export default function Dashboard() {
       // uno stato V2 davvero salvato con avanzamento (i dati ricostruiti
       // dalle risposte V1 non bastano, altrimenti le bozze V1 finiscono in V2).
       const infos: Record<string, { isV2: boolean; v2Step: number }> = {}
-      const draftIds = list.filter(c => c.status !== 'completed').map(c => c.id)
+      // Tutte le pratiche, completate incluse: altrimenti una unificata
+      // completata mostra il denominatore V1 (5/7 invece di 5/5).
+      const ids = list.map(c => c.id)
       await Promise.all(
-        draftIds.map(async id => {
+        ids.map(async id => {
           try {
             const res = await fetch(`/api/v1/cases/${id}/wizard-v2`)
             if (!res.ok) return
