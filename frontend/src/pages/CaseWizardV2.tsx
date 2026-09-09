@@ -448,6 +448,7 @@ function DateField({
   }
   const [parts, setParts] = useState<[string, string, string]>(() => fromValue(value))
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
+  const nativeRef = useRef<HTMLInputElement>(null)
   const lastProp = useRef(value)
 
   useEffect(() => {
@@ -572,6 +573,38 @@ function DateField({
         onKeyDown={e => backStep(2, e.key)}
         ref={refs[2]}
         style={{ ...segStyle, width: 84 }}
+      />
+      <button
+        type="button"
+        title="Scegli dal calendario"
+        aria-label="Scegli dal calendario"
+        onClick={() => {
+          const el = nativeRef.current as (HTMLInputElement & { showPicker?: () => void }) | null
+          if (el && typeof el.showPicker === 'function') el.showPicker()
+          else el?.focus()
+        }}
+        style={{
+          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          border: '1.5px solid var(--color-border)', background: 'var(--color-bg-card)',
+          cursor: 'pointer', fontSize: 16,
+        }}
+      >
+        📅
+      </button>
+      <input
+        type="date"
+        aria-hidden
+        tabIndex={-1}
+        ref={nativeRef}
+        value={value}
+        onChange={e => {
+          const v = e.target.value
+          if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+            setParts([v.slice(8, 10), v.slice(5, 7), v.slice(0, 4)])
+            if (v !== value) onChange(v)
+          }
+        }}
+        style={{ opacity: 0, width: 1, height: 1, position: 'absolute', pointerEvents: 'none' }}
       />
     </div>
   )
@@ -2458,6 +2491,20 @@ export default function CaseWizardV2() {
                   </p>
                 </div>
                 <div>
+                  <label htmlFor="contract-end-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                    Termine contratto
+                  </label>
+                  <DateField
+                    id="contract-end-date"
+                    value={data.contract_end_date}
+                    onChange={v => setDataField('contract_end_date', v)}
+                    onBlur={handleContractDateBlur}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                    Se vuoto e avvio + durata presenti, viene proposto in automatico.
+                  </p>
+                </div>
+                <div>
                   <label htmlFor="duration-months" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                     Durata contrattuale (mesi)
                   </label>
@@ -2471,17 +2518,9 @@ export default function CaseWizardV2() {
                     onBlur={handleContractDateBlur}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, border: '1.5px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', outline: 'none', boxSizing: 'border-box' }}
                   />
-                </div>
-                <div>
-                  <label htmlFor="contract-end-date" style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
-                    Termine contratto
-                  </label>
-                  <DateField
-                    id="contract-end-date"
-                    value={data.contract_end_date}
-                    onChange={v => setDataField('contract_end_date', v)}
-                    onBlur={handleContractDateBlur}
-                  />
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
+                    Se vuota e avvio + termine presenti, viene proposta in automatico.
+                  </p>
                 </div>
               </div>
               {data.execution_start_date && data.contract_end_date && data.duration_months != null
