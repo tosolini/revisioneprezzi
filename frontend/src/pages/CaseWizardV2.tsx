@@ -448,7 +448,6 @@ function DateField({
   }
   const [parts, setParts] = useState<[string, string, string]>(() => fromValue(value))
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
-  const nativeRef = useRef<HTMLInputElement>(null)
   const lastProp = useRef(value)
 
   useEffect(() => {
@@ -574,28 +573,11 @@ function DateField({
         ref={refs[2]}
         style={{ ...segStyle, width: 84 }}
       />
-      <button
-        type="button"
-        title="Scegli dal calendario"
-        aria-label="Scegli dal calendario"
-        onClick={() => {
-          const el = nativeRef.current as (HTMLInputElement & { showPicker?: () => void }) | null
-          if (el && typeof el.showPicker === 'function') el.showPicker()
-          else el?.focus()
-        }}
-        style={{
-          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-          border: '1.5px solid var(--color-border)', background: 'var(--color-bg-card)',
-          cursor: 'pointer', fontSize: 16,
-        }}
-      >
-        📅
-      </button>
       <input
         type="date"
-        aria-hidden
-        tabIndex={-1}
-        ref={nativeRef}
+        className="rp-date-native"
+        title="Scegli dal calendario"
+        aria-label="Scegli dal calendario"
         value={value}
         onChange={e => {
           const v = e.target.value
@@ -604,7 +586,6 @@ function DateField({
             if (v !== value) onChange(v)
           }
         }}
-        style={{ opacity: 0, width: 1, height: 1, position: 'absolute', pointerEvents: 'none' }}
       />
     </div>
   )
