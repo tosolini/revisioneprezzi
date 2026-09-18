@@ -5,6 +5,8 @@ import ContractTypeSelector from '../components/ContractTypeSelector'
 import TolSelector from '../components/TolSelector'
 import ReportV2View from '../components/ReportV2View'
 import CpvSearchModal from '../components/CpvSearchModal'
+import { SavedQueryModal } from '../components/SavedQueryModal'
+import type { SavedQueryRef } from '../components/SavedQueryModal'
 import WizardTimeline from '../components/WizardTimeline'
 import { asNullableString, asNumber, isRecord, parseWizardVersion } from '../components/utils'
 interface TolSelection {
@@ -150,6 +152,25 @@ interface PeriodCoverage {
   satisfied: boolean
   missing: boolean
   saved_query?: { id: string; url: string; dataflow_id: string; key_part: string; end_period_strategy: string; start_period_strategy: string; last_run_at: string | null } | null
+}
+
+function toSavedQueryRef(v: unknown): SavedQueryRef | null {
+  if (!isRecord(v)) return null
+  const id = v['id']
+  const url = v['url']
+  const dataflowId = v['dataflow_id']
+  if (typeof id !== 'string' || typeof url !== 'string' || typeof dataflowId !== 'string') return null
+  const endRaw: unknown = v['end_period_strategy']
+  const startRaw: unknown = v['start_period_strategy']
+  const keyPart: unknown = v['key_part']
+  return {
+    id,
+    url,
+    dataflow_id: dataflowId,
+    ...(typeof keyPart === 'string' ? { key_part: keyPart } : {}),
+    end_period_strategy: endRaw === 'fixed' || endRaw === 'today' ? endRaw : 'last_month_end',
+    start_period_strategy: startRaw === 'earliest' || startRaw === 'expand_1y' || startRaw === 'expand_5y' ? startRaw : 'fixed',
+  }
 }
 
 const COV_MONTH_NAMES = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
@@ -768,6 +789,8 @@ export default function CaseWizardV2() {
   const [coverageLoading, setCoverageLoading] = useState(false)
   const [sdmxReloading, setSdmxReloading] = useState<Record<string, boolean>>({})
   const [sdmxReloadMsg, setSdmxReloadMsg] = useState<Record<string, { status: 'done' | 'error'; msg: string }>>({})
+  const [editSdmxQuery, setEditSdmxQuery] = useState<SavedQueryRef | null>(null)
+  const [editSdmxSeriesId, setEditSdmxSeriesId] = useState<string | null>(null)
   const [practiceMeta, setPracticeMeta] = useState<PracticeMeta>({ lotto: null, operatore_economico: null })
   const [caseSummary, setCaseSummary] = useState<CaseSummary | null>(null)
   const [cpvModalOpen, setCpvModalOpen] = useState(false)
@@ -1358,6 +1381,29 @@ export default function CaseWizardV2() {
     }
   }
 
+  const openEditSdmx = async (seriesId: string) => {
+    const qid = periodCoverage?.[seriesId]?.saved_query?.id
+    if (!qid) return
+    setEditSdmxSeriesId(seriesId)
+    try {
+      const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(qid)}`)
+      if (res.ok) {
+        const ref = toSavedQueryRef(await res.json())
+        if (ref) {
+          setEditSdmxQuery(ref)
+          return
+        }
+      }
+    } catch { /* GET fallito: fallback al payload di coverage */ }
+    const ref = toSavedQueryRef(periodCoverage?.[seriesId]?.saved_query)
+    if (ref) {
+      setEditSdmxQuery(ref)
+      return
+    }
+    setSdmxReloadMsg(prev => ({ ...prev, [seriesId]: { status: 'error', msg: 'Query non più esistente — riesegui la ricerca da ISTAT ↗' } }))
+    await fetchPeriodCoverage()
+  }
+
   const setMode = (cpv: string, mode: 'single' | 'weighted') => {
     setMappings(prev => {
       const m = prev[cpv]
@@ -1773,6 +1819,7 @@ export default function CaseWizardV2() {
         <span style={{ color: 'var(--color-text-error)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
           <span>Nessun dato definitivo nei periodi richiesti: il calcolo fallirebbe per questa serie.</span>
           {cov.saved_query && (
+            <>
             <button
               type="button"
               onClick={() => seriesId && handleReloadSdmx(seriesId)}
@@ -1794,7 +1841,48 @@ export default function CaseWizardV2() {
             >
               {reloading ? 'Ricarica…' : '⟳ Ricarica dati'}
             </button>
+            <button
+              type="button"
+              onClick={() => seriesId && openEditSdmx(seriesId)}
+              disabled={reloading}
+              title="Modifica query SDMX (URL e strategie date)"
+              style={{
+                marginLeft: 8,
+                padding: '4px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                lineHeight: 1,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg-card)',
+                color: 'var(--color-text-secondary)',
+                cursor: reloading ? 'not-allowed' : 'pointer',
+                opacity: reloading ? 0.6 : 1,
+                verticalAlign: 'middle',
+              }}
+            >
+              ✎
+            </button>
+            </>
           )}
+          <button
+            type="button"
+            onClick={() => seriesId && window.open(`/catalogs/istat?q=${encodeURIComponent(seriesId)}&sdmxImport=1`, '_blank')}
+            title="Apri Indici ISTAT con questa serie precaricata"
+            style={{
+              marginLeft: 8,
+              padding: '4px 10px',
+              borderRadius: 8,
+              fontSize: 12,
+              lineHeight: 1,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-bg-card)',
+              color: 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              verticalAlign: 'middle',
+            }}
+          >
+            ISTAT ↗
+          </button>
           {reloadMsg && (
             <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
               {reloadMsg.msg}
@@ -1821,6 +1909,7 @@ export default function CaseWizardV2() {
       <span style={{ color: 'var(--color-text-warning)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
         <span>I periodi richiesti non esistono in questa serie: {notes.join(' · ')}.</span>
         {cov.saved_query && (
+            <>
           <button
             type="button"
             onClick={() => seriesId && handleReloadSdmx(seriesId)}
@@ -1842,7 +1931,48 @@ export default function CaseWizardV2() {
           >
             {reloading ? 'Ricarica…' : '⟳ Ricarica dati'}
           </button>
+          <button
+            type="button"
+            onClick={() => seriesId && openEditSdmx(seriesId)}
+            disabled={reloading}
+            title="Modifica query SDMX (URL e strategie date)"
+            style={{
+              marginLeft: 8,
+              padding: '4px 10px',
+              borderRadius: 8,
+              fontSize: 12,
+              lineHeight: 1,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-bg-card)',
+              color: 'var(--color-text-secondary)',
+              cursor: reloading ? 'not-allowed' : 'pointer',
+              opacity: reloading ? 0.6 : 1,
+              verticalAlign: 'middle',
+            }}
+          >
+            ✎
+          </button>
+            </>
         )}
+        <button
+          type="button"
+          onClick={() => seriesId && window.open(`/catalogs/istat?q=${encodeURIComponent(seriesId)}&sdmxImport=1`, '_blank')}
+          title="Apri Indici ISTAT con questa serie precaricata"
+          style={{
+            marginLeft: 8,
+            padding: '4px 10px',
+            borderRadius: 8,
+            fontSize: 12,
+            lineHeight: 1,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-bg-card)',
+            color: 'var(--color-text-secondary)',
+            cursor: 'pointer',
+            verticalAlign: 'middle',
+          }}
+        >
+          ISTAT ↗
+        </button>
         {reloadMsg && (
           <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
             {reloadMsg.msg}
@@ -2979,6 +3109,24 @@ export default function CaseWizardV2() {
         onClose={() => setCpvModalOpen(false)}
         onSelect={(code, desc) => addCpv(code, desc)}
       />
+      {editSdmxQuery && (
+        <SavedQueryModal
+          query={editSdmxQuery}
+          onClose={() => { setEditSdmxQuery(null); setEditSdmxSeriesId(null) }}
+          onSaved={async () => {
+            const sid = editSdmxSeriesId
+            setEditSdmxQuery(null)
+            setEditSdmxSeriesId(null)
+            await fetchPeriodCoverage()
+            if (sid) setSdmxReloadMsg(prev => ({ ...prev, [sid]: { status: 'done', msg: 'Query aggiornata — premi ⟳ Ricarica dati per riscaricare.' } }))
+          }}
+          onDeleted={async () => {
+            setEditSdmxQuery(null)
+            setEditSdmxSeriesId(null)
+            await fetchPeriodCoverage()
+          }}
+        />
+      )}
     </div>
   )
 }
