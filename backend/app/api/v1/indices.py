@@ -200,7 +200,9 @@ def _ateco_labels_for_wages(db: Session, series_list: list[IndexSeries]) -> dict
                 if fallback:
                     series_label[sid] = fallback
         except Exception:
-            pass
+            logging.getLogger("indices").debug(
+                "ateco labels: fallback saltato", exc_info=True
+            )
     return series_label
 
 
@@ -1318,8 +1320,13 @@ def backfill_sdmx_queries(
                     )
                 backfilled += len(grp["series_ids"])
             except Exception as e:
+                # Non esporre il dettaglio dell'eccezione (possibile stack trace)
+                # nel body della risposta: loggare server-side e rispondere neutro.
+                logging.getLogger("indices").warning(
+                    "backfill-queries: salvataggio fallito per %s: %s", norm_url, e
+                )
                 for sid in grp["series_ids"]:
-                    skipped.append({"id": sid, "reason": str(e)[:200]})
+                    skipped.append({"id": sid, "reason": "errore durante il salvataggio"})
         # backfilled già contato per gruppi; se dry_run era true, backfilled già contato sopra
     elif dry_run:
         # backfilled già contato nel loop

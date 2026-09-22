@@ -128,14 +128,6 @@ def build_sdmx_url(s: IndexSeries) -> str | None:
     code = _code_from_series(s)
     if not code:
         return None
-    try:
-        from app.services.indices_import import _find_dataflow_config  # type: ignore
-
-        cfg = _find_dataflow_config(dataflow_id)
-        if cfg is None:
-            pass
-    except Exception:
-        pass
 
     freq = (s.frequency or "").lower()
     if explorer == "PPS":

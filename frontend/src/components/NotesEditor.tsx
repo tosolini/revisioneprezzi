@@ -11,7 +11,11 @@ interface Props {
 }
 
 export function isEmptyHtml(html: string): boolean {
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim() === ''
+  if (!html) return true
+  // Estrae il testo visibile tramite parser DOM (evita il sanitizing su regex)
+  // così un contenuto fatto solo di tag vuoti / spazi non-bloccanti risulta vuoto.
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return (doc.body.textContent ?? '').replace(/\u00a0/g, ' ').trim() === ''
 }
 
 export default function NotesEditor({ value, onChange, placeholder }: Props) {

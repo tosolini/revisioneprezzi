@@ -23,7 +23,7 @@ PATTERNS: dict[str, list[re.Pattern]] = {
         re.compile(r"(?:Oggetto|Oggetto del contratto|Prestazione)\s*:?\s*(.+?)(?:\n|$)", re.IGNORECASE),
         re.compile(r"(?:APPALTO|FORNITURA|SERVIZIO)\s+(?:DI|PER)\s+(.+?)(?:\n|$)", re.IGNORECASE),
         # Fallback: titolo fra virgolette («...» "..." "..."), min 10 char
-        re.compile(r'[«"“”]([^"«»"“”]{10,200})["»"“”]'),
+        re.compile(r'[«"“”]([^"«»“”]{10,200})["»“”]'),
     ],
     "cpv": [
         re.compile(r"CPV\s*:?\s*(\d{8}-\d)", re.IGNORECASE),

@@ -173,15 +173,3 @@ export default function ReportView() {
     </div>
   )
 }
-
-const btnStyle: React.CSSProperties = {
-  padding: '8px 16px', borderRadius: 6, border: '1px solid var(--color-border)',
-  background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer',
-  fontSize: 13, fontWeight: 600,
-}
-
-const navBtnStyle: React.CSSProperties = {
-  padding: '8px 16px', borderRadius: 6, border: 'none',
-  background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer',
-  fontSize: 13, fontWeight: 600,
-}

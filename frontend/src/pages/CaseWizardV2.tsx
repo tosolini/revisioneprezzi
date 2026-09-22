@@ -1545,7 +1545,6 @@ export default function CaseWizardV2() {
 
     // Conserva l'indices_config effettivamente usato per il calcolo (non quello stantio in data)
     let calcIndicesConfig: IndicesConfig | null = null
-    let calcComponents: Array<{ amount: number; indices_config: IndicesConfig; description: string }> | null = null
     // PPS quarterly: backend atteso Q-start, UI resta mensile — normalizza solo il payload se almeno un CPV è PPS
     const hasPpsQuarterlyForCalc = data.contract_type !== 'works' && data.cpv_selections.some(sel => {
       const m = mappings[sel.cpv_code]
@@ -1613,7 +1612,6 @@ export default function CaseWizardV2() {
               description: sel.description || sel.cpv_code,
             })
           }
-          calcComponents = components
           // Per persistenza wizard, salva il primo componente come rappresentativo (wizard state è single)
           calcIndicesConfig = components[0]?.indices_config ?? null
           response = await fetch('/api/v1/calculation/v2/calculate/multi-component', {
