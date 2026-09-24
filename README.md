@@ -33,7 +33,7 @@ Le pratiche nuove entrano direttamente nel **wizard unificato (5 passi)**: 1. In
 ![Dashboard pratiche](docs/screenshots/dashboard.png)
 *Dashboard — elenco pratiche con ingresso al wizard unificato.*
 
-![Wizard unificato, inquadramento](docs/screenshots/tipo_contratto.jpeg)
+![Wizard unificato, inquadramento](frontend/public/screenshots/tipo_contratto.jpeg)
 *Wizard unificato — riepilogo pratica e tipo di contratto (soglie e coefficienti legali).*
 
 ![Catalogo indici ISTAT](docs/screenshots/catalogo-istat.png)
