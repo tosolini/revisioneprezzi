@@ -51,6 +51,9 @@ export default function Layout({ children }: { children: ReactNode }) {
         <Link to="/dlgs36" className={isActive('/dlgs36')} style={{ color: 'var(--color-text-nav)', textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
           DLGS 36 2023
         </Link>
+        <Link to="/guida" className={isActive('/guida')} style={{ color: 'var(--color-text-nav)', textDecoration: 'none', fontSize: 14, whiteSpace: 'nowrap' }}>
+          Guida
+        </Link>
 
         {/* Theme toggle */}
         <button
@@ -80,7 +83,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         background: 'var(--color-bg-nav)', color: 'var(--color-text-footer)', padding: '12px 24px',
         textAlign: 'center', fontSize: 12, borderTop: '1px solid var(--color-border-lighter)',
       }}>
-        Revisione Prezzi v{pkg.version} del {__BUILD_DATE__} &mdash; Autore: {AUTHOR}
+        Revisione Prezzi v{pkg.version} del {__BUILD_DATE__} &mdash; Autore: <Link to="https://www.tosolini.info" style={{ color: 'var(--color-text-footer)', textDecoration: 'underline' }}>{AUTHOR}</Link>
       </footer>
       {showTop && (
         <button
