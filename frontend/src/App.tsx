@@ -10,6 +10,7 @@ import IstatCatalog from './pages/IstatCatalog'
 import SdmxRegistryPage from './pages/SdmxRegistryPage'
 import TolCatalog from './pages/TolCatalog'
 import Dlgs36Page from './pages/Dlgs36Page'
+import GuidaPage from './pages/GuidaPage'
 import SettingsPage from './pages/SettingsPage'
 import Layout from './components/Layout'
 
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/catalogs/sdmx-queries" element={<SdmxRegistryPage />} />
         <Route path="/catalogs/tol" element={<TolCatalog />} />
         <Route path="/dlgs36" element={<Dlgs36Page />} />
+        <Route path="/guida" element={<GuidaPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>
