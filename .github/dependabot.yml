@@ -24,6 +24,11 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    ignore:
+      # SQLAlchemy 2.1 defaults to psycopg v3 driver; repo uses psycopg2-binary.
+      # Hold on 2.0.x until driver migration is planned/tested (see PR #111).
+      - dependency-name: "sqlalchemy"
+        versions: [">=2.1.0"]
 
   - package-ecosystem: "docker"
     directory: "/frontend"
