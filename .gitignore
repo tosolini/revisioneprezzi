@@ -49,3 +49,7 @@ trivy-report/
 
 # Local test uploads (provati via UI/extract, non da versionare)
 *.docx
+
+# Opencode session exports (HTML) — mai versionare, rompono CodeQL
+omp-session-*.html
+*.session.html
