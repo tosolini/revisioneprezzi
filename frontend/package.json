@@ -11,8 +11,10 @@
   "dependencies": {
     "@tiptap/extension-placeholder": "^3.31.4",
     "@tiptap/extension-underline": "^3.31.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
+    "@tiptap/extension-underline": "^3.31.4",
     "@tiptap/react": "^3.31.4",
-    "@tiptap/starter-kit": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^8.4.0"
