@@ -176,16 +176,26 @@ def resolve_series(assoc: dict, db: Session) -> dict:
             "ISTAT_NIC_ECOICOP2_00%",
         ]
         series_id = None
-        for pattern in candidates:
-            rows = (
-                db.query(IndexSeries)
-                .filter(IndexSeries.id.like(pattern))
-                .order_by(IndexSeries.id.desc())
-                .all()
-            )
-            if rows:
-                series_id = max(rows, key=lambda r: len(r.id)).id
-                break
+        # 1. Match esatto (evita 105 -> 1050: i codici ECOICOP sono prefissi
+        # gli uni degli altri, il LIKE da solo prenderebbe il più lungo)
+        exact = (
+            db.query(IndexSeries)
+            .filter(IndexSeries.id == f"ISTAT_NIC_ECOICOP2_{code}")
+            .first()
+        )
+        if exact is not None:
+            series_id = exact.id
+        else:
+            for pattern in candidates:
+                rows = (
+                    db.query(IndexSeries)
+                    .filter(IndexSeries.id.like(pattern))
+                    .order_by(IndexSeries.id.desc())
+                    .all()
+                )
+                if rows:
+                    series_id = max(rows, key=lambda r: len(r.id)).id
+                    break
     elif index_type == "PPI":
         for suffix in ("_D", "_T"):
             candidate = f"ISTAT_PPI_{code}{suffix}"

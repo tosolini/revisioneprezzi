@@ -67,19 +67,32 @@ function sectionHeader(title: string, badge?: string): AnyRecord[] {
   return [{ columns: row, unbreakable: true }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#e5e7eb' }], margin: [0, 0, 0, 10] }];
 }
 
-function pdfTable(header: string[], rows: string[][], widths?: (string | number)[]): AnyRecord {
+function pdfTable(header: string[], rows: (string | AnyRecord)[][], widths?: (string | number)[]): AnyRecord {
+  const cell = (c: string | AnyRecord) =>
+    typeof c === 'string' ? { text: c, style: 'td' } : c;
   return {
     table: {
       headerRows: 1,
       widths: widths || header.map(() => '*'),
       body: [
         header.map(h => ({ text: h, style: 'th' })),
-        ...rows.map(r => r.map(c => ({ text: c, style: 'td' }))),
+        ...rows.map(r => r.map(cell)),
       ],
     },
     layout: 'lightHorizontalLines',
     fontSize: 8.5,
     margin: [0, 0, 0, 8],
+  };
+}
+
+function seriesCell(code: string, labels?: Record<string, string>): AnyRecord {
+  const desc = labels?.[code];
+  if (!desc) return { text: code, style: 'td' };
+  return {
+    stack: [
+      { text: code, style: 'td' },
+      { text: desc, italics: true, fontSize: 7.5, color: '#6b7280' },
+    ],
   };
 }
 
@@ -184,7 +197,10 @@ function renderIndices(d: AnyRecord): AnyRecord[] {
     margin: [0, 0, 0, 8],
   });
   if (d.series_id) {
-    out.push({ text: `Serie ISTAT utilizzata per il confronto: ${str(d.series_id)}`, style: 'box', margin: [0, 0, 0, 8] });
+    out.push({ text: `Serie ISTAT utilizzata per il confronto: ${str(d.series_id)}`, style: 'box', margin: [0, 0, 0, d.series_labels?.[d.series_id] ? 0 : 8] });
+    if (d.series_labels?.[d.series_id]) {
+      out.push({ text: str(d.series_labels[d.series_id]), italics: true, fontSize: 8.5, color: '#6b7280', margin: [0, 0, 0, 8] });
+    }
   }
   if (Array.isArray(d.components) && d.components.length > 0) {
     out.push({ text: 'Calcolo ponderato per componente (Tabella D punto 7)', style: 'sub', margin: [0, 4, 0, 4] });
@@ -193,7 +209,7 @@ function renderIndices(d: AnyRecord): AnyRecord[] {
         ? `${(Number(c.contribution_percent) >= 0 ? '+' : '')}${Number(c.contribution_percent).toFixed(4)}%`
         : `${((((c.weight ?? 0) as number) / 100) * ((c.variation_percent ?? 0) as number) >= 0 ? '+' : '')}${Number((((c.weight ?? 0) as number) / 100) * ((c.variation_percent ?? 0) as number)).toFixed(4)}%`;
       return [
-        str(c.series_id),
+        seriesCell(str(c.series_id), d.series_labels),
         `${str(c.weight)}%`,
         `${Number(c.base_value ?? 0).toFixed(2)}${c.base_exact === false ? ` (usato ${c.used_base_period})` : ''}`,
         `${Number(c.comparison_value ?? 0).toFixed(2)}${c.comparison_exact === false ? ` (usato ${c.used_comparison_period})` : ''}`,
@@ -215,7 +231,10 @@ function renderIndices(d: AnyRecord): AnyRecord[] {
         ),
         ...(g.calc_math ? [str(g.calc_math)] : []),
       ];
-      out.push({ text: lines.join('\n'), style: 'mono', margin: [0, 0, 0, 6] });
+      out.push({ text: lines.join('\n'), style: 'mono', margin: [0, 0, 0, g.series_id && d.series_labels?.[g.series_id] ? 0 : 6] });
+      if (g.series_id && d.series_labels?.[g.series_id]) {
+        out.push({ text: str(d.series_labels[g.series_id]), italics: true, fontSize: 8, color: '#6b7280', margin: [0, 0, 0, 6] });
+      }
     }
   }
   return out;

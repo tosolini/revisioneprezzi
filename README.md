@@ -6,7 +6,7 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.0** — wizard unificato a 5 passi (il percorso V1 a 7 passi resta disponibile per le pratiche esistenti).
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.4** — wizard unificato a 5 passi (il percorso V1 a 7 passi resta disponibile per le pratiche esistenti).
 
 ### Funzionalità principali
 
@@ -239,6 +239,20 @@ L'"Aggiorna" salva solo URL e strategie: per ri-scaricare i dati si usa il pulsa
   segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
   `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
   puntuali, ma non è esposto in alcuna interfaccia.
+
+## Novità nella 1.2.4
+
+- **Descrizioni ECOICOP in corsivo**: sotto ogni titolo serie NIC compare la descrizione italiana ISTAT (es. *Istruzione non definita per livello*) in catalogo Indici, wizard step 4, report web e PDF. Nuova tabella `ecoicop_catalog` popolata con una sola chiamata alla codelist `CL_ECOICOP_2` (`POST /api/v1/ecoicop/import`); da lì in poi zero traffico ISTAT.
+- **Fix mapping PC**: il codice ECOICOP `105` non risolve più alla serie `1050` (match esatto prima del prefisso).
+- **Ordinamento osservazioni**: la colonna Periodo nelle serie ISTAT è cliccabile (ascendente/discendente, default ascendente).
+
+## Novità nella 1.2.3
+
+- **NIC base 2025**: dataflow `167_745_DF_DCSP_NIC1B2025_6` (ECOICOP 2), chiave SDMX a 5 dimensioni `M.IT.85.4.{codice}`, set nuovo dal 2026-01; rimosso il dataflow base 2015 dallo sync.
+- **Registro query SDMX**: conteggio cliccabile con elenco serie collegate e link all'indice ISTAT.
+- **CUP multipli**: campo a 255 caratteri con validazione (15 alfanumerici, normalizzazione `CUP1, CUP2`); errori 422 leggibili su tutti i campi, mai più 500 su overflow; fix salvataggio CUP/stazione/note in modifica pratica.
+- **Date contratto**: confronto precompilato dal termine; coerenza avvio/durata/termine a precisione mese.
+- **Stampa/PDF**: export PDF client-side con pdfmake (pulsanti Stampa / Scarica PDF), CSS di stampa condiviso anti-taglio, header cache nginx (index.html no-cache, asset immutable).
 
 ## Novità nella 1.2.0
 
