@@ -33,11 +33,6 @@ function num(v: unknown, decimals: number, signed = false): string {
   return `${signed && n >= 0 ? '+' : ''}${n.toFixed(decimals)}`;
 }
 
-function pct(v: unknown, decimals: number, signed = false): string {
-  const s = num(v, decimals, signed);
-  return s === NA ? NA : `${s}%`;
-}
-
 function itDate(v: unknown): string {
   if (typeof v !== 'string' || !v) return NA;
   const d = new Date(v.length === 7 ? `${v}-01` : v);
@@ -47,15 +42,16 @@ function itDate(v: unknown): string {
 
 function stripHtml(html: unknown): string {
   if (typeof html !== 'string' || !html) return '';
+  // Output destinato a testo PDF (mai HTML): rimuove tutti i tag, inclusi
+  // frammenti non chiusi, e decodifica le entità in un'unica passata.
+  const entities: Record<string, string> = {
+    euro: '€', amp: '&', lt: '<', gt: '>', nbsp: ' ', quot: '"',
+  };
   return html
     .replace(/<\s*br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&euro;/g, '€')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
+    .replace(/<[^>]*>?/g, '')
+    .replace(/&(euro|amp|lt|gt|nbsp|quot);/g, (_m, e: string) => entities[e] ?? _m)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
