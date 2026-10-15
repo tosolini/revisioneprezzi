@@ -53,3 +53,6 @@ trivy-report/
 # Opencode session exports (HTML) — mai versionare, rompono CodeQL
 omp-session-*.html
 *.session.html
+.github/workflows/opencode.yml
+opencode.json
+

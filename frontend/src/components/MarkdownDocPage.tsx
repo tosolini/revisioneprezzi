@@ -14,6 +14,15 @@ function normalizeImgSrc(src: string): string {
   return `/${s}`
 }
 
+function isSafeLinkHref(href: string): boolean {
+  const h = href.trim()
+  if (/^(https?:\/\/|mailto:|#|\/)/i.test(h)) return true
+  // Link relativo senza schema (es. "guida.md", "./x", "screenshots/a.png"):
+  // consentito solo se senza ':' (blocca javascript:/data:/vbscript:) e senza spazi/virgolette/angle brackets.
+  if (!/[:\s"'<>]/.test(h)) return true
+  return false
+}
+
 function slugify(text: string): string {
   return text
     .normalize('NFD')
@@ -128,7 +137,14 @@ function renderMarkdown(md: string, query = ''): string {
     t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     t = t.replace(/\*(.+?)\*/g, '<em>$1</em>')
     t = t.split(ESC + 'A').join('*')
-    t = t.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    // Link Markdown: sanitizza href (allowlist http/https/mailto/ancora/relative)
+    // e usa rel completo con target="_blank". Href non sicuri -> solo testo.
+    t = t.replace(/\[(.+?)\]\((.+?)\)/g, (_m, label: string, rawHref: string) => {
+      const href = rawHref.trim()
+      if (!isSafeLinkHref(href)) return label
+      const safeHref = href.replace(/"/g, '&quot;')
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${label}</a>`
+    })
     return t
   }
   // Sostituzioni per il rendering delle formule (Allegato II.2-bis).
