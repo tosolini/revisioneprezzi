@@ -87,6 +87,15 @@ def test_report_series_labels_include_ateco(db):
     )
     db.add(AtecoCatalog(ateco_code="ZZ9", description="Attivita di ufficio"))
     db.commit()
-    labels = _report_series_labels(db, ["ISTAT_WAGES_ATECO_ZZ9", "ISTAT_IGNOTA"])
-    assert labels["ISTAT_WAGES_ATECO_ZZ9"] == "Attivita di ufficio"
-    assert "ISTAT_IGNOTA" not in labels
+    try:
+        labels = _report_series_labels(db, ["ISTAT_WAGES_ATECO_ZZ9", "ISTAT_IGNOTA"])
+        assert labels["ISTAT_WAGES_ATECO_ZZ9"] == "Attivita di ufficio"
+        assert "ISTAT_IGNOTA" not in labels
+    finally:
+        db.query(IndexSeries).filter(IndexSeries.id == "ISTAT_WAGES_ATECO_ZZ9").delete(
+            synchronize_session=False
+        )
+        db.query(AtecoCatalog).filter(AtecoCatalog.ateco_code == "ZZ9").delete(
+            synchronize_session=False
+        )
+        db.commit()
