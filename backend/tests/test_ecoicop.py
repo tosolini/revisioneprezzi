@@ -302,7 +302,7 @@ def test_report_series_labels_helper(db):
         }
         assert _ecoicop_series_labels(db, _collect_report_series_ids(data)) == expected
     finally:
-        db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code == "105").delete(
-            synchronize_session=False
-        )
+        db.query(EcoicopCatalog).filter(
+            EcoicopCatalog.ecoicop_code.in_(["105", "105091"])
+        ).delete(synchronize_session=False)
         _restore_catalog(db, backup)

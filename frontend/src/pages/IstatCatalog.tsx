@@ -125,7 +125,8 @@ async function pollImportJob(jobId: string): Promise<ImportJob> {
   throw new Error('Tempo scaduto: Istat non ha risposto entro 15 minuti. Riprova.')
 }
 
-function formatPeriod(period: string, freq: string): string {  if (freq === 'monthly') {
+function formatPeriod(period: string, freq: string): string {
+  if (freq === 'monthly') {
     const d = period.slice(0, 7)
     const months = ['', 'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
     const m = parseInt(d.slice(5, 7))

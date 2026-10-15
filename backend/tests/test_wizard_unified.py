@@ -35,7 +35,6 @@ def test_legacy_contract_type_canonicalized_and_synced(client: TestClient, db: S
     assert body["state"]["contract_type"] == "services"
     assert body["state"]["is_duration_contract"] is True
     assert body["state"]["contract_end_date"] == "2025-01-15"
-    assert body["wizard_version"] == "unified"
 
     contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
     assert contract is not None
@@ -45,30 +44,6 @@ def test_legacy_contract_type_canonicalized_and_synced(client: TestClient, db: S
     assert contract.stipulation_date.isoformat() == "2024-01-10"
     assert contract.contract_end_date.isoformat() == "2025-01-15"
     assert contract.duration_months == 12
-
-
-def test_v1_answers_visible_in_unified_get(client: TestClient, db: Session):
-    """Pratica V1 esistente: date/flag legacy ereditati senza reinserimento."""
-    case_id = _new_case(client)
-    resp = client.post(
-        f"/api/v1/cases/{case_id}/wizard/2",
-        json={
-            "answers": [
-                {"step": 2, "field_key": "contract_type", "field_value": "supply"},
-                {"step": 2, "field_key": "is_duration_contract", "field_value": "true"},
-                {"step": 2, "field_key": "stipulation_date", "field_value": "2024-03-01"},
-                {"step": 2, "field_key": "execution_start_date", "field_value": "2024-04-01"},
-                {"step": 2, "field_key": "duration_months", "field_value": "6"},
-            ]
-        },
-    )
-    assert resp.status_code == 201
-
-    body = client.get(f"/api/v1/cases/{case_id}/wizard-v2").json()
-    assert body["state"]["contract_type"] == "supplies"
-    assert body["state"]["is_duration_contract"] is True
-    assert body["state"]["stipulation_date"] == "2024-03-01"
-    assert body["state"]["duration_months"] == 6
 
 
 def test_blob_values_win_over_projections(client: TestClient, db: Session):

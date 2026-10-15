@@ -62,16 +62,8 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
 
     sections = []
 
-    # Fallback: read ente/cig/cup from wizard step 1 if not in ContractContext
-    step1_answers = {
-        a.field_key: a.field_value
-        for a in db.query(WizardAnswer)
-        .filter(WizardAnswer.case_id == case_id, WizardAnswer.step == 1)
-        .all()
-    }
-
-    # Pratica unificata 1.2.0: lotto/operatore vivono come righe KV step 0
-    # scritte dal modale pratica; fallback allo step 1 legacy per storicità.
+    # Pratica 1.2.0: lotto/operatore vivono come righe KV step 0
+    # scritte dal modale pratica.
     step0_answers = {
         a.field_key: a.field_value
         for a in db.query(WizardAnswer)
@@ -82,24 +74,7 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         )
         .all()
     }
-    # Also read step 2 answers for contract_type from wizard (backup)
-    step2_answers = {
-        a.field_key: a.field_value
-        for a in db.query(WizardAnswer)
-        .filter(WizardAnswer.case_id == case_id, WizardAnswer.step == 2)
-        .all()
-    }
-
-    # Read step 3 answers for object_description and cpv_total_amount
-    step3_answers = {
-        a.field_key: a.field_value
-        for a in db.query(WizardAnswer)
-        .filter(WizardAnswer.case_id == case_id, WizardAnswer.step == 3)
-        .all()
-    }
-
-    # Stato wizard-v2 (step 0): il flusso V2 non scrive risposte step 1-5,
-    # tiene tutto nel blob. Fallback per importi/periodi/serie quando mancano.
+    # Stato wizard (step 0): importi/periodi/serie e risultato di calcolo.
     v2_state: dict = {}
     v2_state_row = (
         db.query(WizardAnswer)
@@ -117,67 +92,40 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
                 v2_state = parsed_state
         except (json.JSONDecodeError, TypeError, AttributeError):
             pass  # corrupt saved state: report uses step answers only
-    ct = (
-        step2_answers.get("contract_type")
-        or v2_state.get("contract_type")
-        or (contract.contract_type if contract else None)
-    )
+    ct = v2_state.get("contract_type") or (contract.contract_type if contract else None)
 
     contract_data = {
         "case_number": str(case.id),
         "title": case.title or "Senza titolo",
         "contract_type": ct,
         "contract_type_label": _get_contract_type_label(ct),
-        "cig": case.cig or step1_answers.get("cig"),
-        "cup": case.cup or step1_answers.get("cup"),
-        "station": case.stazione_appaltante or step1_answers.get("ente"),
-        "lotto": step0_answers.get("lotto") or step1_answers.get("lotto"),
+        "cig": case.cig,
+        "cup": case.cup,
+        "station": case.stazione_appaltante,
+        "lotto": step0_answers.get("lotto"),
         "is_duration_contract": _as_flag(
             _first_present(
                 contract.is_duration_contract if contract else None,
                 v2_state.get("is_duration_contract"),
-                step2_answers.get("is_duration_contract"),
             )
         ),
         "instant_execution": _as_flag(
             _first_present(
                 contract.instant_execution if contract else None,
                 v2_state.get("instant_execution"),
-                step2_answers.get("instant_execution"),
             )
         ),
-        "operatore_economico": step0_answers.get("operatore_economico")
-        or step1_answers.get("operatore_economico"),
+        "operatore_economico": step0_answers.get("operatore_economico"),
         "created_by": case.created_by,
-        "notes": step1_answers.get("notes"),
         "case_notes": case.notes,
-        "object_description": step3_answers.get("object_description"),
+        "object_description": case.title or "Senza titolo",
     }
 
     sections.append(ReportSection(title="Dati Contratto", data=contract_data, order=1))
 
-    # Read step 5 answers for amounts and periods
-    step5_answers = {
-        a.field_key: a.field_value
-        for a in db.query(WizardAnswer)
-        .filter(WizardAnswer.case_id == case_id, WizardAnswer.step == 5)
-        .all()
-    }
-    # Also read step 4 for selected index series
-    step4_answers = {
-        a.field_key: a.field_value
-        for a in db.query(WizardAnswer)
-        .filter(WizardAnswer.case_id == case_id, WizardAnswer.step == 4)
-        .all()
-    }
-
     total_amount = None
     if contract and contract.contract_amount_total:
         total_amount = float(contract.contract_amount_total)
-    if not total_amount:
-        total_amount = step3_answers.get("cpv_total_amount") or step2_answers.get(
-            "contract_amount_total"
-        )
     if not total_amount:
         total_amount = v2_state.get("amount") or None
     if total_amount:
@@ -266,12 +214,10 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
 
     sections.append(ReportSection(title="Classificazione", data=classification_data, order=2))
 
-    # Sezione 3: Importi e Date (fallback al blob V2: il flusso V2 non scrive step 5)
-    revisable = step5_answers.get("amount_subject_to_revision") or v2_state.get("amount")
-    base_period_val = step5_answers.get("base_period") or v2_state.get("base_period")
-    comparison_period_val = step5_answers.get("comparison_period") or v2_state.get(
-        "comparison_period"
-    )
+    # Sezione 3: Importi e Date (dal blob wizard + proiezione contratto).
+    revisable = v2_state.get("amount")
+    base_period_val = v2_state.get("base_period")
+    comparison_period_val = v2_state.get("comparison_period")
 
     amounts_data = {
         "contract_amount": total_amount,
@@ -282,14 +228,12 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
             _first_present(
                 contract.stipulation_date if contract else None,
                 v2_state.get("stipulation_date"),
-                step2_answers.get("stipulation_date"),
             )
         ),
         "execution_start_date": _as_iso(
             _first_present(
                 contract.execution_start_date if contract else None,
                 v2_state.get("execution_start_date"),
-                step2_answers.get("execution_start_date"),
             )
         ),
         "contract_end_date": _as_iso(
@@ -302,7 +246,6 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
             _first_present(
                 contract.duration_months if contract else None,
                 v2_state.get("duration_months"),
-                step2_answers.get("duration_months"),
             )
         ),
     }
@@ -314,9 +257,7 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
     v2_indices_cfg = v2_state.get("indices_config") if isinstance(
         v2_state.get("indices_config"), dict
     ) else None
-    series_id = step4_answers.get("selected_index_series_id") or (
-        v2_indices_cfg.get("single_series_id") if v2_indices_cfg else None
-    )
+    series_id = v2_indices_cfg.get("single_series_id") if v2_indices_cfg else None
     indices_data: dict = {"synthetic_index_base": None, "synthetic_index_comparison": None}
 
     if series_id:
@@ -363,15 +304,15 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
     # saved_result già estratto dal blob V2 sopra; qui solo evidenza serie
 
     indices_data.update(_extract_series_evidence(formula_steps, saved_result, series_id))
-    indices_data["series_labels"] = _ecoicop_series_labels(
+    indices_data["series_labels"] = _report_series_labels(
         db,
         _collect_report_series_ids(indices_data),
     )
     sections.append(ReportSection(title="Indici ISTAT", data=indices_data, order=4))
 
     # Sezione 5: Parametri Normativi
-    raw_ct = step2_answers.get("contract_type") or (contract.contract_type if contract else None)
-    # Normalize: wizard stores "service"/"supply" but NORMATIVE_PARAMS uses "services"/"supplies"
+    raw_ct = contract.contract_type if contract else None
+    # Normalize: vecchi blob possono contenere "service"/"supply".
     CT_NORMALIZE = {
         "service": "services",
         "supply": "supplies",
@@ -512,21 +453,26 @@ def _collect_report_series_ids(indices_data: dict) -> list[str]:
 
 def _ecoicop_series_labels(db, series_ids: list[str]) -> dict[str, str]:
     """Descrizioni ECOICOP 2 per le serie NIC citate nel report."""
-    from app.models.ecoicop_catalog import EcoicopCatalog
+    from app.services.ecoicop_labels import ecoicop_labels_for_series_ids
 
-    prefix = "ISTAT_NIC_ECOICOP2_"
-    codes = {sid.removeprefix(prefix) for sid in series_ids if sid.startswith(prefix)}
-    if not codes:
-        return {}
-    rows = (
-        db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code.in_(list(codes))).all()
-    )
-    by_code = {r.ecoicop_code: r.description for r in rows}
-    return {
-        sid: by_code[code]
-        for sid in series_ids
-        if sid.startswith(prefix) and (code := sid.removeprefix(prefix)) in by_code
-    }
+    return ecoicop_labels_for_series_ids(db, series_ids)
+
+
+def _report_series_labels(db, series_ids: list[str]) -> dict[str, str]:
+    """Etichette leggibili per le serie citate nel report: ECOICOP + ATECO.
+
+    Riusa la stessa risoluzione del catalogo (AtecoCatalog + fallback
+    Tabella D), così wages_ateco & co. non restano codici muti.
+    """
+    from app.api.v1.indices import _ateco_labels_for_wages
+    from app.models.index_series import IndexSeries
+
+    labels = _ecoicop_series_labels(db, series_ids)
+    rows = db.query(IndexSeries).filter(IndexSeries.id.in_(series_ids)).all() if series_ids else []
+    for sid, label in _ateco_labels_for_wages(db, rows).items():
+        if label and sid not in labels:
+            labels[sid] = label
+    return labels
 
 
 def _multi_component_rows(saved_result: dict | None) -> list | None:

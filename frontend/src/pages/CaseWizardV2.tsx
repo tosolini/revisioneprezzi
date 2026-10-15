@@ -8,7 +8,7 @@ import CpvSearchModal from '../components/CpvSearchModal'
 import { SavedQueryModal } from '../components/SavedQueryModal'
 import type { SavedQueryRef } from '../components/SavedQueryModal'
 import WizardTimeline from '../components/WizardTimeline'
-import { asNullableString, asNumber, isRecord, parseWizardVersion } from '../components/utils'
+import { asNullableString, asNumber, isRecord } from '../components/utils'
 import { printArea } from '../utils/printReport'
 interface TolSelection {
   code: string
@@ -799,10 +799,6 @@ export default function CaseWizardV2() {
       })
       .then(body => {
         if (!isRecord(body)) throw new Error('Errore caricamento wizard')
-        if (parseWizardVersion(body).version === 'v1') {
-          navigate(`/cases/${id}`)
-          return
-        }
         const s = isRecord(body['state']) ? body['state'] : {}
         const rawSelections = Array.isArray(s['cpv_selections']) ? s['cpv_selections'] : []
         const cpvSelections: CpvSelection[] = rawSelections.length > 0
@@ -825,7 +821,7 @@ export default function CaseWizardV2() {
         const stipulation = parseDateStr(s['stipulation_date'])
         const execStart = parseDateStr(s['execution_start_date'])
         const endDate = parseDateStr(s['contract_end_date'])
-        // Riuso V1: prefill-if-empty base ← stipula, confronto ← termine
+        // Prefill-if-empty: base ← stipula, confronto ← termine
         // (fallback avvio). Campi restano editabili, nessuna validazione incrociata.
         const rawBase = typeof s['base_period'] === 'string' ? s['base_period'] : ''
         const rawComparison = typeof s['comparison_period'] === 'string' ? s['comparison_period'] : ''

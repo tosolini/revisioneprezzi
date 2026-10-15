@@ -106,15 +106,9 @@ def cpv_index_mapping(payload: CpvIndexMappingRequest, db: Session = Depends(get
             if row is not None:
                 series_name = row.name
                 if row.classification_ref == "nic_ecoicop2":
-                    from app.models.ecoicop_catalog import EcoicopCatalog
+                    from app.services.ecoicop_labels import ecoicop_labels_for_series_ids
 
-                    code = series_id.removeprefix("ISTAT_NIC_ECOICOP2_")
-                    entry = (
-                        db.query(EcoicopCatalog)
-                        .filter(EcoicopCatalog.ecoicop_code == code)
-                        .first()
-                    )
-                    ecoicop_label = entry.description if entry else None
+                    ecoicop_label = ecoicop_labels_for_series_ids(db, [series_id]).get(series_id)
         associations.append(
             {
                 **assoc,

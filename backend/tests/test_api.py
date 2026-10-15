@@ -49,15 +49,17 @@ def test_delete_case(client):
 
 def test_wizard_save_and_read(client):
     cid = _make_case(client)
-    save = client.post(
-        f"/api/v1/cases/{cid}/wizard/1",
-        json={"answers": [{"step": 1, "field_key": "contract_type", "field_value": "service"}]},
+    save = client.put(
+        f"/api/v1/cases/{cid}/wizard-v2",
+        json={"current_step": 2, "contract_type": "services", "amount": 50000.0},
     )
-    assert save.status_code == 201
-    read = client.get(f"/api/v1/cases/{cid}/wizard/1")
+    assert save.status_code == 200
+    read = client.get(f"/api/v1/cases/{cid}/wizard-v2")
     assert read.status_code == 200
-    assert len(read.json()) == 1
-    assert read.json()[0]["field_value"] == "service"
+    body = read.json()
+    assert body["state"]["contract_type"] == "services"
+    assert body["state"]["amount"] == 50000.0
+    assert body["state"]["current_step"] == 2
 
 
 def test_classify_endpoint(client):
