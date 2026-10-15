@@ -35,18 +35,16 @@ function itDate(v: unknown): string {
 
 function stripHtml(html: unknown): string {
   if (typeof html !== 'string' || !html) return '';
-  // Output destinato a testo PDF (mai HTML): rimuove tutti i tag, inclusi
-  // frammenti non chiusi, e decodifica le entità in un'unica passata.
-  const entities: Record<string, string> = {
-    euro: '€', amp: '&', lt: '<', gt: '>', nbsp: ' ', quot: '"',
-  };
-  return html
+  // Output destinato a testo PDF (mai HTML): i <br> e le chiusure di
+  // blocco diventano a capo, poi parsing DOM reale (niente regex) con
+  // rimozione di script/style ed estrazione del solo testo.
+  const withBreaks = html
     .replace(/<\s*br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
-    .replace(/<[^>]*>?/g, '')
-    .replace(/&(euro|amp|lt|gt|nbsp|quot);/g, (_m, e: string) => entities[e] ?? _m)
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n');
+  const doc = new DOMParser().parseFromString(withBreaks, 'text/html');
+  doc.querySelectorAll('script,style').forEach(el => el.remove());
+  const text = doc.body.textContent ?? '';
+  return text.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function sectionOf(report: ReportData, title: string): AnyRecord | null {
