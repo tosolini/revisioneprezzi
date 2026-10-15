@@ -313,6 +313,59 @@ def test_saved_query_404(client, db):
     assert resp.status_code == 404
     resp = client.delete(f"/api/v1/indices/saved-queries/{missing}")
     assert resp.status_code == 404
+    resp = client.get(f"/api/v1/indices/saved-queries/{missing}/series")
+    assert resp.status_code == 404
     # id malformato: 404, non 500
     resp = client.get("/api/v1/indices/saved-queries/non-un-uuid")
     assert resp.status_code == 404
+    resp = client.get("/api/v1/indices/saved-queries/non-un-uuid/series")
+    assert resp.status_code == 404
+
+
+def test_saved_query_series(client, db):
+    sid = f"SQ_SER_{uuid.uuid4().hex[:6]}"
+    db.add(
+        IndexSeries(
+            id=sid,
+            name="Serie query series",
+            source="TEST",
+            classification_ref="test_sqser",
+            frequency="monthly",
+        )
+    )
+    db.commit()
+    q = _seed_query(db, SDMX_DATA_URL, series_ids=[sid])
+    try:
+        resp = client.get(f"/api/v1/indices/saved-queries/{q.id}/series")
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == [
+            {
+                "id": sid,
+                "name": "Serie query series",
+                "classification_ref": "test_sqser",
+                "frequency": "monthly",
+            },
+        ]
+
+        # query senza link → lista vuota
+        q2 = _seed_query(db, SDMX_DATA_URL)
+        try:
+            resp = client.get(f"/api/v1/indices/saved-queries/{q2.id}/series")
+            assert resp.status_code == 200, resp.text
+            assert resp.json() == []
+        finally:
+            db.query(IndexImportQuery).filter(IndexImportQuery.id == q2.id).delete(
+                synchronize_session=False
+            )
+            db.commit()
+    finally:
+        db.query(IndexImportQuerySeries).filter(
+            IndexImportQuerySeries.query_id == q.id
+        ).delete(synchronize_session=False)
+        db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).delete(
+            synchronize_session=False
+        )
+        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(
+            synchronize_session=False
+        )
+        db.commit()

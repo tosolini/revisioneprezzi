@@ -26,13 +26,6 @@ function eur(v: unknown, decimals = 2): string {
   return `€ ${n.toLocaleString('it-IT', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-function num(v: unknown, decimals: number, signed = false): string {
-  if (v == null || v === '') return NA;
-  const n = Number(v);
-  if (Number.isNaN(n)) return NA;
-  return `${signed && n >= 0 ? '+' : ''}${n.toFixed(decimals)}`;
-}
-
 function itDate(v: unknown): string {
   if (typeof v !== 'string' || !v) return NA;
   const d = new Date(v.length === 7 ? `${v}-01` : v);
