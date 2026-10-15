@@ -2,6 +2,7 @@
 
 from app.models.ecoicop_catalog import EcoicopCatalog
 from app.models.index_series import IndexSeries
+from app.models.tabella_d import CpvTabellaDAssociation, CpvTabellaDMaster
 from app.services import ecoicop_importer
 
 
@@ -165,6 +166,38 @@ def test_cpv_mapping_includes_ecoicop_label(client, db):
             )
         )
         created_series = True
+    # Tabella D autonoma (non dipende dai seed): 80500000-9 -> PC/105
+    created_master = False
+    if not db.query(CpvTabellaDMaster).filter(CpvTabellaDMaster.cpv_code == "80500000-9").first():
+        db.add(
+            CpvTabellaDMaster(
+                cpv_code="80500000-9",
+                cpv_description="Servizi di formazione",
+                table_class="D1",
+            )
+        )
+        created_master = True
+    created_assoc = False
+    if (
+        not db.query(CpvTabellaDAssociation)
+        .filter(
+            CpvTabellaDAssociation.cpv_code == "80500000-9",
+            CpvTabellaDAssociation.ateco_code == "105",
+        )
+        .first()
+    ):
+        db.add(
+            CpvTabellaDAssociation(
+                cpv_code="80500000-9",
+                table_class="D1",
+                position=10,
+                index_type="PC",
+                classification="ECOICOP",
+                ateco_code="105",
+                index_description="Corsi d'istruzione e di formazione",
+            )
+        )
+        created_assoc = True
     backup = _backup_catalog(db, ["105"])
     row = db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code == "105").first()
     if row:
@@ -222,6 +255,15 @@ def test_cpv_mapping_includes_ecoicop_label(client, db):
             synchronize_session=False
         )
         _restore_catalog(db, backup)
+        if created_assoc:
+            db.query(CpvTabellaDAssociation).filter(
+                CpvTabellaDAssociation.cpv_code == "80500000-9",
+                CpvTabellaDAssociation.ateco_code == "105",
+            ).delete(synchronize_session=False)
+        if created_master:
+            db.query(CpvTabellaDMaster).filter(CpvTabellaDMaster.cpv_code == "80500000-9").delete(
+                synchronize_session=False
+            )
         if created_series:
             db.query(IndexSeries).filter(IndexSeries.id == sid).delete(synchronize_session=False)
         db.commit()
@@ -230,14 +272,16 @@ def test_cpv_mapping_includes_ecoicop_label(client, db):
 def test_report_series_labels_helper(db):
     from app.api.v1.report_v2 import _collect_report_series_ids, _ecoicop_series_labels
 
-    backup = _backup_catalog(db, ["105"])
-    row = db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code == "105").first()
-    if row:
-        row.description = "Istruzione non definita per livello"
-    else:
-        db.add(
-            EcoicopCatalog(ecoicop_code="105", description="Istruzione non definita per livello")
-        )
+    backup = _backup_catalog(db, ["105", "105091"])
+    for code, desc in [
+        ("105", "Istruzione non definita per livello"),
+        ("105091", "Corsi d'istruzione e formazione non definibili per livello"),
+    ]:
+        row = db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code == code).first()
+        if row:
+            row.description = desc
+        else:
+            db.add(EcoicopCatalog(ecoicop_code=code, description=desc))
     db.commit()
     try:
         data = {
