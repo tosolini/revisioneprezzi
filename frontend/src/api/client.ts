@@ -1,5 +1,23 @@
 const BASE = '/api/v1'
 
+function formatErrorDetail(detail: unknown, fallback: string): string {
+  if (Array.isArray(detail)) {
+    const parts = detail.map(d => {
+      if (typeof d === 'string') return d
+      if (d && typeof d === 'object') {
+        const o = d as { loc?: unknown; msg?: unknown }
+        const field = Array.isArray(o.loc) && o.loc.length > 0 ? String(o.loc[o.loc.length - 1]) : ''
+        const msg = typeof o.msg === 'string' ? o.msg : JSON.stringify(d)
+        return field ? `${field}: ${msg}` : msg
+      }
+      return String(d)
+    })
+    return parts.join('; ') || fallback
+  }
+  if (typeof detail === 'string' && detail) return detail
+  return fallback
+}
+
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...opts?.headers },
@@ -7,7 +25,7 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || res.statusText)
+    throw new Error(formatErrorDetail(err.detail, res.statusText))
   }
   if (res.status === 204) return undefined as T
   return res.json()

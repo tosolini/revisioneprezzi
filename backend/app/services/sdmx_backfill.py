@@ -17,7 +17,7 @@ DATAFLOW_BY_TYPE: dict[str, str] = {
     "PPI": "145_360_DF_DCSC_PREZZPIND_1_4",
     "PPS": "145_376_DF_DCSC_PREZPRODSERV_1_7",
     "IR": "155_358_DF_DCSC_RETRATECO1_7",
-    "PC": "167_744_DF_DCSP_NIC1B2015_1",
+    "PC": "167_745_DF_DCSP_NIC1B2025_6",
 }
 
 # classification_ref → ExplorerIndexType (come da spec, con fallback id-prefix)
@@ -142,13 +142,16 @@ def build_sdmx_url(s: IndexSeries) -> str | None:
     if explorer in ("IR", "PPS"):
         key = f"{prefix}.IT.N.{code}"
     elif explorer == "PC":
-        key = f"{prefix}.IT.{code}"
+        # NIC/PC: set nuovo base 2025 (ECOICOP 2) dal 2026-01 —
+        # DATA_TYPE 85, MEASURE 4 = numero indice
+        key = f"{prefix}.IT.85.4.{code}"
     else:  # PPI
         key = f"{prefix}.IT.{code}"
 
+    start = "2026-01-01" if explorer == "PC" else "2024-01-01"
     return (
         f"https://esploradati.istat.it/SDMXWS/rest/data/IT1,{dataflow_id},1.0/"
-        f"{key}/ALL/?detail=full&startPeriod=2024-01-01&endPeriod=2026-03-31"
+        f"{key}/ALL/?detail=full&startPeriod={start}&endPeriod=2026-03-31"
         f"&dimensionAtObservation=TIME_PERIOD"
     )
 

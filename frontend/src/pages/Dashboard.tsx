@@ -453,7 +453,7 @@ export default function Dashboard() {
             style={inputStyle}
           />
           <input
-            placeholder="CUP (opzionale)"
+            placeholder="CUP (opzionale, anche più codici separati da virgola)"
             value={cup} onChange={e => setCup(e.target.value)}
             style={inputStyle}
           />

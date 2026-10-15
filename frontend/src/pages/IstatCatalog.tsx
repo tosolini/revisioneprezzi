@@ -748,6 +748,7 @@ export default function IstatCatalog() {
                   </div>
                   <div style={{ fontSize: 10, color: "var(--color-text-light)", marginTop: 4, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sdmx}>{sdmx}</div>
                   {t === "IR" && <div style={{ fontSize: 10, color: "var(--color-text-warning)", marginTop: 2 }}>Filtra DATA_TYPE=N</div>}
+                  {t === "PC" && <div style={{ fontSize: 10, color: "var(--color-text-warning)", marginTop: 2 }}>Filtra MISURA=4 (numero indice), base 2025 dal 2026-01</div>}
                   {t === "PPI" && <div style={{ fontSize: 10, color: "var(--color-text-light)" }}>Tabella diretta: 145_360…</div>}
                   {t === "PPS" && <div style={{ fontSize: 10, color: "var(--color-text-light)" }}>Tabella diretta: 145_376… trimestrale Q</div>}
                 </div>

@@ -5,6 +5,7 @@ import FieldRenderer from '../components/FieldRenderer'
 import CpvSearchModal from '../components/CpvSearchModal'
 import ReportView from '../components/ReportView'
 import ReportV2View from '../components/ReportV2View'
+import { printArea } from '../utils/printReport'
 import IndexWeightsEditor from '../components/IndexWeightsEditor'
 import WizardTimeline from '../components/WizardTimeline'
 import { parseWizardVersion } from '../components/utils'
@@ -105,24 +106,7 @@ export default function CaseWizard() {
   const amountManualEdited = useRef(false)
 
   const handlePrint = () => {
-    const style = document.createElement('style')
-    style.id = '__print_style'
-    style.textContent = `
-      @media print {
-        body * { visibility: hidden !important; }
-        #print-area, #print-area * { visibility: visible !important; }
-        #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-        #root > div > nav { display: none !important; }
-        button, .no-print { display: none !important; }
-        @page { margin: 15mm; }
-      }
-    `
-    document.head.appendChild(style)
-    window.print()
-    setTimeout(() => {
-      const s = document.getElementById('__print_style')
-      if (s) s.remove()
-    }, 1000)
+    printArea('print-area')
   }
 
   useEffect(() => {
@@ -1391,7 +1375,28 @@ export default function CaseWizard() {
               background: 'var(--color-bg-offset)', color: 'var(--color-text-secondary)', cursor: 'pointer',
               fontSize: 14, fontWeight: 600,
             }}>
-              Stampa / PDF
+              🖨️ Stampa
+            </button>
+          )}
+          {step === 7 && !!reportData?.sections && (
+            <button
+              onClick={async () => {
+                try {
+                  const { downloadReportPdf } = await import('../utils/reportPdf')
+                  await downloadReportPdf(reportData, `report-revisione-${id || 'pratica'}.pdf`)
+                } catch (e: unknown) {
+                  alert(`PDF non generato: ${e instanceof Error ? e.message : String(e)}`)
+                }
+              }}
+              className="no-print"
+              title="Scarica il report in PDF"
+              style={{
+                padding: '10px 20px', borderRadius: 8, border: '1.5px dashed var(--color-border)',
+                background: 'var(--color-bg-offset)', color: 'var(--color-text-secondary)', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600,
+              }}
+            >
+              📄 Scarica PDF
             </button>
           )}
           <button onClick={goNext} style={{ ...navBtnStyle, background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}>

@@ -103,6 +103,7 @@ def _normalize_columns(reader: csv.DictReader) -> dict:
             "HOM_TYPE_WORK",
             "GROUP_CATEGORY_COST",
             "E_COICOP_REV_ISTAT",
+            "ECOICOP_2",
             "MAIN_AGREEMENT_GROUP",
         ):
             inv["series_code"] = c
