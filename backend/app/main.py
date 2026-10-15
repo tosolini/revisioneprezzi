@@ -1,6 +1,8 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DataError
 
 from app.api.v1 import (
     backup,
@@ -49,6 +51,20 @@ app.include_router(wizard_v2.router, prefix="/api/v1")
 def on_startup():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     auto_seed()
+
+
+@app.exception_handler(DataError)
+async def data_error_handler(request: Request, exc: DataError):
+    """Traduce gli overflow del DB (es. stringa oltre il limite della colonna)
+    in 422 leggibile invece di 500 generico."""
+    logging.getLogger("app").warning("DataError su %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Valore troppo lungo per uno dei campi. "
+            "Controlla le lunghezze inserite e riprova."
+        },
+    )
 
 
 @app.get("/health")

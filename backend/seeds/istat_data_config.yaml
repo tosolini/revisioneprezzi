@@ -100,27 +100,11 @@ dataflows:
 
   # ──────────────────────────────────────────────
   # CONTRATTI DI SERVIZI E FORNITURE
-  # Indice dei prezzi al consumo (NIC)
-  # ──────────────────────────────────────────────
-  - dataflow_id: "167_744_DF_DCSP_NIC1B2015_1"
-    description: "Prezzi al consumo NIC (base 2015) - mensile"
-    contract_type: "services"
-    frequency: "monthly"
-    group_key: "nic"
-    dimension_map:
-      series_code: "E_COICOP_REV_ISTAT"
-      value: "OBS_VALUE"
-      period: "TIME_PERIOD"
-    series:
-      - code: "00"
-        name: "NIC - Indice generale (esclusi tabacchi)"
-
-  # ──────────────────────────────────────────────
-  # NIC - tutte le basi (Ecoicop 2)
-  # Include DT=1 (base 1996-2010) e DT=39 (base 2016-2025)
+  # Indice dei prezzi al consumo (NIC) — set nuovo base 2025 (ECOICOP 2),
+  # dati mensili dal 2026-01. Lo storico base 2015 non è più sincronizzato.
   # ──────────────────────────────────────────────
   - dataflow_id: "167_745_DF_DCSP_NIC1B2025_6"
-    description: "Prezzi al consumo NIC - tutte le basi (Ecoicop 2)"
+    description: "Prezzi al consumo NIC base 2025 (Ecoicop 2) - mensile dal 2026-01"
     contract_type: "services"
     frequency: "monthly"
     group_key: "nic_ecoicop2"
@@ -128,7 +112,15 @@ dataflows:
       series_code: "ECOICOP_2"
       value: "OBS_VALUE"
       period: "TIME_PERIOD"
-    series: []
+    series:
+      - code: "00"
+        name: "NIC - Indice generale"
+      - code: "10"
+        name: "NIC - Servizi di istruzione"
+      - code: "105"
+        name: "NIC - Istruzione non definita per livello (corsi di istruzione e formazione)"
+      - code: "105091"
+        name: "NIC - Corsi d'istruzione e formazione non definibili per livello"
 
   # ──────────────────────────────────────────────
   # Indici dei prezzi alla produzione dell'industria

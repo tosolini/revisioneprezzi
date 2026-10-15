@@ -159,17 +159,18 @@ export default function CaseDetail() {
               ['Titolo *', 'title'],
               ['Creato da', 'created_by'],
               ['CIG', 'cig'],
-              ['CUP', 'cup'],
+              ['CUP', 'cup', 'Uno o più CUP separati da virgola'],
               ['Stazione appaltante', 'stazione_appaltante'],
               ['Lotto / Contratto', 'lotto'],
               ['Operatore economico', 'operatore_economico'],
-            ] as Array<[string, keyof typeof metaDraft]>).map(([label, key]) => (
+            ] as Array<[string, keyof typeof metaDraft, string?]>).map(([label, key, placeholder]) => (
               <div key={key}>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
                   {label}
                 </label>
                 <input
                   value={metaDraft[key]}
+                  placeholder={placeholder}
                   onChange={e => setMetaDraft(prev => ({ ...prev, [key]: e.target.value }))}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}
                 />

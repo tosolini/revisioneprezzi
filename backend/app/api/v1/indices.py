@@ -755,7 +755,8 @@ def _build_example_url_for_unfiltered(
 
     Strategia: sostituisce ogni token vuoto '.' nella chiave con il primo valore
     ordinato della corrispondente dimensione (in ordine alfabetico). Se un
-    valore contiene 'N' (caso DATA_TYPE), preferisce 'N'. Non auto-filtra
+    valore contiene 'N' (caso DATA_TYPE), preferisce 'N'; per MEASURE preferisce
+    '4' (numero indice, quello che serve alla revisione prezzi). Non auto-filtra
     silenziosamente: serve solo come suggerimento nel messaggio d'errore.
     """
     try:
@@ -766,13 +767,17 @@ def _build_example_url_for_unfiltered(
         base, key, rest = m.group(1), m.group(2), m.group(3)
         tokens = key.split(".")
         dims_sorted = sorted(unfiltered.keys())
-        # Prepara valori suggeriti: preferisci N se presente
+        # Prepara valori suggeriti: preferisci N se presente (DATA_TYPE);
+        # per MEASURE preferisci 4 (numero indice per la revisione prezzi)
         suggested: list[str] = []
         for dim in dims_sorted:
             vals = unfiltered.get(dim) or []
             if not vals:
                 continue
-            chosen = "N" if "N" in vals else sorted(vals)[0]
+            if dim == "MEASURE" and "4" in vals:
+                chosen = "4"
+            else:
+                chosen = "N" if "N" in vals else sorted(vals)[0]
             suggested.append(chosen)
         if not suggested:
             return None
@@ -1039,6 +1044,31 @@ def get_saved_query(query_id: str, db: Session = Depends(get_db)):
         db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).count()
     )
     return _saved_query_payload(q, series_count)
+
+
+@router.get("/saved-queries/{query_id}/series")
+def get_saved_query_series(query_id: str, db: Session = Depends(get_db)):
+    """Ritorna le serie ISTAT collegate a una query SDMX salvata."""
+    q = _get_saved_query_or_404(db, query_id)
+    links = (
+        db.query(IndexImportQuerySeries)
+        .filter(IndexImportQuerySeries.query_id == q.id)
+        .all()
+    )
+    if not links:
+        return []
+    series_ids = [link.series_id for link in links]
+    rows = db.query(IndexSeries).filter(IndexSeries.id.in_(series_ids)).all()
+    by_id = {s.id: s for s in rows}
+    return [
+        {
+            "id": sid,
+            "name": by_id[sid].name if sid in by_id else None,
+            "classification_ref": by_id[sid].classification_ref if sid in by_id else None,
+            "frequency": by_id[sid].frequency if sid in by_id else None,
+        }
+        for sid in sorted(series_ids)
+    ]
 
 
 @router.post("/saved-queries/{query_id}/run", status_code=202)

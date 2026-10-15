@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { api, ReportResponse } from '../api/client'
 import ReportV2View, { ReportData } from '../components/ReportV2View'
+import { printArea } from '../utils/printReport'
 
 export default function ReportView() {
   const { id } = useParams()
@@ -10,29 +11,23 @@ export default function ReportView() {
   const [reportData, setReportData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [pdfState, setPdfState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({ status: 'idle' })
   const printRef = useRef<HTMLDivElement>(null)
 
   const handlePrint = () => {
-    document.getElementById('__print_style_report')?.remove()
-    const style = document.createElement('style')
-    style.id = '__print_style_report'
-    style.textContent = `
-      @media print {
-        body * { visibility: hidden !important; }
-        #print-area-report, #print-area-report * { visibility: visible !important; }
-        #print-area-report { position: absolute; left: 0; top: 0; width: 100%; }
-        #root > div > nav { display: none !important; }
-        button, .no-print { display: none !important; }
-        @page { margin: 15mm; }
-      }
-    `
-    document.head.appendChild(style)
-    window.print()
-    const cleanup = () => {
-      document.getElementById('__print_style_report')?.remove()
-      window.removeEventListener('afterprint', cleanup)
+    printArea('print-area-report')
+  }
+
+  const handlePdfDownload = async () => {
+    if (!reportData) return
+    setPdfState({ status: 'loading' })
+    try {
+      const { downloadReportPdf } = await import('../utils/reportPdf')
+      await downloadReportPdf(reportData as unknown as ReportData, `report-revisione-${id || 'pratica'}.pdf`)
+      setPdfState({ status: 'idle' })
+    } catch (e: unknown) {
+      setPdfState({ status: 'error', message: e instanceof Error ? e.message : String(e) })
     }
-    window.addEventListener('afterprint', cleanup)
   }
 
   useEffect(() => {
@@ -101,7 +96,7 @@ export default function ReportView() {
 
       {!hasVisual && report && (
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--color-text-light)', textAlign: 'center' }} className="no-print">
-          Report testuale — per il riepilogo visuale completa il wizard fino al passo finale (5 o 7) e usa Stampa / PDF.
+          Report testuale — per il riepilogo visuale completa il wizard fino al passo finale (5 o 7) e usa Stampa.
         </p>
       )}
 
@@ -150,8 +145,34 @@ export default function ReportView() {
               gap: 6,
             }}
           >
-            <span aria-hidden>🖨️</span> Stampa / PDF
+            <span aria-hidden>🖨️</span> Stampa
           </button>
+          {hasVisual && (
+            <button
+              onClick={() => void handlePdfDownload()}
+              disabled={pdfState.status === 'loading'}
+              title="Scarica il report in PDF"
+              style={{
+                padding: '10px 16px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 700,
+                background: 'var(--color-bg-card)',
+                color: 'var(--color-text-secondary)',
+                border: '1.5px dashed var(--color-border)',
+                cursor: pdfState.status === 'loading' ? 'not-allowed' : 'pointer',
+                opacity: pdfState.status === 'loading' ? 0.6 : 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span aria-hidden>📄</span> {pdfState.status === 'loading' ? 'Generazione…' : 'Scarica PDF'}
+            </button>
+          )}
+          {pdfState.status === 'error' && (
+            <span style={{ fontSize: 12, color: 'var(--color-text-error)', maxWidth: 320 }}>PDF non generato: {pdfState.message || 'errore'}</span>
+          )}
           <button
             onClick={() => navigate('/')}
             style={{

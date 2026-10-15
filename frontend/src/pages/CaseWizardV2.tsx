@@ -9,6 +9,7 @@ import { SavedQueryModal } from '../components/SavedQueryModal'
 import type { SavedQueryRef } from '../components/SavedQueryModal'
 import WizardTimeline from '../components/WizardTimeline'
 import { asNullableString, asNumber, isRecord, parseWizardVersion } from '../components/utils'
+import { printArea } from '../utils/printReport'
 interface TolSelection {
   code: string
   weight: number
@@ -743,26 +744,7 @@ export default function CaseWizardV2() {
   const printRef = useRef<HTMLDivElement>(null)
 
   const handlePrint = () => {
-    document.getElementById('__print_style_v2')?.remove()
-    const style = document.createElement('style')
-    style.id = '__print_style_v2'
-    style.textContent = `
-      @media print {
-        body * { visibility: hidden !important; }
-        #print-area-v2, #print-area-v2 * { visibility: visible !important; }
-        #print-area-v2 { position: absolute; left: 0; top: 0; width: 100%; }
-        #root > div > nav { display: none !important; }
-        button, .no-print { display: none !important; }
-        @page { margin: 15mm; }
-      }
-    `
-    document.head.appendChild(style)
-    window.print()
-    const cleanup = () => {
-      document.getElementById('__print_style_v2')?.remove()
-      window.removeEventListener('afterprint', cleanup)
-    }
-    window.addEventListener('afterprint', cleanup)
+    printArea('print-area-v2')
   }
 
   const [data, setData] = useState<WizardData>({
@@ -783,6 +765,7 @@ export default function CaseWizardV2() {
   const [initialLoading, setInitialLoading] = useState(false)
   const [error, setError] = useState('')
   const [reportData, setReportData] = useState<ReportViewProps | null>(null)
+  const [pdfState, setPdfState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({ status: 'idle' })
   const [mappings, setMappings] = useState<Record<string, CpvMapping>>({})
   const [mappingLoading, setMappingLoading] = useState(false)
   const [periodCoverage, setPeriodCoverage] = useState<Record<string, PeriodCoverage> | null>(null)
@@ -839,8 +822,8 @@ export default function CaseWizardV2() {
         const stipulation = parseDateStr(s['stipulation_date'])
         const execStart = parseDateStr(s['execution_start_date'])
         const endDate = parseDateStr(s['contract_end_date'])
-        // Riuso V1: prefill-if-empty base ← stipula, confronto ← avvio
-        // (Campi restano editabili, nessuna validazione incrociata.)
+        // Riuso V1: prefill-if-empty base ← stipula, confronto ← termine
+        // (fallback avvio). Campi restano editabili, nessuna validazione incrociata.
         const rawBase = typeof s['base_period'] === 'string' ? s['base_period'] : ''
         const rawComparison = typeof s['comparison_period'] === 'string' ? s['comparison_period'] : ''
         setData({
@@ -863,7 +846,7 @@ export default function CaseWizardV2() {
           cpv_description: cpvSelections[0]?.description || '',
           amount: asNumber(s['amount']) ?? 0,
           base_period: rawBase || (stipulation ? `${stipulation.slice(0, 7)}-01` : ''),
-          comparison_period: rawComparison || (execStart ? `${execStart.slice(0, 7)}-01` : ''),
+          comparison_period: rawComparison || (endDate ? `${endDate.slice(0, 7)}-01` : (execStart ? `${execStart.slice(0, 7)}-01` : '')),
           indices_config: isRecord(s['indices_config']) ? s['indices_config'] as unknown as IndicesConfig : undefined,
           result: isRecord(s['result']) ? s['result'] as unknown as CalcResultLike : null,
         })
@@ -947,15 +930,12 @@ export default function CaseWizardV2() {
   // su blur, se avvio+durata e termine vuoto → propone termine; se
   // avvio+termine e durata vuota → propone durata; se tutti e tre incoerenti
   // → solo warning inline, i valori utente restano. Prefill-if-empty V1:
-  // base ← stipula, confronto ← avvio.
+  // base ← stipula, confronto ← termine (fallback avvio).
   const handleContractDateBlur = () => {
     const d = dataRef.current
     const next = { ...d }
     if (!next.base_period && next.stipulation_date.length >= 7) {
       next.base_period = `${next.stipulation_date.slice(0, 7)}-01`
-    }
-    if (!next.comparison_period && next.execution_start_date.length >= 7) {
-      next.comparison_period = `${next.execution_start_date.slice(0, 7)}-01`
     }
     if (next.execution_start_date && next.duration_months != null && !next.contract_end_date) {
       const t = addMonthsToDateStr(next.execution_start_date, next.duration_months)
@@ -963,6 +943,13 @@ export default function CaseWizardV2() {
     } else if (next.execution_start_date && next.contract_end_date && next.duration_months == null) {
       const m = diffMonthsFloor(next.execution_start_date, next.contract_end_date)
       if (m != null) next.duration_months = m
+    }
+    if (!next.comparison_period) {
+      if (next.contract_end_date.length >= 7) {
+        next.comparison_period = `${next.contract_end_date.slice(0, 7)}-01`
+      } else if (next.execution_start_date.length >= 7) {
+        next.comparison_period = `${next.execution_start_date.slice(0, 7)}-01`
+      }
     }
     setData(next)
   }
@@ -2757,9 +2744,9 @@ export default function CaseWizardV2() {
                 </div>
               </div>
               {data.execution_start_date && data.contract_end_date && data.duration_months != null
-                && addMonthsToDateStr(data.execution_start_date, data.duration_months) !== data.contract_end_date && (
+                && (addMonthsToDateStr(data.execution_start_date, data.duration_months) || '').slice(0, 7) !== data.contract_end_date.slice(0, 7) && (
                 <div style={{ padding: '9px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'var(--color-bg-warning)', color: 'var(--color-text-warning)', border: '1px solid var(--color-border-warning)', lineHeight: 1.4 }}>
-                  Termine incoerente con avvio + durata (atteso {addMonthsToDateStr(data.execution_start_date, data.duration_months) || '—'}): i valori inseriti restano così come sono.
+                  Termine incoerente con avvio + durata (atteso {(addMonthsToDateStr(data.execution_start_date, data.duration_months) || '').slice(0, 7) || '—'}): i valori inseriti restano così come sono.
                 </div>
               )}
 
@@ -2790,7 +2777,7 @@ export default function CaseWizardV2() {
                 </label>
                 <MonthYearPicker value={data.comparison_period} onChange={v => setDataField('comparison_period', v)} id="comparison-period" />
                 <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-light)', lineHeight: 1.4 }}>
-                  Seleziona dalle tendine il mese di rilevazione corrente — deve essere successivo al periodo base.
+                  Seleziona dalle tendine il mese di rilevazione corrente — deve essere successivo al periodo base. Se vuoto, viene proposto il mese del termine contratto (se manca, quello di avvio).
                 </p>
                 {data.comparison_period && (
                   <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
@@ -3045,7 +3032,7 @@ export default function CaseWizardV2() {
               <button
                 onClick={handlePrint}
                 disabled={!reportData}
-                title={!reportData ? 'Report non ancora pronto' : 'Stampa o salva PDF'}
+                title={!reportData ? 'Report non ancora pronto' : 'Stampa il report'}
                 style={{
                   padding: '10px 16px',
                   borderRadius: 10,
@@ -3061,8 +3048,42 @@ export default function CaseWizardV2() {
                   gap: 6,
                 }}
               >
-                <span aria-hidden>🖨️</span> Stampa / PDF
+                <span aria-hidden>🖨️</span> Stampa
               </button>
+              <button
+                onClick={async () => {
+                  if (!reportData) return;
+                  setPdfState({ status: 'loading' });
+                  try {
+                    const { downloadReportPdf } = await import('../utils/reportPdf');
+                    await downloadReportPdf(reportData, `report-revisione-${id || 'pratica'}.pdf`);
+                    setPdfState({ status: 'idle' });
+                  } catch (e: unknown) {
+                    setPdfState({ status: 'error', message: e instanceof Error ? e.message : String(e) });
+                  }
+                }}
+                disabled={!reportData || pdfState.status === 'loading'}
+                title="Scarica il report in PDF"
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: !reportData ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
+                  color: !reportData ? 'var(--color-text-light)' : 'var(--color-text-secondary)',
+                  border: '1.5px dashed var(--color-border)',
+                  cursor: !reportData || pdfState.status === 'loading' ? 'not-allowed' : 'pointer',
+                  opacity: !reportData || pdfState.status === 'loading' ? 0.6 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span aria-hidden>📄</span> {pdfState.status === 'loading' ? 'Generazione…' : 'Scarica PDF'}
+              </button>
+              {pdfState.status === 'error' && (
+                <span style={{ fontSize: 12, color: 'var(--color-text-error)', maxWidth: 320 }}>PDF non generato: {pdfState.message || 'errore'}</span>
+              )}
               <button
                 onClick={async () => {
                   if (id && (currentStep >= 5 || reportData || data.result)) {

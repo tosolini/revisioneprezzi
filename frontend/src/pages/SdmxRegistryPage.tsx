@@ -264,6 +264,13 @@ function SavedQueryModal({ query, onClose, onSaved, onDeleted }: {
   )
 }
 
+interface LinkedSeries {
+  id: string
+  name?: string | null
+  classification_ref?: string | null
+  frequency?: string | null
+}
+
 export default function SdmxRegistryPage() {
   const [queries, setQueries] = useState<SavedQuery[]>([])
   const [loading, setLoading] = useState(true)
@@ -271,6 +278,9 @@ export default function SdmxRegistryPage() {
   const [runState, setRunState] = useState<{ id: string; status: 'running' | 'done' | 'error'; message?: string } | null>(null)
   const [structuredRunError, setStructuredRunError] = useState<{ unfiltered_dimensions?: Record<string, string[]>; example_url?: string } | null>(null)
   const [manageTarget, setManageTarget] = useState<SavedQuery | null>(null)
+  const [expandedQuery, setExpandedQuery] = useState<string | null>(null)
+  const [seriesByQuery, setSeriesByQuery] = useState<Record<string, LinkedSeries[]>>({})
+  const [seriesLoading, setSeriesLoading] = useState<string | null>(null)
 
   const tryParseStructured = (text: string): { message: string; unfiltered_dimensions?: Record<string, string[]>; example_url?: string; suggestion?: string } | null => {
     try {
@@ -361,6 +371,22 @@ export default function SdmxRegistryPage() {
     try { return new URL(url).searchParams.get("endPeriod") || "—" } catch { return "—" }
   }
 
+  const toggleSeries = async (q: SavedQuery) => {
+    if (expandedQuery === q.id) { setExpandedQuery(null); return }
+    setExpandedQuery(q.id)
+    if (seriesByQuery[q.id]) return
+    setSeriesLoading(q.id)
+    try {
+      const res = await fetch(`/api/v1/indices/saved-queries/${encodeURIComponent(q.id)}/series`)
+      const data = await res.json() as LinkedSeries[]
+      setSeriesByQuery(prev => ({ ...prev, [q.id]: Array.isArray(data) ? data : [] }))
+    } catch {
+      setSeriesByQuery(prev => ({ ...prev, [q.id]: [] }))
+    } finally {
+      setSeriesLoading(null)
+    }
+  }
+
   const strategyBadge = (s?: string) => {
     if (s === "today") return <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'var(--color-bg-info)', color: 'var(--color-text-info)' }}>Oggi</span>
     if (s === "fixed") return <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: '#f3f4f6', color: '#6b7280' }}>Fissa</span>
@@ -446,12 +472,23 @@ export default function SdmxRegistryPage() {
             </thead>
             <tbody>
               {filtered.map(q => (
-                <tr key={q.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <React.Fragment key={q.id}>
+                <tr style={{ borderBottom: expandedQuery === q.id ? 'none' : '1px solid #f3f4f6' }}>
                   <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 12 }}>{q.dataflow_id}</td>
                   <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.key_part || '—'}</td>
                   <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 12 }}>{getEndPeriod(q.url)}</td>
                   <td style={{ padding: '10px 12px' }}>{strategyBadge(q.end_period_strategy)}</td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{q.series_count ?? 0}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                    <button
+                      title="Mostra le serie collegate"
+                      onClick={() => toggleSeries(q)}
+                      style={{
+                        padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                        border: '1px solid var(--color-border)', background: expandedQuery === q.id ? 'var(--color-bg-muted)' : 'var(--color-bg-card)',
+                        color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline',
+                      }}
+                    >{q.series_count ?? 0} {expandedQuery === q.id ? '▴' : '▾'}</button>
+                  </td>
                   <td style={{ padding: '10px 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>{q.last_run_at ? new Date(q.last_run_at).toLocaleDateString() : '—'}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -479,6 +516,33 @@ export default function SdmxRegistryPage() {
                     </div>
                   </td>
                 </tr>
+                {expandedQuery === q.id && (
+                  <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td colSpan={7} style={{ padding: '4px 12px 12px 24px', background: 'var(--color-bg-muted)' }}>
+                      {seriesLoading === q.id ? (
+                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Caricamento serie collegate...</div>
+                      ) : (seriesByQuery[q.id] || []).length === 0 ? (
+                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Nessuna serie collegata a questa query.</div>
+                      ) : (
+                        <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {(seriesByQuery[q.id] || []).map(s => (
+                            <div key={s.id} style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                              <Link
+                                to={`/catalogs/istat?q=${encodeURIComponent(s.id)}`}
+                                title="Apri indice in Indici ISTAT"
+                                style={{ fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                              >{s.id} ↗</Link>
+                              <span style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {s.name || ''}{s.classification_ref ? ` · ${s.classification_ref}` : ''}{s.frequency ? ` · ${s.frequency}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
