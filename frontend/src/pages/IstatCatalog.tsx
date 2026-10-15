@@ -38,6 +38,7 @@ interface Series {
   observations: Observation[]
   saved_query?: SavedQuery | null
   ateco_label?: string | null
+  ecoicop_label?: string | null
 }
 
 interface SearchHit {
@@ -49,6 +50,7 @@ interface SearchHit {
   frequency: string
   saved_query?: SavedQuery | null
   ateco_label?: string | null
+  ecoicop_label?: string | null
 }
 
 const GROUP_LABELS: Record<string, string> = {
@@ -873,6 +875,9 @@ export default function IstatCatalog() {
                           {hit.ateco_label && (
                             <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: 12 }}> — {hit.ateco_label}</span>
                           )}
+                          {hit.ecoicop_label && (
+                            <div style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontStyle: 'italic', fontSize: 12 }}>{hit.ecoicop_label}</div>
+                          )}
                           {hit.saved_query && <SdmxChip query={hit.saved_query} />}
                         </td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={hit.ateco_label ? `[${getAtecoCode(hit.id, hit.classification_ref)}] ${hit.ateco_label}` : undefined}>{hit.id}</td>
@@ -982,6 +987,9 @@ export default function IstatCatalog() {
                       {s.name}
                       {s.ateco_label && (
                         <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: 12 }}> — {s.ateco_label}</span>
+                      )}
+                      {s.ecoicop_label && (
+                        <div style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontStyle: 'italic', fontSize: 12 }}>{s.ecoicop_label}</div>
                       )}
                       {s.saved_query && <SdmxChip query={s.saved_query} />}
                     </td>

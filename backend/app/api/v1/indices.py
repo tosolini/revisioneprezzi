@@ -321,6 +321,7 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
             series = sorted(series, key=lambda x: x.name)[:100]
     saved_by_series = _latest_saved_queries(db, [s.id for s in series])
     ateco_labels = _ateco_labels_for_wages(db, series)
+    ecoicop_labels = _ecoicop_labels_for_series(db, series)
     return [
         {
             "id": s.id,
@@ -331,9 +332,42 @@ def search_indices(q: str = "", group: str = "", db: Session = Depends(get_db)):
             "frequency": s.frequency,
             "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
             "ateco_label": ateco_labels.get(s.id),
+            "ecoicop_label": ecoicop_labels.get(s.id),
         }
         for s in series
     ]
+
+
+def _ecoicop_labels_for_series(
+    db: Session, series_list: list[IndexSeries]
+) -> dict[str, str | None]:
+    """Ritorna mapping series.id -> descrizione ECOICOP 2 per serie NIC.
+
+    Attivo solo su classification_ref nic_ecoicop2 (codice da
+    ISTAT_NIC_ECOICOP2_<codice>); altrove ritorna {}. Lookup unico su
+    ecoicop_catalog (nessuna chiamata ISTAT a runtime).
+    """
+    from app.models.ecoicop_catalog import EcoicopCatalog
+
+    codes_by_series: dict[str, str] = {}
+    for s in series_list:
+        if s.classification_ref != "nic_ecoicop2":
+            continue
+        sid = s.id
+        prefix = "ISTAT_NIC_ECOICOP2_"
+        if sid.startswith(prefix):
+            code = sid.removeprefix(prefix)
+            if code:
+                codes_by_series[sid] = code
+    if not codes_by_series:
+        return {}
+    rows = (
+        db.query(EcoicopCatalog)
+        .filter(EcoicopCatalog.ecoicop_code.in_(list(set(codes_by_series.values()))))
+        .all()
+    )
+    desc_by_code = {r.ecoicop_code: r.description for r in rows}
+    return {sid: desc_by_code.get(code) for sid, code in codes_by_series.items()}
 
 
 class ObservationCreate(BaseModel):
@@ -1185,6 +1219,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
     )
     saved_by_series = _latest_saved_queries(db, [s.id for s in series_list])
     ateco_labels = _ateco_labels_for_wages(db, series_list)
+    ecoicop_labels = _ecoicop_labels_for_series(db, series_list)
     result = []
     for s in series_list:
         obs = (
@@ -1203,6 +1238,7 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
                 "observation_count": len(obs),
                 "saved_query": _saved_query_payload(saved_by_series.get(s.id)),
                 "ateco_label": ateco_labels.get(s.id),
+                "ecoicop_label": ecoicop_labels.get(s.id),
                 "observations": [
                     {
                         "period": o.ref_period.isoformat(),

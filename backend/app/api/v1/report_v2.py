@@ -363,6 +363,10 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
     # saved_result già estratto dal blob V2 sopra; qui solo evidenza serie
 
     indices_data.update(_extract_series_evidence(formula_steps, saved_result, series_id))
+    indices_data["series_labels"] = _ecoicop_series_labels(
+        db,
+        _collect_report_series_ids(indices_data),
+    )
     sections.append(ReportSection(title="Indici ISTAT", data=indices_data, order=4))
 
     # Sezione 5: Parametri Normativi
@@ -485,6 +489,44 @@ def _as_int(value: object) -> int | None:
         return int(float(str(value)))
     except (ValueError, TypeError):
         return None
+
+
+def _collect_report_series_ids(indices_data: dict) -> list[str]:
+    """Raccoglie tutti i series_id citati nella sezione Indici del report."""
+    ids: list[str] = []
+    if indices_data.get("series_id"):
+        ids.append(indices_data["series_id"])
+    for comp in indices_data.get("components") or []:
+        if isinstance(comp, dict) and comp.get("series_id"):
+            ids.append(comp["series_id"])
+    for group in indices_data.get("multi_components") or []:
+        if not isinstance(group, dict):
+            continue
+        if group.get("series_id"):
+            ids.append(group["series_id"])
+        for comp in group.get("components") or []:
+            if isinstance(comp, dict) and comp.get("series_id"):
+                ids.append(comp["series_id"])
+    return ids
+
+
+def _ecoicop_series_labels(db, series_ids: list[str]) -> dict[str, str]:
+    """Descrizioni ECOICOP 2 per le serie NIC citate nel report."""
+    from app.models.ecoicop_catalog import EcoicopCatalog
+
+    prefix = "ISTAT_NIC_ECOICOP2_"
+    codes = {sid.removeprefix(prefix) for sid in series_ids if sid.startswith(prefix)}
+    if not codes:
+        return {}
+    rows = (
+        db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code.in_(list(codes))).all()
+    )
+    by_code = {r.ecoicop_code: r.description for r in rows}
+    return {
+        sid: by_code[code]
+        for sid in series_ids
+        if sid.startswith(prefix) and (code := sid.removeprefix(prefix)) in by_code
+    }
 
 
 def _multi_component_rows(saved_result: dict | None) -> list | None:

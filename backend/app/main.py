@@ -12,6 +12,7 @@ from app.api.v1 import (
     classify,
     cpv,
     ateco,
+    ecoicop,
     extract,
     indices,
     report,
@@ -41,6 +42,7 @@ app.include_router(wizard_config.router, prefix="/api/v1")
 app.include_router(extract.router, prefix="/api/v1")
 app.include_router(backup.router, prefix="/api/v1")
 app.include_router(ateco.router, prefix="/api/v1")
+app.include_router(ecoicop.router, prefix="/api/v1")
 app.include_router(cpv.router, prefix="/api/v1")
 app.include_router(user_settings.router, prefix="/api/v1")
 app.include_router(tol.router, prefix="/api/v1")

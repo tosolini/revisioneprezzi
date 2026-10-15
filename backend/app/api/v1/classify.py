@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.index_series import IndexSeries
 from app.services.classification_service import classify
 from app.services.index_selection_service import get_candidate_series
 from app.services.tabella_d_service import resolve_associations, resolve_series
@@ -97,11 +98,30 @@ def cpv_index_mapping(payload: CpvIndexMappingRequest, db: Session = Depends(get
     associations = []
     for assoc in result["associations"]:
         series = resolve_series(assoc, db)
+        series_id = series["series_id"]
+        series_name = None
+        ecoicop_label = None
+        if series_id:
+            row = db.query(IndexSeries).filter(IndexSeries.id == series_id).first()
+            if row is not None:
+                series_name = row.name
+                if row.classification_ref == "nic_ecoicop2":
+                    from app.models.ecoicop_catalog import EcoicopCatalog
+
+                    code = series_id.removeprefix("ISTAT_NIC_ECOICOP2_")
+                    entry = (
+                        db.query(EcoicopCatalog)
+                        .filter(EcoicopCatalog.ecoicop_code == code)
+                        .first()
+                    )
+                    ecoicop_label = entry.description if entry else None
         associations.append(
             {
                 **assoc,
-                "series_id": series["series_id"],
+                "series_id": series_id,
                 "available": series["available"],
+                "series_name": series_name,
+                "ecoicop_label": ecoicop_label,
             }
     )
     return {

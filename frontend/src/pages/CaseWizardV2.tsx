@@ -123,6 +123,8 @@ interface MappingAssoc {
   description: string
   series_id: string | null
   available: boolean
+  series_name?: string | null
+  ecoicop_label?: string | null
 }
 
 interface IndexSeriesOption {
@@ -130,6 +132,7 @@ interface IndexSeriesOption {
   name: string
   frequency?: string | null
   ateco_label?: string | null
+  ecoicop_label?: string | null
 }
 
 type ReportViewProps = ComponentProps<typeof ReportV2View>['reportData']
@@ -1216,6 +1219,8 @@ export default function CaseWizardV2() {
           description: String(a['description'] ?? ''),
           series_id: asNullableString(a['series_id']),
           available: a['available'] === true,
+          series_name: asNullableString(a['series_name']),
+          ecoicop_label: asNullableString(a['ecoicop_label']),
         }))
         const tableClass = asNullableString(body['table_class'])
         const usableSeries = assocs.filter(a => a.series_id).map(a => a.series_id as string)
@@ -1453,6 +1458,7 @@ export default function CaseWizardV2() {
             id: String(s['id'] ?? ''),
             name: String(s['name'] ?? s['id'] ?? ''),
             ateco_label: typeof s['ateco_label'] === 'string' ? s['ateco_label'] : null,
+            ecoicop_label: typeof s['ecoicop_label'] === 'string' ? s['ecoicop_label'] : null,
           })).filter(s => s.id.length > 0)
         : []
       setIndexSearch(prev => ({ ...prev, [cpv]: { q, results: parsed, searching: false } }))
@@ -1987,6 +1993,12 @@ export default function CaseWizardV2() {
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13 }}>
             <span style={{ flex: 1 }}>
               <strong>{a.index_type}</strong> [{a.ateco_code}] {a.description}
+              {a.series_name && a.series_name !== a.description && (
+                <span style={{ display: 'block', fontWeight: 400, fontSize: 12 }}>{a.series_name}</span>
+              )}
+              {a.ecoicop_label && (
+                <span style={{ display: 'block', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 12 }}>{a.ecoicop_label}</span>
+              )}
               {!a.available && <span style={{ color: 'var(--color-text-warning)', marginLeft: 6 }}>— dati non disponibili</span>}
               {coverageNote(a.series_id)}
             </span>
@@ -2077,7 +2089,7 @@ export default function CaseWizardV2() {
             >
               <option value="">— Seleziona indice —</option>
               {s.results.map(r => (
-                <option key={r.id} value={r.id}>{r.ateco_label ? `${r.name || r.id} — ${r.ateco_label}` : (r.name || r.id)}</option>
+                <option key={r.id} value={r.id}>{r.ecoicop_label ? `${r.name || r.id} — ${r.ecoicop_label}` : (r.ateco_label ? `${r.name || r.id} — ${r.ateco_label}` : (r.name || r.id))}</option>
               ))}
             </select>
           )}

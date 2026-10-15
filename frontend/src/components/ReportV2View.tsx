@@ -500,6 +500,9 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div style={{ marginTop: 16, background: 'var(--color-bg-offset)', borderRadius: 8, padding: '12px 16px' }}>
             <p style={{ ...labelStyle, marginBottom: 4 }}>Serie ISTAT utilizzata per il confronto</p>
             <p style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, margin: 0 }}>{data.series_id}</p>
+            {data.series_labels?.[data.series_id] && (
+              <p style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{data.series_labels[data.series_id]}</p>
+            )}
           </div>
         )}
         {data.components && data.components.length > 0 && (
@@ -522,7 +525,12 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                 <tbody>
                   {data.components.map((c: ComponentRow, i: number) => (
                     <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={tdStyle}>{c.series_id}</td>
+                      <td style={tdStyle}>
+                        {c.series_id}
+                        {data.series_labels?.[c.series_id || ''] && (
+                          <div style={{ fontSize: 11, fontStyle: 'italic', color: 'var(--color-text-muted)' }}>{data.series_labels[c.series_id || '']}</div>
+                        )}
+                      </td>
                       <td style={tdStyle}>{c.weight}%</td>
                       <td style={tdStyle}>
                         {Number(c.base_value ?? 0).toFixed(2)}
@@ -562,6 +570,9 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                 </p>
                 {g.series_id && (
                   <p style={{ fontFamily: 'monospace', fontSize: 13, margin: 0 }}>Serie ISTAT: <strong>{g.series_id}</strong></p>
+                )}
+                {data.series_labels?.[g.series_id || ''] && (
+                  <p style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{data.series_labels[g.series_id || '']}</p>
                 )}
                 {Array.isArray(g.components) && g.components.length > 0 && (
                   <div style={{ marginTop: 8, fontSize: 12 }}>

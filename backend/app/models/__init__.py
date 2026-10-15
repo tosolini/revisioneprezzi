@@ -6,6 +6,7 @@ from app.models.contract_context import ContractContext
 from app.models.cpv_assignment import CpvAssignment
 from app.models.cpv_catalog import CpvCatalog
 from app.models.ateco_catalog import AtecoCatalog
+from app.models.ecoicop_catalog import EcoicopCatalog
 from app.models.family_definition import FamilyDefinition
 from app.models.tabella_d import CpvTabellaDAssociation, CpvTabellaDMaster
 from app.models.family_mapping import FamilyMapping
@@ -28,6 +29,7 @@ __all__ = [
     "ContractContext",
     "CpvAssignment",
     "CpvCatalog",
+    "EcoicopCatalog",
     "FamilyDefinition",
     "FamilyMapping",
     "CpvTabellaDAssociation",
