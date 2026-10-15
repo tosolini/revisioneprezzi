@@ -453,21 +453,9 @@ def _collect_report_series_ids(indices_data: dict) -> list[str]:
 
 def _ecoicop_series_labels(db, series_ids: list[str]) -> dict[str, str]:
     """Descrizioni ECOICOP 2 per le serie NIC citate nel report."""
-    from app.models.ecoicop_catalog import EcoicopCatalog
+    from app.services.ecoicop_labels import ecoicop_labels_for_series_ids
 
-    prefix = "ISTAT_NIC_ECOICOP2_"
-    codes = {sid.removeprefix(prefix) for sid in series_ids if sid.startswith(prefix)}
-    if not codes:
-        return {}
-    rows = (
-        db.query(EcoicopCatalog).filter(EcoicopCatalog.ecoicop_code.in_(list(codes))).all()
-    )
-    by_code = {r.ecoicop_code: r.description for r in rows}
-    return {
-        sid: by_code[code]
-        for sid in series_ids
-        if sid.startswith(prefix) and (code := sid.removeprefix(prefix)) in by_code
-    }
+    return ecoicop_labels_for_series_ids(db, series_ids)
 
 
 def _report_series_labels(db, series_ids: list[str]) -> dict[str, str]:

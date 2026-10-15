@@ -347,27 +347,17 @@ def _ecoicop_labels_for_series(
     ISTAT_NIC_ECOICOP2_<codice>); altrove ritorna {}. Lookup unico su
     ecoicop_catalog (nessuna chiamata ISTAT a runtime).
     """
-    from app.models.ecoicop_catalog import EcoicopCatalog
+    from app.services.ecoicop_labels import ecoicop_labels_for_series_ids
 
-    codes_by_series: dict[str, str] = {}
-    for s in series_list:
-        if s.classification_ref != "nic_ecoicop2":
-            continue
-        sid = s.id
-        prefix = "ISTAT_NIC_ECOICOP2_"
-        if sid.startswith(prefix):
-            code = sid.removeprefix(prefix)
-            if code:
-                codes_by_series[sid] = code
-    if not codes_by_series:
+    nic_ids = [
+        s.id
+        for s in series_list
+        if s.classification_ref == "nic_ecoicop2" and s.id.startswith("ISTAT_NIC_ECOICOP2_")
+    ]
+    if not nic_ids:
         return {}
-    rows = (
-        db.query(EcoicopCatalog)
-        .filter(EcoicopCatalog.ecoicop_code.in_(list(set(codes_by_series.values()))))
-        .all()
-    )
-    desc_by_code = {r.ecoicop_code: r.description for r in rows}
-    return {sid: desc_by_code.get(code) for sid, code in codes_by_series.items()}
+    found = ecoicop_labels_for_series_ids(db, nic_ids)
+    return {sid: found.get(sid) for sid in nic_ids}
 
 
 class ObservationCreate(BaseModel):
