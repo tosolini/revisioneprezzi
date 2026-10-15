@@ -19,8 +19,6 @@ from app.api.v1 import (
     report_v2,
     tol,
     user_settings,
-    wizard,
-    wizard_config,
     wizard_v2,
 )
 from app.core.config import settings
@@ -37,8 +35,6 @@ app.include_router(classify.router, prefix="/api/v1")
 app.include_router(indices.router, prefix="/api/v1")
 app.include_router(report.router, prefix="/api/v1")
 app.include_router(report_v2.router, prefix="/api/v1")
-app.include_router(wizard.router, prefix="/api/v1")
-app.include_router(wizard_config.router, prefix="/api/v1")
 app.include_router(extract.router, prefix="/api/v1")
 app.include_router(backup.router, prefix="/api/v1")
 app.include_router(ateco.router, prefix="/api/v1")

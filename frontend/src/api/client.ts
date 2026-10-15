@@ -48,14 +48,6 @@ export interface CaseDetail extends CaseItem {
   updated_at: string
 }
 
-export interface WizardAnswer {
-  id: string
-  step: number
-  field_key: string
-  field_value: string | null
-  created_at: string
-}
-
 export interface ClassifyResult {
   cpv_primary: string
   cpv_description: string | null
@@ -136,22 +128,8 @@ export const api = {
       request<CaseDetail>(`/cases/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/cases/${id}`, { method: 'DELETE' }),
-    deleteDrafts: () =>
-      request<{ deleted: number }>('/cases/delete-drafts', { method: 'POST' }),
   },
   wizard: {
-    save: (caseId: string, step: number, answers: { step: number; field_key: string; field_value: string }[]) =>
-      request<WizardAnswer[]>(`/cases/${caseId}/wizard/${step}`, {
-        method: 'POST',
-        body: JSON.stringify({ answers }),
-      }),
-    get: (caseId: string, step: number) =>
-      request<WizardAnswer[]>(`/cases/${caseId}/wizard/${step}`),
-    setVersion: (caseId: string, version: 'v1' | 'v2' | 'unified') =>
-      request<{ status: string; wizard_version: string }>(`/cases/${caseId}/wizard-v2/version`, {
-        method: 'PUT',
-        body: JSON.stringify({ version }),
-      }),
     practiceMeta: {
       get: (caseId: string) =>
         request<{ lotto: string | null; operatore_economico: string | null }>(`/cases/${caseId}/practice-meta`),

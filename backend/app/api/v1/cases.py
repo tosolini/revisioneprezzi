@@ -111,7 +111,7 @@ def save_practice_meta(case_id: UUID, payload: PracticeMetaSave, db: Session = D
     """Scrive lotto/operatore come righe KV step 0 (modale pratica, non wizard).
 
     Upsert per chiave; stringa vuota/None cancella la riga. Non tocca
-    wizard_version né current_step: il modale non è un percorso wizard.
+    current_step: il modale non è un percorso wizard.
     """
     case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
     if not case:
@@ -147,14 +147,3 @@ def save_practice_meta(case_id: UUID, payload: PracticeMetaSave, db: Session = D
             )
     db.commit()
     return get_practice_meta(case_id, db)
-
-
-@router.post("/delete-drafts")
-def delete_draft_cases(db: Session = Depends(get_db)):
-    """Elimina in blocco le pratiche lasciate in bozza (status 'draft')."""
-    drafts = db.query(CaseFile).filter(CaseFile.status == "draft").all()
-    count = len(drafts)
-    for case in drafts:
-        db.delete(case)
-    db.commit()
-    return {"deleted": count}

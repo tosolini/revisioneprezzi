@@ -6,11 +6,11 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.4** — wizard unificato a 5 passi (il percorso V1 a 7 passi resta disponibile per le pratiche esistenti).
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.5** — wizard a 5 passi.
 
 ### Funzionalità principali
 
-- **Wizard unificato** — un solo ingresso (`Continua Procedura`, `/cases/:id/wizard-v2`): riepilogo pratica in sola lettura, tipo contratto (lavori/servizi/forniture/**misto**) con flag operativi non bloccanti, date stipula/avvio/termine + durata con derivazione automatica e calendario, importi e periodi, pesi indici, calcolo. La route V1 (`/cases/:id/wizard/:step`) resta per le pratiche esistenti
+- **Wizard** — un solo ingresso (`Continua Procedura`, `/cases/:id/wizard-v2`): riepilogo pratica in sola lettura, tipo contratto (lavori/servizi/forniture/**misto**) con flag operativi non bloccanti, date stipula/avvio/termine + durata con derivazione automatica e calendario, importi e periodi, pesi indici, calcolo
 - **Mapping CPV → Tabella D** — associazione CPV → indici ISTAT (serie singola o media ponderata, Art. 11 e Allegato II.2-bis), con fallback sui candidati di famiglia (Art. 11.4) e forzatura indice singolo motivata (Art. 11.5)
 - **Motore di calcolo** — media ponderata delle variazioni (Tabella D) e indice sintetico (TOL), applicazione della formula legale (soglia 5%, coefficiente 80% per servizi/forniture; 3%/90% per lavori), calcolo multi-componente (Art. 13)
 - **Trasparenza sui dati ISTAT** — i periodi richiesti senza dato vengono segnalati con i mesi non registrati e il periodo effettivamente usato (fallback)
@@ -26,7 +26,7 @@ Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi p
 
 #### Quale percorso?
 
-Le pratiche nuove entrano direttamente nel **wizard unificato (5 passi)**: 1. Inquadramento (tipo + riepilogo pratica) → 2. CPV/ATECO o TOL → 3. Importi, date e periodi → 4. Pesi indici → 5. Calcolo e report. Il **percorso completo V1 (7 passi)** resta per le pratiche create prima della 1.2.0.
+Le pratiche seguono il **wizard a 5 passi**: 1. Inquadramento (tipo + riepilogo pratica) → 2. CPV/ATECO o TOL → 3. Importi, date e periodi → 4. Pesi indici → 5. Calcolo e report.
 
 ### Schermate
 
@@ -175,8 +175,7 @@ Endpoint principali:
 | POST | `/api/v1/cases` | Crea nuova pratica |
 | POST | `/api/v1/cases/{id}/extract` | Estrae dati da PDF/DOCX (CIG/CUP/oggetto/CPV/importo/durata/date ISO) |
 | GET/PUT | `/api/v1/cases/{id}/practice-meta` | Lotto e operatore economico della pratica |
-| PUT | `/api/v1/cases/{id}/wizard-v2` | Salva stato wizard unificato |
-| POST | `/api/v1/cases/{id}/wizard/{step}` | Salva risposte wizard (V1, legacy) |
+| PUT | `/api/v1/cases/{id}/wizard-v2` | Salva stato wizard |
 | POST | `/api/v1/classify` | Classifica CPV → Tabella D |
 | POST | `/api/v1/calculation/v2/calculate` | Calcola revisione (serie singola o composita) |
 | POST | `/api/v1/calculation/v2/calculate/multi-component` | Calcolo multi-componente (Art. 13) |
@@ -239,6 +238,11 @@ L'"Aggiorna" salva solo URL e strategie: per ri-scaricare i dati si usa il pulsa
   segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
   `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
   puntuali, ma non è esposto in alcuna interfaccia.
+
+## Novità nella 1.2.5
+
+- **Rimozione percorso V1 a 7 passi**: resta il solo wizard a 5 passi. Eliminati route, endpoint (`/wizard/*`, `/wizard-v2/version`, `delete-drafts`) e logiche di resume a doppia versione; il report legge solo blob wizard, colonne pratica e KV step 0. Le 3 pratiche storiche con risposte legacy sono state migrate (CIG/CUP/stazione/lotto/operatore nelle sedi canoniche).
+- **Report coerente**: importi, periodi, tipo contratto e serie sempre dalla stessa fonte del calcolo salvato (prima i fallback legacy potevano mostrare valori di sessioni precedenti).
 
 ## Novità nella 1.2.4
 

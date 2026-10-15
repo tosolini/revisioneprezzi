@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, CaseItem } from '../api/client'
-import { formatDate, getDeviceId, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
+import { formatDate, getDeviceId, statusLabel } from '../components/utils'
 import NotesEditor, { isEmptyHtml } from '../components/NotesEditor'
 
 type ExtractFields = Record<string, unknown>
@@ -43,10 +43,7 @@ export default function Dashboard() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [totalSteps, setTotalSteps] = useState(8)
-  const [wizardV2Info, setWizardV2Info] = useState<Record<string, { isV2: boolean; v2Step: number }>>({})
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [deletingDrafts, setDeletingDrafts] = useState(false)
   const navigate = useNavigate()
 
   // --- V2 entry state ---
@@ -60,33 +57,8 @@ export default function Dashboard() {
   const load = async (q?: string) => {
     try {
       setLoading(true)
-      const [list, config] = await Promise.all([
-        q ? api.cases.search(q) : api.cases.list(),
-        fetch('/api/v1/wizard/config').then(r => r.json()).catch(() => ({ steps: [] })),
-      ])
+      const list = q ? await api.cases.search(q) : await api.cases.list()
       setCases(list)
-      if (config.steps?.length) setTotalSteps(config.steps.length)
-      // Determina per ogni pratica se usa il wizard rapido (5) o completo (7):
-      // vince il marcatore esplicito di versione; senza marcatore conta solo
-      // uno stato V2 davvero salvato con avanzamento (i dati ricostruiti
-      // dalle risposte V1 non bastano, altrimenti le bozze V1 finiscono in V2).
-      const infos: Record<string, { isV2: boolean; v2Step: number }> = {}
-      // Tutte le pratiche, completate incluse: altrimenti una unificata
-      // completata mostra il denominatore V1 (5/7 invece di 5/5).
-      const ids = list.map(c => c.id)
-      await Promise.all(
-        ids.map(async id => {
-          try {
-            const res = await fetch(`/api/v1/cases/${id}/wizard-v2`)
-            if (!res.ok) return
-            const info = parseWizardVersion(await res.json())
-            infos[id] = { isV2: isV2Draft(info), v2Step: info.v2Step }
-          } catch {
-            // ignora, considera V1
-          }
-        })
-      )
-      setWizardV2Info(infos)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -104,25 +76,6 @@ export default function Dashboard() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchQuery])
 
-  const draftsCount = cases.filter(c => c.status === 'draft').length
-
-  const deleteDrafts = async () => {
-    if (draftsCount === 0) return
-    const ok = window.confirm(
-      `Eliminare definitivamente ${draftsCount} pratiche in bozza?\n\nQuesta azione non è reversibile.`
-    )
-    if (!ok) return
-    setDeletingDrafts(true)
-    try {
-      const res = await api.cases.deleteDrafts()
-      await load(searchQuery.trim() || undefined)
-      if (res.deleted > 0) setError('')
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setDeletingDrafts(false)
-    }
-  }
   const resetCreateForm = () => {
     setTitle('')
     setCreatedBy('')
@@ -199,17 +152,12 @@ export default function Dashboard() {
             setShowExtractPreview(true)
             setShowCreate(false)
           } else {
-            // nessun dato utile -> wizard unificato diretto (input a mano)
+            // nessun dato utile -> wizard diretto (input a mano)
             setExtractPreview(null)
             const newId = c.id
             setShowCreate(false)
             resetCreateForm()
             await load(searchQuery.trim() || undefined)
-            try {
-              await api.wizard.setVersion(newId, 'unified')
-            } catch {
-              // ignora: il resume usa l'euristica di fallback
-            }
             navigate(`/cases/${newId}/wizard-v2`)
             return
           }
@@ -225,16 +173,11 @@ export default function Dashboard() {
           setExtractLoading(false)
         }
       } else {
-        // nessun file -> wizard unificato diretto
+        // nessun file -> wizard diretto
         const newId = c.id
         setShowCreate(false)
         resetCreateForm()
         await load(searchQuery.trim() || undefined)
-        try {
-          await api.wizard.setVersion(newId, 'unified')
-        } catch {
-          // ignora: il resume usa l'euristica di fallback
-        }
         navigate(`/cases/${newId}/wizard-v2`)
         return
       }
@@ -302,38 +245,6 @@ export default function Dashboard() {
     }
   }
 
-  const continueWizard = async (caseId: string, currentStep: number) => {
-    if (currentStep <= 1) {
-      // for draft/just started, the card click falls back to detail where user can choose;
-      // but if triggered programmatically, default to V2? We route to detail to let choose.
-      navigate(`/cases/${caseId}`)
-      return
-    }
-    try {
-      const res = await fetch(`/api/v1/cases/${caseId}/wizard-v2`)
-      if (res.ok) {
-        if (isV2Draft(parseWizardVersion(await res.json()))) {
-          navigate(`/cases/${caseId}/wizard-v2`)
-          return
-        }
-      }
-    } catch {
-      // ignore, fallback to V1
-    }
-    navigate(`/cases/${caseId}/wizard/${currentStep}`)
-  }
-
-  const enterWizard = async (caseId: string, version: 'v1' | 'v2' | 'unified') => {
-    // Scelta esplicita del percorso dalla card: la registra così il resume la rispetta.
-    try {
-      await api.wizard.setVersion(caseId, version)
-    } catch {
-      // ignora: la navigazione resta valida comunque
-    }
-    if (version === 'v1') navigate(`/cases/${caseId}/wizard/1`)
-    else navigate(`/cases/${caseId}/wizard-v2`)
-  }
-
   const formatPreviewValue = (v: unknown): string => {
     if (v == null || v === '') return '— non trovato'
     if (typeof v === 'number') {
@@ -348,19 +259,6 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Pratiche</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          {draftsCount > 0 && (
-            <button
-              onClick={deleteDrafts}
-              disabled={deletingDrafts}
-              style={{
-                padding: '10px 20px', background: 'var(--color-bg-card)', color: 'var(--color-text-error)',
-                border: '1px solid var(--color-border-error)', borderRadius: 8, fontSize: 14, fontWeight: 600,
-                cursor: deletingDrafts ? 'wait' : 'pointer',
-              }}
-            >
-              {deletingDrafts ? 'Eliminazione...' : `Elimina bozze (${draftsCount})`}
-            </button>
-          )}
           <button
             onClick={() => {
               setShowCreate(true)
@@ -616,17 +514,7 @@ export default function Dashboard() {
                 onClick={acceptExtract}
                 style={{ ...btnStyle, width: '100%', background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
               >
-                ✅ Usa questi dati — avvia percorso rapido (5 passi)
-              </button>
-              <button
-                onClick={() => {
-                  const id = createdCaseId
-                  resetCreateForm()
-                  navigate(`/cases/${id}/wizard/1`)
-                }}
-                style={{ ...btnStyle, width: '100%', background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
-              >
-                ↗️ No, preferisco il percorso completo (7 passi)
+                ✅ Usa questi dati — avvia il wizard (5 passi)
               </button>
               <button
                 onClick={() => {
@@ -657,23 +545,18 @@ export default function Dashboard() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {cases.map(c => {
-            const info = wizardV2Info[c.id]
-            const isV2 = info?.isV2 ?? false
-            const displayTotal = isV2 ? 5 : totalSteps
-            const displayCurrent = isV2 ? (info?.v2Step ?? c.current_step) : c.current_step
             const isDraft = c.status === 'draft'
             return (
             <div
               key={c.id}
               onClick={() => {
                 // Pratiche completate (o già al passo finale) → report visuale finale
-                if (!isDraft || displayCurrent >= displayTotal) {
+                if (!isDraft || c.current_step >= 5) {
                   navigate(`/cases/${c.id}/report`)
                   return
                 }
-                if (displayCurrent > 1) {
-                  if (isV2) navigate(`/cases/${c.id}/wizard-v2`)
-                  else void continueWizard(c.id, c.current_step)
+                if (c.current_step > 1) {
+                  navigate(`/cases/${c.id}/wizard-v2`)
                 } else {
                   navigate(`/cases/${c.id}`)
                 }
@@ -700,13 +583,13 @@ export default function Dashboard() {
                   {statusLabel(c.status)}
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--color-text-light)' }}>
-                  Step {displayCurrent}/{displayTotal}
+                  Step {c.current_step}/5
                 </span>
                 {isDraft ? (
-                  displayCurrent <= 1 ? (
+                  c.current_step <= 1 ? (
                   <button
-                    onClick={e => { e.stopPropagation(); void enterWizard(c.id, 'unified') }}
-                    title="Apri il wizard unificato (5 passi)"
+                    onClick={e => { e.stopPropagation(); navigate(`/cases/${c.id}/wizard-v2`) }}
+                    title="Apri il wizard (5 passi)"
                     style={{
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                       background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer',
@@ -718,8 +601,7 @@ export default function Dashboard() {
                   <button
                     onClick={e => {
                       e.stopPropagation()
-                      if (isV2) navigate(`/cases/${c.id}/wizard-v2`)
-                      else void continueWizard(c.id, c.current_step)
+                      navigate(`/cases/${c.id}/wizard-v2`)
                     }}
                     style={{
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,

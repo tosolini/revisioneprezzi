@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { api, CaseDetail as CaseDetailType } from '../api/client'
-import { formatDate, isV2Draft, parseWizardVersion, statusLabel } from '../components/utils'
+import { formatDate, statusLabel } from '../components/utils'
 import NotesEditor, { RichNotes, isEmptyHtml } from '../components/NotesEditor'
-import type { WizardVersionInfo } from '../components/utils'
 
 export default function CaseDetail() {
   const { id } = useParams()
@@ -11,7 +10,6 @@ export default function CaseDetail() {
   const [c, setC] = useState<CaseDetailType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [v2Info, setV2Info] = useState<WizardVersionInfo | null>(null)
   const [lotto, setLotto] = useState<string | null>(null)
   const [operatore, setOperatore] = useState<string | null>(null)
   const [editingMeta, setEditingMeta] = useState(false)
@@ -35,35 +33,10 @@ export default function CaseDetail() {
       .catch(() => {})
   }, [id])
 
-  useEffect(() => {
-    if (!id || !c) return
-    fetch(`/api/v1/cases/${id}/wizard-v2`)
-      .then(res => {
-        if (!res.ok) throw new Error('no v2')
-        return res.json()
-      })
-      .then(body => {
-        setV2Info(parseWizardVersion(body))
-      })
-      .catch(() => setV2Info(null))
-  }, [id, c])
-
   if (loading) return <div style={{ color: 'var(--color-text-muted)' }}>Caricamento...</div>
   if (error) return <div style={{ color: 'var(--color-text-error)' }}>{error}</div>
   if (!c) return <div style={{ color: 'var(--color-text-muted)' }}>Pratica non trovata</div>
 
-  const isFresh = c.current_step === 0 || c.current_step === 1
-  const continuedInV2 = v2Info != null && isV2Draft(v2Info)
-  const enterWizard = async (version: 'v1' | 'v2' | 'unified') => {
-    if (!id) return
-    try {
-      await api.wizard.setVersion(id, version)
-    } catch {
-      // ignora: la navigazione resta valida comunque
-    }
-    if (version === 'v1') navigate(`/cases/${id}/wizard/${c?.current_step || 1}`)
-    else navigate(`/cases/${id}/wizard-v2`)
-  }
   const saveMeta = async () => {
     if (!id) return
     const title = metaDraft.title.trim()
@@ -222,30 +195,12 @@ export default function CaseDetail() {
           </button>
         )}
         {isDraft && (
-          <>
-            {isFresh ? (
-              <button
-                onClick={() => void enterWizard('unified')}
-                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
-              >
-                Continua Procedura
-              </button>
-            ) : continuedInV2 ? (
-              <button
-                onClick={() => navigate(`/cases/${id}/wizard-v2`)}
-                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
-              >
-                Continua percorso rapido →
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate(`/cases/${id}/wizard/${c.current_step || 1}`)}
-                style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
-              >
-                Continua wizard →
-              </button>
-            )}
-          </>
+          <button
+            onClick={() => navigate(`/cases/${id}/wizard-v2`)}
+            style={{ ...btnStyle, background: 'var(--color-primary)', color: 'var(--color-bg-card)' }}
+          >
+            Continua Procedura
+          </button>
         )}
         {c.status === 'completed' && (
           <button

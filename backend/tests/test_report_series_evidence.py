@@ -1,6 +1,8 @@
 """Serie ISTAT esposte nel report: evidenza usata nel confronto."""
 
-from app.api.v1.report_v2 import _extract_series_evidence
+from app.api.v1.report_v2 import _extract_series_evidence, _report_series_labels
+from app.models.ateco_catalog import AtecoCatalog
+from app.models.index_series import IndexSeries
 
 
 def test_single_series_from_calc_steps():
@@ -70,3 +72,21 @@ def test_multi_component_from_saved_wizard_result():
 def test_fallback_to_step4_series():
     assert _extract_series_evidence([], None, "ISTAT_STEP4") == {"series_id": "ISTAT_STEP4"}
     assert _extract_series_evidence([], None, None) == {}
+
+
+def test_report_series_labels_include_ateco(db):
+    """Le serie wages_ateco citate nel report hanno etichetta leggibile."""
+    db.add(
+        IndexSeries(
+            id="ISTAT_WAGES_ATECO_ZZ9",
+            name="wages_ateco - ZZ9",
+            source="TEST",
+            classification_ref="wages_ateco",
+            frequency="M",
+        )
+    )
+    db.add(AtecoCatalog(ateco_code="ZZ9", description="Attivita di ufficio"))
+    db.commit()
+    labels = _report_series_labels(db, ["ISTAT_WAGES_ATECO_ZZ9", "ISTAT_IGNOTA"])
+    assert labels["ISTAT_WAGES_ATECO_ZZ9"] == "Attivita di ufficio"
+    assert "ISTAT_IGNOTA" not in labels

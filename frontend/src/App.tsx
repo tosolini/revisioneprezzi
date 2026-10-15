@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router'
 import Dashboard from './pages/Dashboard'
-import CaseWizard from './pages/CaseWizard'
 import CaseWizardV2 from './pages/CaseWizardV2'
 import CaseDetail from './pages/CaseDetail'
 import ReportView from './pages/ReportView'
@@ -20,7 +19,6 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/cases/:id" element={<CaseDetail />} />
-        <Route path="/cases/:id/wizard/:step" element={<CaseWizard />} />
         <Route path="/cases/:id/wizard-v2" element={<CaseWizardV2 />} />
         <Route path="/cases/:id/report" element={<ReportView />} />
         <Route path="/catalogs/cpv" element={<CpvCatalog />} />
