@@ -125,8 +125,7 @@ async function pollImportJob(jobId: string): Promise<ImportJob> {
   throw new Error('Tempo scaduto: Istat non ha risposto entro 15 minuti. Riprova.')
 }
 
-function formatPeriod(period: string, freq: string): string {
-  if (freq === 'monthly') {
+function formatPeriod(period: string, freq: string): string {  if (freq === 'monthly') {
     const d = period.slice(0, 7)
     const months = ['', 'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
     const m = parseInt(d.slice(5, 7))
@@ -139,6 +138,11 @@ function formatPeriod(period: string, freq: string): string {
   }
   if (freq === 'annual') return period.slice(0, 4)
   return period
+}
+
+function sortObs<T extends { period: string }>(rows: T[], dir: 'asc' | 'desc'): T[] {
+  const sorted = [...rows].sort((a, b) => a.period < b.period ? -1 : a.period > b.period ? 1 : 0)
+  return dir === 'asc' ? sorted : sorted.reverse()
 }
 
 const GROUP_OPTIONS = [
@@ -562,6 +566,7 @@ export default function IstatCatalog() {
   const [selectedGroup, setSelectedGroup] = useState<string>('')
   const [seriesList, setSeriesList] = useState<Series[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [obsDir, setObsDir] = useState<'asc' | 'desc'>('asc')
   const [loading, setLoading] = useState(true)
   const [loadingSeries, setLoadingSeries] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -914,12 +919,18 @@ export default function IstatCatalog() {
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Periodo</th>
+                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    <button
+                      title="Ordina per periodo"
+                      onClick={e => { e.stopPropagation(); setObsDir(prev => prev === 'asc' ? 'desc' : 'asc') }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textDecoration: 'underline' }}
+                    >Periodo {obsDir === 'asc' ? '▲' : '▼'}</button>
+                  </th>
                                     <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Valore</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {expandedSeries.observations.map(o => (
+                                  {sortObs(expandedSeries.observations, obsDir).map(o => (
                                     <tr key={o.period} style={{ borderBottom: '1px solid #f9fafb' }}>
                                       <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, expandedSeries.frequency)}</td>
                                       <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
@@ -1018,12 +1029,18 @@ export default function IstatCatalog() {
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Periodo</th>
+                                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    <button
+                      title="Ordina per periodo"
+                      onClick={e => { e.stopPropagation(); setObsDir(prev => prev === 'asc' ? 'desc' : 'asc') }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textDecoration: 'underline' }}
+                    >Periodo {obsDir === 'asc' ? '▲' : '▼'}</button>
+                  </th>
                                 <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Valore</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {s.observations.map(o => (
+                              {sortObs(s.observations, obsDir).map(o => (
                                 <tr key={o.period} style={{ borderBottom: '1px solid #f9fafb' }}>
                                   <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, s.frequency)}</td>
                                   <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
