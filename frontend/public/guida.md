@@ -84,7 +84,7 @@ Al passo 3 del wizard ("Importi e periodi") è presente il blocco **"Revisione r
 
 Ogni ciclo ha uno stato: **Pianificato → In attesa dati → Pronto → Calcolato → Approvato** (più **Annullato**). Il sistema crea la bozza alla scadenza; l'approvazione resta umana. Un ciclo approvato è immutabile (la riapertura richiede motivazione e viene tracciata nell'audit log).
 
-Il passo 5 del wizard e la pagina report mostrano il selettore dei cicli: è possibile calcolare un ciclo inserendo l'importo del periodo, approvarlo con il proprio nome, riaprirlo o annullarlo.
+Il passo 5 del wizard e la pagina report mostrano il selettore dei cicli: è possibile calcolare un ciclo inserendo l'importo del periodo, approvarlo con il proprio nome (tramite modale), riaprirlo (con motivazione) o annullarlo. Il pulsante **"Calcola tutti i cicli disponibili"** lancia un ricalcolo complessivo di tutti i cicli con dati ISTAT definitivi presenti, mostrando il riepilogo in una modale.
 
 ### Fascicolo
 
