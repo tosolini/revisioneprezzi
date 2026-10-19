@@ -82,7 +82,8 @@ def generate_report_v2(
             ):
                 return ReportResponse(**rr.snapshot_json["report"])
         except (ValueError, Exception):
-            pass
+            # UUID non valido o snapshot corrotto: ignora la cache e rigenera
+            pass  # noqa: S110
 
     contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
 
@@ -318,6 +319,7 @@ def generate_report_v2(
         try:
             q = q.filter(RevisionResult.cycle_id == _uuid_mod.UUID(cycle))
         except ValueError:
+            # cycle id non valido: ignora il filtro
             pass
     calc_result_row = q.order_by(RevisionResult.created_at.desc()).first()
     try:
@@ -432,6 +434,7 @@ def generate_report_v2(
                 try:
                     return ReportResponse(**cached)
                 except Exception:
+                    # snapshot non leggibile: rigenera
                     pass
             if rr is not None and (
                 not isinstance(rr.snapshot_json, dict) or "report" not in rr.snapshot_json
@@ -695,6 +698,7 @@ def fascicolo(case_id: UUID, db: Session = Depends(get_db)):
                 .all()
             )
     except Exception:
+        # errore nel caricamento del piano: fascicolo senza cicli
         pass
 
     out_cycles = []

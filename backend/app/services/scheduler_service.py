@@ -183,6 +183,7 @@ def run_due(db: Session, trigger: str = "manual") -> dict[str, Any]:
         try:
             release_lock(db)
         except Exception:
+            # rilascio lock best-effort
             pass
         run.finished_at = datetime.utcnow()
         run.plans_evaluated = plans_evaluated

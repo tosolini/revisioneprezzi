@@ -110,6 +110,7 @@ def _cycle_to_dict(c: RevisionCycle, db: Session | None = None) -> dict:
                 variation = rr.variation_percent
                 revision_amount = rr.revision_amount
         except Exception:
+            # risultato non disponibile: lascia variation a None
             pass
     return {
         "id": str(c.id),

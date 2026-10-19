@@ -421,6 +421,7 @@ def import_sdmx_content(
                     if override:
                         series_id = override
                 except Exception:
+                    # mapping TOL non disponibile: mantieni series_id originale
                     pass
             ref_period = _parse_period(period_str, row_freq)
 

@@ -330,13 +330,7 @@ def recalculate_all_cycles(db: Session, case_id, default_amount: float | None = 
     if not plan:
         return {"calculated": 0, "skipped": 0, "waiting": 0, "error": "no plan"}
 
-    # importo base della pratica
-    if default_amount is None:
-        try:
-            # fallback: nessun importo base noto
-            default_amount = None
-        except Exception:
-            default_amount = None
+    # importo base della pratica (già risolto dal chiamante; nessun fallback qui)
 
     cycles = (
         db.query(RevisionCycle)
