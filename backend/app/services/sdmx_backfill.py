@@ -60,7 +60,8 @@ TOL_FABABB_TO_ISTAT: dict[str, str] = {
     "FABABB120": "DELIV_WASTE_FAC_DIS_REC",
 }
 
-# Inverso: codice ISTAT -> serie FABABB (per l'import: salva le osservazioni sotto la serie usata dal calcolo)
+# Inverso: codice ISTAT -> serie FABABB (per l'import: salva le osservazioni
+# sotto la serie usata dal calcolo)
 TOL_ISTAT_TO_FABABB: dict[str, str] = {
     v: k for k, v in TOL_FABABB_TO_ISTAT.items() if v
 }

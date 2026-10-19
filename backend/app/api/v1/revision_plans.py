@@ -304,6 +304,31 @@ def reopen_cycle(case_id: str, cycle_id: str, payload: ReopenIn, db: Session = D
     return {"cycle": _cycle_to_dict(cycle, db)}
 
 
+class RecalcAllIn(BaseModel):
+    amount: float | None = None
+
+
+@router.post("/cases/{case_id}/cycles/recalculate-all")
+def recalculate_all(case_id: str, payload: RecalcAllIn, db: Session = Depends(get_db)):
+    _case_or_404(db, case_id)
+    default_amount = payload.amount
+    if default_amount is None:
+        try:
+            from app.models.contract_context import ContractContext
+
+            ctx = (
+                db.query(ContractContext)
+                .filter(ContractContext.case_id == uuid.UUID(case_id))
+                .first()
+            )
+            if ctx is not None and ctx.amount_subject_to_revision:
+                default_amount = float(ctx.amount_subject_to_revision)
+        except (ValueError, TypeError, Exception):
+            default_amount = None
+    res = svc.recalculate_all_cycles(db, uuid.UUID(case_id), default_amount=default_amount)
+    return res
+
+
 @router.post("/cases/{case_id}/cycles/{cycle_id}/void")
 def void_cycle(case_id: str, cycle_id: str, payload: VoidIn, db: Session = Depends(get_db)):
     _case_or_404(db, case_id)

@@ -146,7 +146,30 @@ export default function ReportView() {
 
       {planData && cycles.length > 0 && (
         <div className="no-print" style={{ marginTop: 24, padding: '14px 16px', borderRadius: 10, border: '1px solid var(--color-border-light)', background: 'var(--color-bg-muted)' }}>
-          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Cicli di revisione ({planData.frequency})</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>Cicli di revisione ({planData.frequency})</div>
+            <button
+              disabled={cycleBusy}
+              onClick={async () => {
+                setCycleBusy(true)
+                try {
+                  const res = await fetch(`/api/v1/cases/${id}/cycles/recalculate-all`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: cycleAmount || undefined }),
+                  })
+                  const j = await res.json()
+                  if (!res.ok) throw new Error(j.detail || 'Errore')
+                  alert(`Calcolati: ${j.calculated}, in attesa dati: ${j.waiting}, saltati: ${j.skipped}`)
+                  await loadCycles()
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Errore')
+                } finally {
+                  setCycleBusy(false)
+                }
+              }}
+              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: cycleBusy ? 0.6 : 1 }}
+            >Calcola tutti i cicli disponibili</button>
+          </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
             <select
               value={selectedCycleId}

@@ -320,6 +320,98 @@ def void_cycle(db: Session, cycle: RevisionCycle, reason: str) -> None:
     db.commit()
 
 
+def recalculate_all_cycles(db: Session, case_id, default_amount: float | None = None) -> dict:
+    """Calcola in blocco i cicli con dati ISTAT disponibili (strict).
+
+    Salta i cicli senza importo e quelli senza dati definitivi.
+    Ritorna un riepilogo {calculated, skipped, waiting}.
+    """
+    plan = db.query(RevisionPlan).filter(RevisionPlan.case_id == case_id).first()
+    if not plan:
+        return {"calculated": 0, "skipped": 0, "waiting": 0, "error": "no plan"}
+
+    # importo base della pratica
+    if default_amount is None:
+        try:
+            # fallback: nessun importo base noto
+            default_amount = None
+        except Exception:
+            default_amount = None
+
+    cycles = (
+        db.query(RevisionCycle)
+        .filter(RevisionCycle.plan_id == plan.id)
+        .filter(RevisionCycle.status.in_(["planned", "ready", "waiting_data"]))
+        .order_by(RevisionCycle.sequence_no)
+        .all()
+    )
+
+    contract_type = _contract_type_for_case(db, case_id)
+    calculated = 0
+    skipped = 0
+    waiting = 0
+    for cyc in cycles:
+        amt = cyc.amount if cyc.amount is not None else default_amount
+        if amt is None:
+            skipped += 1
+            continue
+        cyc.amount = amt
+        cfg = {
+            "type": "composite",
+            "method": "weighted_average",
+            "components": {s.series_id: s.weight for s in plan.series},
+        }
+        ok, reason = cycle_strict_check(db, cyc, cfg)
+        if not ok:
+            cyc.status = "waiting_data"
+            waiting += 1
+            db.commit()
+            continue
+        try:
+            # calculate without re-saving amount issues
+            result = calculate_price_revision(
+                db=db,
+                contract_type=contract_type,
+                amount=cyc.amount,
+                base_period=cyc.base_period,
+                comparison_period=cyc.comparison_period,
+                indices_config=cfg,
+            )
+            if "error" in result:
+                cyc.status = "waiting_data"
+                waiting += 1
+                db.commit()
+                continue
+            rr = RevisionResult(
+                case_id=cyc.case_id,
+                cycle_id=cyc.id,
+                base_value=result.get("base_value"),
+                comparison_value=result.get("comparison_value"),
+                variation_percent=result.get("variation_percent"),
+                threshold_percent=result.get("threshold_percent"),
+                excess_percent=result.get("excess_percent"),
+                recognition_percent=result.get("recognition_percent"),
+                revision_amount=result.get("revision_amount"),
+                formula_detail=result.get("formula_detail"),
+                result_version=(
+                    db.query(RevisionResult).filter(RevisionResult.case_id == case_id).count() + 1
+                ),
+            )
+            db.add(rr)
+            db.flush()
+            cyc.result_id = rr.id
+            cyc.status = "calculated"
+            cyc.calculated_at = datetime.utcnow()
+            cyc.snapshot_json = _build_snapshot(cyc, result, cfg)
+            cyc.snapshot_hash = _hash_snapshot(cyc.snapshot_json)
+            db.commit()
+            calculated += 1
+        except Exception:
+            db.rollback()
+            skipped += 1
+    return {"calculated": calculated, "skipped": skipped, "waiting": waiting}
+
+
 def _build_snapshot(cycle: RevisionCycle, result: dict, cfg: dict) -> dict:
     return {
         "schema_version": 1,
