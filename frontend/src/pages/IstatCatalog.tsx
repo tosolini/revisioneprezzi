@@ -265,7 +265,7 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      background: 'var(--color-overlay)', overflowY: 'auto', padding: '24px 16px',
+      background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', overflowY: 'auto', padding: '24px 16px',
     }}>
       <div style={{
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 460,
@@ -379,7 +379,7 @@ function SdmxModal({ onClose, onImported }: { onClose: () => void; onImported: (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      background: 'var(--color-overlay)', overflowY: 'auto', padding: '24px 16px',
+      background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', overflowY: 'auto', padding: '24px 16px',
     }}>
       <div style={{
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 480,
@@ -504,7 +504,7 @@ function ClearIndexModal({ series, onClose, onCleared }: { series: Series; onClo
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1100,
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      background: 'var(--color-overlay)', overflowY: 'auto', padding: '24px 16px',
+      background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', overflowY: 'auto', padding: '24px 16px',
     }}>
       <div style={{
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 460,

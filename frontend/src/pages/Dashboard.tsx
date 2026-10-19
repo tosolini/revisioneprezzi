@@ -473,7 +473,7 @@ export default function Dashboard() {
       {/* Modal preview dati trovati */}
       {showExtractPreview && extractPreview && createdCaseId && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex',
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex',
           alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16,
         }}>
           <div style={{
@@ -725,7 +725,7 @@ export default function Dashboard() {
     </div>
 
     {deleteDraftsOpen && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
         <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 20px var(--color-shadow)' }}>
           <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Elimina bozze</h3>
           <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>

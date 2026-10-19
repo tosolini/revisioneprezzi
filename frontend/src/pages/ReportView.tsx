@@ -346,7 +346,7 @@ export default function ReportView() {
       </div>
 
       {approveModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 4px 20px var(--color-shadow)' }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Approva ciclo</h3>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>Approvato da</label>
@@ -380,7 +380,7 @@ export default function ReportView() {
       )}
 
       {reopenModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 20px var(--color-shadow)' }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Riapri ciclo</h3>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>Motivazione</label>
@@ -415,7 +415,7 @@ export default function ReportView() {
       )}
 
       {recalcModalOpen && recalcResult && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 4px 20px var(--color-shadow)' }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Ricalcolo complessivo</h3>
             <ul style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: 'var(--color-text-primary)' }}>

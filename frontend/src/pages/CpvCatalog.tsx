@@ -153,7 +153,7 @@ export default function CpvCatalog() {
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--color-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--color-bg-card)', borderRadius: 12, padding: 24, minWidth: 400, boxShadow: '0 12px 40px var(--color-shadow-heavy)' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--color-text-primary)' }}>Importa catalogo CPV</h2>
             <p style={{ margin: '0 0 12px', color: 'var(--color-text-muted)', fontSize: 14 }}>
