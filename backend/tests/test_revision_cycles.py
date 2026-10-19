@@ -24,12 +24,18 @@ def test_obs_status_lowercase_p_is_not_definitive(db, monkeypatch, tmp_path):
     db.commit()
 
     sid = "ISTAT_TEST_SDMX_49"
-    # cleanup not needed; query
     obs = db.query(IndexObservation).filter(
         IndexObservation.series_id == sid, IndexObservation.ref_period == date(2024, 1, 1)
     ).first()
     assert obs is not None
     assert obs.is_definitive is False
+
+    # cleanup: rimuovi le righe create
+    db.query(IndexObservation).filter(
+        IndexObservation.series_id == sid
+    ).delete(synchronize_session=False)
+    db.query(IndexSeries).filter(IndexSeries.id == sid).delete(synchronize_session=False)
+    db.commit()
 
 
 def test_strict_lookup_returns_none_when_missing(db):
@@ -38,6 +44,8 @@ def test_strict_lookup_returns_none_when_missing(db):
     db.add(IndexSeries(id=sid, name="x", source="t", normative_category="t", frequency="monthly"))
     db.commit()
     assert get_strict_index_observation(db, sid, date(2024, 1, 1)) is None
+    db.query(IndexSeries).filter(IndexSeries.id == sid).delete(synchronize_session=False)
+    db.commit()
 
 
 def test_generate_comparison_periods_annual():

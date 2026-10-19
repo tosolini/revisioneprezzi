@@ -137,12 +137,12 @@ def run_due(db: Session, trigger: str = "manual") -> dict[str, Any]:
                     for qid, q in unique_queries.items():
                         try:
                             url = q.url
-                            # rewrite periods
+                            # Scarica il CSV prima di importare (import_sdmx_content
+                            # attende contenuto CSV, non un URL).
+                            from app.api.v1 import indices as _indices_api
 
-                            # Riesegue la query salvata così com'è (upsert idempotente).
-                            # Se end_period_strategy=fixed non arriveranno dati nuovi;
-                            # l'avviso è gestito dalla readiness.
-                            _import_sdmx_content(url, db, group_key="", freq_param="")
+                            content = _indices_api._fetch_sdmx_csv(url)
+                            _import_sdmx_content(content, db, group_key="", freq_param="")
                             queries_run += 1
                         except Exception as e:
                             queries_failed += 1

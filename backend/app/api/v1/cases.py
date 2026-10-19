@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -24,7 +24,13 @@ def create_case(payload: CaseCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[CaseListResponse])
 def list_cases(q: str | None = None, db: Session = Depends(get_db)):
-    query = db.query(CaseFile).order_by(CaseFile.created_at.desc())
+    from sqlalchemy.orm import selectinload
+
+    query = (
+        db.query(CaseFile)
+        .options(selectinload(CaseFile.revision_plan))
+        .order_by(CaseFile.created_at.desc())
+    )
     if q:
         like = f"%{q}%"
         direct = or_(
@@ -85,7 +91,6 @@ def delete_draft_cases(db: Session = Depends(get_db)):
         db.delete(case)
     db.commit()
     return {"deleted": count}
-    return Response(status_code=204)
 
 
 class PracticeMetaSave(BaseModel):
