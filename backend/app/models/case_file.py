@@ -53,3 +53,10 @@ class CaseFile(Base):
         "OverrideReason", back_populates="case_file", cascade="all, delete-orphan"
     )
     audit_logs = relationship("AuditLog", back_populates="case_file", cascade="all, delete-orphan")
+    revision_plan = relationship(
+        "RevisionPlan", back_populates="case_file", uselist=False, cascade="all, delete-orphan"
+    )
+
+    @property
+    def has_revision_plan(self) -> bool:
+        return self.revision_plan is not None

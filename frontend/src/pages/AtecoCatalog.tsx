@@ -202,7 +202,7 @@ export default function AtecoCatalog() {
 
       {showSdmxModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={() => setShowSdmxModal(false)} style={{ position: 'absolute', inset: 0, background: 'var(--color-overlay)' }} />
+          <div onClick={() => setShowSdmxModal(false)} style={{ position: 'absolute', inset: 0, background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
           <div style={{ position: 'relative', background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 12px 40px var(--color-shadow-heavy)' }}>
             <h3 style={{ margin: '0 0 12px', color: 'var(--color-text-primary)' }}>Import da ISTAT (SDMX)</h3>
             <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
@@ -263,7 +263,7 @@ function ImportZipModal({ onClose, onImported }: { onClose: () => void; onImport
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--color-overlay)',
+      background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
     }}>
       <div style={{
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 420,

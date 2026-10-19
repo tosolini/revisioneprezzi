@@ -17,6 +17,10 @@ from app.models.normative_param import NormativeParam
 from app.models.override_reason import OverrideReason
 from app.models.revision_input import RevisionInput
 from app.models.revision_result import RevisionResult
+from app.models.revision_plan import RevisionPlan, RevisionPlanSeries
+from app.models.revision_cycle import RevisionCycle
+from app.models.scheduler_run import SchedulerRun
+from app.models.index_base_link import IndexBaseLink
 from app.models.tol import TolAssignment, TolIndexSeries, TolMaster
 from app.models.wizard_answer import WizardAnswer
 
@@ -42,6 +46,11 @@ __all__ = [
     "OverrideReason",
     "RevisionInput",
     "RevisionResult",
+    "RevisionPlan",
+    "RevisionPlanSeries",
+    "RevisionCycle",
+    "SchedulerRun",
+    "IndexBaseLink",
     "TolAssignment",
     "TolIndexSeries",
     "TolMaster",

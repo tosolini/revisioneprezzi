@@ -250,6 +250,36 @@ def _get_index_observation(
     return None, None, False
 
 
+def get_strict_index_observation(
+    db: Session, series_id: str, period: date, frequency: str | None = None
+) -> tuple[float, date] | None:
+    """Lookup strict: accetta SOLO l'osservazione definitiva nel periodo esatto.
+
+    Usato dai cicli ricorrenti: se il dato non è definitivo o non esiste, il
+    ciclo resta in ``waiting_data``. Nessun fallback.
+    """
+    freq = frequency
+    if freq is None:
+        freq = _resolve_series_frequency(db, series_id)
+    else:
+        freq = freq.lower()
+        if freq == "yearly":
+            freq = "annual"
+    norm_period = _normalize_to_frequency(period, freq)
+    obs = (
+        db.query(IndexObservation)
+        .filter(
+            IndexObservation.series_id == series_id,
+            IndexObservation.ref_period == norm_period,
+            IndexObservation.is_definitive.is_(True),
+        )
+        .first()
+    )
+    if obs is None:
+        return None
+    return obs.value, obs.ref_period
+
+
 def calculate_period_coverage(
     db: Session,
     components: dict[str, float],

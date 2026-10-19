@@ -5,6 +5,7 @@ Ritorna dati strutturati per sezioni per visualizzazione UI
 
 import json
 from uuid import UUID
+import uuid as _uuid_mod
 from datetime import date
 from typing import Optional
 
@@ -43,7 +44,11 @@ class ReportResponse(BaseModel):
 
 
 @router.get("/cases/{case_id}")
-def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportResponse:
+def generate_report_v2(
+    case_id: UUID,
+    cycle: str | None = None,
+    db: Session = Depends(get_db),
+) -> ReportResponse:
     """
     Genera report strutturato per sezioni per wizard v2
 
@@ -57,6 +62,27 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
     case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
+
+    # Immutabilità: se esiste uno snapshot con report per il ciclo, restituiscilo
+    if cycle:
+        try:
+            rr = (
+                db.query(RevisionResult)
+                .filter(
+                    RevisionResult.case_id == case_id,
+                    RevisionResult.cycle_id == _uuid_mod.UUID(cycle),
+                )
+                .order_by(RevisionResult.created_at.desc())
+                .first()
+            )
+            if (
+                rr is not None
+                and isinstance(rr.snapshot_json, dict)
+                and "report" in rr.snapshot_json
+            ):
+                return ReportResponse(**rr.snapshot_json["report"])
+        except (ValueError, Exception):
+            pass
 
     contract = db.query(ContractContext).filter(ContractContext.case_id == case_id).first()
 
@@ -254,9 +280,9 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
 
     # Sezione 4: Indici ISTAT (incluse serie usate nel confronto: trasparenza legale)
     saved_result = v2_state.get("result") if isinstance(v2_state.get("result"), dict) else None
-    v2_indices_cfg = v2_state.get("indices_config") if isinstance(
-        v2_state.get("indices_config"), dict
-    ) else None
+    v2_indices_cfg = (
+        v2_state.get("indices_config") if isinstance(v2_state.get("indices_config"), dict) else None
+    )
     series_id = v2_indices_cfg.get("single_series_id") if v2_indices_cfg else None
     indices_data: dict = {"synthetic_index_base": None, "synthetic_index_comparison": None}
 
@@ -287,12 +313,13 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
         indices_data["synthetic_index_comparison"] = saved_result.get("comparison_value")
 
     # Ultimo risultato salvato: fonte primaria delle serie effettivamente usate
-    calc_result_row = (
-        db.query(RevisionResult)
-        .filter(RevisionResult.case_id == case_id)
-        .order_by(RevisionResult.created_at.desc())
-        .first()
-    )
+    q = db.query(RevisionResult).filter(RevisionResult.case_id == case_id)
+    if cycle:
+        try:
+            q = q.filter(RevisionResult.cycle_id == _uuid_mod.UUID(cycle))
+        except ValueError:
+            pass
+    calc_result_row = q.order_by(RevisionResult.created_at.desc()).first()
     try:
         detail = calc_result_row.formula_detail if calc_result_row else None
         formula_steps = json.loads(detail or "[]")
@@ -374,12 +401,49 @@ def generate_report_v2(case_id: UUID, db: Session = Depends(get_db)) -> ReportRe
 
     from datetime import datetime
 
-    return ReportResponse(
+    report = ReportResponse(
         case_id=str(case_id),
         sections=sections,
         calculation_result=None,
         generated_at=datetime.utcnow().isoformat(),
     )
+
+    # Immutabilità per ciclo: se è stato richiesto un ciclo e esiste uno
+    # snapshot salvato, usalo; altrimenti salva il report appena generato
+    # nello snapshot del ciclo per le chiamate successive.
+    if cycle:
+        try:
+            rr = None
+            q = db.query(RevisionResult).filter(RevisionResult.case_id == case_id)
+            try:
+                rr = (
+                    q.filter(RevisionResult.cycle_id == _uuid_mod.UUID(cycle))
+                    .order_by(RevisionResult.created_at.desc())
+                    .first()
+                )
+            except ValueError:
+                rr = None
+            if (
+                rr is not None
+                and isinstance(rr.snapshot_json, dict)
+                and "report" in rr.snapshot_json
+            ):
+                cached = rr.snapshot_json["report"]
+                try:
+                    return ReportResponse(**cached)
+                except Exception:
+                    pass
+            if rr is not None and (
+                not isinstance(rr.snapshot_json, dict) or "report" not in rr.snapshot_json
+            ):
+                snap = dict(rr.snapshot_json) if isinstance(rr.snapshot_json, dict) else {}
+                snap["report"] = report.model_dump()
+                rr.snapshot_json = snap
+                db.commit()
+        except Exception:
+            db.rollback()
+
+    return report
 
 
 def _get_contract_type_label(contract_type: Optional[str]) -> str:
@@ -608,4 +672,70 @@ def add_calculation_to_report(
         "calculation_saved": True,
         "result_version": next_version,
         "result_id": str(record.id),
+    }
+
+
+@router.get("/cases/{case_id}/fascicolo")
+def fascicolo(case_id: UUID, db: Session = Depends(get_db)):
+    case = db.query(CaseFile).filter(CaseFile.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    plan = None
+    cycles = []
+    try:
+        from app.models.revision_plan import RevisionPlan
+        from app.models.revision_cycle import RevisionCycle
+
+        plan = db.query(RevisionPlan).filter(RevisionPlan.case_id == case_id).first()
+        if plan:
+            cycles = (
+                db.query(RevisionCycle)
+                .filter(RevisionCycle.plan_id == plan.id)
+                .order_by(RevisionCycle.sequence_no)
+                .all()
+            )
+    except Exception:
+        pass
+
+    out_cycles = []
+    for c in cycles:
+        rep = None
+        try:
+            rep = generate_report_v2(case_id, cycle=str(c.id), db=db)
+        except Exception as e:  # noqa: BLE001
+            rep = {"error": str(e)}
+        _rr = (
+            db.query(RevisionResult).filter(RevisionResult.id == c.result_id).first()
+            if c.result_id
+            else None
+        )
+        out_cycles.append(
+            {
+                "cycle": {
+                    "id": str(c.id),
+                    "sequence_no": c.sequence_no,
+                    "base_period": c.base_period.isoformat(),
+                    "comparison_period": c.comparison_period.isoformat(),
+                    "amount": c.amount,
+                    "status": c.status,
+                    "variation_percent": _rr.variation_percent if _rr else None,
+                    "revision_amount": _rr.revision_amount if _rr else None,
+                    "snapshot_hash": c.snapshot_hash,
+                },
+                "report": rep,
+            }
+        )
+    return {
+        "case_id": str(case_id),
+        "plan": (
+            {
+                "id": str(plan.id),
+                "frequency": plan.frequency,
+                "status": plan.status,
+                "plan_version": plan.plan_version,
+            }
+            if plan
+            else None
+        ),
+        "cycles": out_cycles,
     }

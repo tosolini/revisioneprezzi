@@ -412,6 +412,16 @@ def import_sdmx_content(
                     market_suffix = f"_{mkt_val}"
 
             series_id = f"ISTAT_{group_upper}_{code}{market_suffix}"
+            # TOL: salva le osservazioni sotto la serie FABABB usata dal calcolo
+            if group_key == "tol":
+                try:
+                    from app.services.sdmx_backfill import TOL_ISTAT_TO_FABABB
+
+                    override = TOL_ISTAT_TO_FABABB.get(code)
+                    if override:
+                        series_id = override
+                except Exception:
+                    pass
             ref_period = _parse_period(period_str, row_freq)
 
             try:
@@ -421,7 +431,10 @@ def import_sdmx_content(
                 continue
 
             # OBS_STATUS: P=provvisorio, E=stimato, M=manuale, T=provv. tendenza
-            is_def = status_raw not in ("P", "E", "M", "T")
+            # ISTAT emette i codici sia maiuscoli che minuscoli (es. 'p' per
+            # provvisorio nel NIC): normalizziamo prima del confronto.
+            _NON_DEFINITIVE = {"P", "E", "M", "T"}
+            is_def = (status_raw or "").strip().upper() not in _NON_DEFINITIVE
             name = _series_name(row, reader.fieldnames, code, series_names, group_key)
 
             with db.begin_nested():

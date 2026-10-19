@@ -61,7 +61,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--color-overlay)',
+      background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
     }}>
       <div style={{
         background: 'var(--color-bg-card)', borderRadius: 12, padding: 28, minWidth: 460,

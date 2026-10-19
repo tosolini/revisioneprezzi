@@ -18,6 +18,7 @@ DATAFLOW_BY_TYPE: dict[str, str] = {
     "PPS": "145_376_DF_DCSC_PREZPRODSERV_1_7",
     "IR": "155_358_DF_DCSC_RETRATECO1_7",
     "PC": "167_745_DF_DCSP_NIC1B2025_6",
+    "TOL": "145_362_DCSC_INDICITOL_1",
 }
 
 # classification_ref → ExplorerIndexType (come da spec, con fallback id-prefix)
@@ -32,6 +33,38 @@ CLASSIFICATION_TO_EXPLORER: dict[str, str] = {
 
 _WAGES_ATECO_PREFIX = "ISTAT_WAGES_ATECO_"
 _ATECO_CLASSIFICATION_REFS = {"ppi", "ps_business", "wages", "wages_ateco"}
+
+# Mapping TOL: serie FABABB (usata dal calcolo) -> codice HOM_TYPE_WORK del dataflow ISTAT TOL.
+# Un codice ISTAT per TOL (il più rappresentativo); TOL.3 (scavi archeologici) non ha
+# corrispondente ISTAT e resta non mappabile.
+TOL_FABABB_TO_ISTAT: dict[str, str] = {
+    "FABABB101": "ARC_RES_HE",
+    "FABABB102": "BUIL_ART_HEPROT",
+    "FABABB103": None,  # type: ignore[dict-item]
+    "FABABB104": "EARTDEM_ENV_NAT",
+    "FABABB105": "PAV_BITCONG",
+    "FABABB106": "STSTRU_ENGWOART",
+    "FABABB107": "REINFCONC_ENGWOART",
+    "FABABB108": "WOSTR_ENGWOART",
+    "FABABB109": "TUN_UND_TRAD",
+    "FABABB110": "TUN_UND_MECH",
+    "FABABB111": "AC_GAS_IRR_SEW",
+    "FABABB112": "MAR_DRED_RIV_PROT",
+    "FABABB113": "PLNT_PTD_EEL_HMV_TRPULI",
+    "FABABB114": "SYS_EL_TEC_RA_TEL_INT",
+    "FABABB115": "SYS_MEC_TER_AIR_WAT_SAN_CON",
+    "FABABB116": "PLNT_WAT_PUR_WSTTRE",
+    "FABABB117": "SYS_SUG_TRASAF_TEL",
+    "FABABB118": "RAIL_INFR",
+    "FABABB119": "SPEC_FOUN_GEOL_GEOTH",
+    "FABABB120": "DELIV_WASTE_FAC_DIS_REC",
+}
+
+# Inverso: codice ISTAT -> serie FABABB (per l'import: salva le osservazioni
+# sotto la serie usata dal calcolo)
+TOL_ISTAT_TO_FABABB: dict[str, str] = {
+    v: k for k, v in TOL_FABABB_TO_ISTAT.items() if v
+}
 
 
 def _is_ateco_classification(classification_ref: str | None) -> bool:
@@ -85,6 +118,8 @@ def _explorer_for_series(s: IndexSeries) -> str | None:
         return "PC"
     if "NIC" in sid:
         return "PC"
+    if sid.startswith("FABABB"):
+        return "TOL"
     return None
 
 
@@ -96,10 +131,12 @@ def _code_from_series(s: IndexSeries) -> str | None:
     Per codici senza suffisso (0811, 0181) preserva lo zero.
     Per ps_business/wages_ateco/nic usa code diretto (anche se contiene _).
     """
+    explorer = _explorer_for_series(s)
+    if explorer == "TOL":
+        return TOL_FABABB_TO_ISTAT.get(s.id)
     raw = _extract_ateco_code(s)
     if not raw:
         return None
-    explorer = _explorer_for_series(s)
     # Solo PPI ha suffisso mercato _D/_T/_E da rimuovere; altri mantengono raw integro
     if explorer == "PPI" and "_" in raw:
         base = raw.split("_")[0]
@@ -145,6 +182,8 @@ def build_sdmx_url(s: IndexSeries) -> str | None:
         # NIC/PC: set nuovo base 2025 (ECOICOP 2) dal 2026-01 —
         # DATA_TYPE 85, MEASURE 4 = numero indice
         key = f"{prefix}.IT.85.4.{code}"
+    elif explorer == "TOL":
+        key = f"{prefix}.IT.{code}"
     else:  # PPI
         key = f"{prefix}.IT.{code}"
 

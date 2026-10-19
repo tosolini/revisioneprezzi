@@ -48,7 +48,7 @@ export default function CpvSearchModal({ open, onClose, onSelect }: CpvSearchMod
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'var(--color-overlay)', display: 'flex',
+        background: 'var(--color-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
       }}
       onClick={onClose}

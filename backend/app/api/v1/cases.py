@@ -74,6 +74,17 @@ def delete_case(case_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Case not found")
     db.delete(case)
     db.commit()
+
+
+@router.post("/delete-drafts")
+def delete_draft_cases(db: Session = Depends(get_db)):
+    """Elimina in blocco le pratiche lasciate in bozza (status 'draft')."""
+    drafts = db.query(CaseFile).filter(CaseFile.status == "draft").all()
+    count = len(drafts)
+    for case in drafts:
+        db.delete(case)
+    db.commit()
+    return {"deleted": count}
     return Response(status_code=204)
 
 
