@@ -98,6 +98,7 @@ open http://localhost:3000
 | `make up` | Avvia i servizi in background |
 | `make down` | Ferma i servizi |
 | `make build` | Build locale con `docker-compose-build.yml` |
+| `make rebuild` | reBuild locale con `docker-compose-build.yml` e restart |
 | `make migrate` | Applica le migrazioni Alembic |
 | `make migrate-new name="..."` | Genera una nuova migrazione Alembic (autogenerate) |
 | `make seed` | Popola i cataloghi (`scripts/seed_catalogs.py`) |
