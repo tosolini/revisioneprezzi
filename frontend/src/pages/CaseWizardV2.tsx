@@ -777,6 +777,10 @@ export default function CaseWizardV2() {
   const [selectedCycleId, setSelectedCycleId] = useState<string>('')
   const [cycleAmount, setCycleAmount] = useState<number>(0)
   const [cycleBusy, setCycleBusy] = useState(false)
+  const [approveModalOpen, setApproveModalOpen] = useState(false)
+  const [approveName, setApproveName] = useState('')
+  const [reopenModalOpen, setReopenModalOpen] = useState(false)
+  const [reopenMotivation, setReopenMotivation] = useState('')
   const [pdfState, setPdfState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({ status: 'idle' })
   const [mappings, setMappings] = useState<Record<string, CpvMapping>>({})
   const [mappingLoading, setMappingLoading] = useState(false)
@@ -3093,38 +3097,14 @@ export default function CaseWizardV2() {
                         {c.status === 'calculated' && (
                           <button
                             disabled={cycleBusy}
-                            onClick={async () => {
-                              const name = window.prompt('Approvato da (nome):')
-                              if (!name) return
-                              setCycleBusy(true)
-                              try {
-                                await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/approve`, {
-                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ approved_by: name }),
-                                })
-                                await loadCycles()
-                              } catch (e) { setError(e instanceof Error ? e.message : 'Errore') }
-                              finally { setCycleBusy(false) }
-                            }}
+                            onClick={() => { setApproveName(''); setApproveModalOpen(true) }}
                             style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-success)', color: 'var(--color-text-success)', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
                           >Approva</button>
                         )}
                         {c.status === 'approved' && (
                           <button
                             disabled={cycleBusy}
-                            onClick={async () => {
-                              const m = window.prompt('Motivazione riapertura:')
-                              if (!m) return
-                              setCycleBusy(true)
-                              try {
-                                await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/reopen`, {
-                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ motivation: m }),
-                                })
-                                await loadCycles()
-                              } catch (e) { setError(e instanceof Error ? e.message : 'Errore') }
-                              finally { setCycleBusy(false) }
-                            }}
+                            onClick={() => { setReopenMotivation(''); setReopenModalOpen(true) }}
                             style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
                           >Riapri</button>
                         )}
@@ -3367,7 +3347,53 @@ export default function CaseWizardV2() {
             await fetchPeriodCoverage()
           }}
         />
+
       )}
+
+      {approveModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Approva ciclo</h3>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>Approvato da</label>
+            <input autoFocus value={approveName} onChange={e => setApproveName(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => setApproveModalOpen(false)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
+              <button disabled={!approveName.trim() || cycleBusy} onClick={async () => {
+                setCycleBusy(true)
+                try {
+                  await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approved_by: approveName.trim() }) })
+                  setApproveModalOpen(false)
+                  await loadCycles()
+                } catch (e) { setError(e instanceof Error ? e.message : 'Errore') }
+                finally { setCycleBusy(false) }
+              }} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-success)', color: 'var(--color-text-success)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: (!approveName.trim() || cycleBusy) ? 0.6 : 1 }}>Approva</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reopenModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Riapri ciclo</h3>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>Motivazione</label>
+            <textarea autoFocus value={reopenMotivation} onChange={e => setReopenMotivation(e.target.value)} rows={3} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => setReopenModalOpen(false)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
+              <button disabled={!reopenMotivation.trim() || cycleBusy} onClick={async () => {
+                setCycleBusy(true)
+                try {
+                  await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/reopen`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motivation: reopenMotivation.trim() }) })
+                  setReopenModalOpen(false)
+                  await loadCycles()
+                } catch (e) { setError(e instanceof Error ? e.message : 'Errore') }
+                finally { setCycleBusy(false) }
+              }} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', fontWeight: 600, opacity: (!reopenMotivation.trim() || cycleBusy) ? 0.6 : 1 }}>Riapri</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

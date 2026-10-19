@@ -36,6 +36,8 @@ export default function Dashboard() {
   const [cyclesByCase, setCyclesByCase] = useState<Record<string, any[]>>({})
   const [deleteDraftsOpen, setDeleteDraftsOpen] = useState(false)
   const [deleteDraftsBusy, setDeleteDraftsBusy] = useState(false)
+  const [deleteCaseTarget, setDeleteCaseTarget] = useState<CaseItem | null>(null)
+  const [deleteCaseBusy, setDeleteCaseBusy] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
   const [createdBy, setCreatedBy] = useState('')
@@ -656,9 +658,7 @@ export default function Dashboard() {
                 <button
                   onClick={e => {
                     e.stopPropagation()
-                    if (window.confirm(`Eliminare la pratica "${c.title}"?`)) {
-                      api.cases.delete(c.id).then(() => load(searchQuery.trim() || undefined))
-                    }
+                    setDeleteCaseTarget(c)
                   }}
                   title="Elimina pratica"
                   style={{
@@ -749,6 +749,33 @@ export default function Dashboard() {
                 finally { setDeleteDraftsBusy(false) }
               }}
               style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-text-error)', color: 'var(--color-bg-card)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: deleteDraftsBusy ? 0.6 : 1 }}
+            >Elimina</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {deleteCaseTarget && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Elimina pratica</h3>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
+            Eliminare la pratica "{deleteCaseTarget.title}"? L'operazione è irreversibile.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setDeleteCaseTarget(null)} disabled={deleteCaseBusy} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
+            <button
+              disabled={deleteCaseBusy}
+              onClick={async () => {
+                setDeleteCaseBusy(true)
+                try {
+                  await api.cases.delete(deleteCaseTarget.id)
+                  setDeleteCaseTarget(null)
+                  load(searchQuery.trim() || undefined)
+                } catch { /* ignore */ }
+                finally { setDeleteCaseBusy(false) }
+              }}
+              style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-text-error)', color: 'var(--color-bg-card)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: deleteCaseBusy ? 0.6 : 1 }}
             >Elimina</button>
           </div>
         </div>

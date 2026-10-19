@@ -578,6 +578,7 @@ export default function IstatCatalog() {
   const [runState, setRunState] = useState<{ query: SavedQuery; status: 'running' | 'done' | 'error'; message?: string } | null>(null)
   const [backfilling, setBackfilling] = useState(false)
   const [backfillMessage, setBackfillMessage] = useState<string | null>(null)
+  const [backfillConfirmOpen, setBackfillConfirmOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchHit[]>([])
@@ -632,7 +633,7 @@ export default function IstatCatalog() {
     if (!selectedGroup || backfilling) return
     const missing = seriesList.filter(s => !s.saved_query).length
     if (missing === 0) return
-    if (!window.confirm(`Popolare ${missing} query SDMX mancanti per il gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.`)) return
+    setBackfillConfirmOpen(false)
     setBackfilling(true)
     setBackfillMessage(null)
     try {
@@ -729,7 +730,7 @@ export default function IstatCatalog() {
           <div style={{ display: 'flex', gap: 8 }}>
             {selectedGroup && seriesList.some(s => !s.saved_query) && (
               <button
-                onClick={handleBackfill}
+                onClick={() => setBackfillConfirmOpen(true)}
                 disabled={backfilling}
                 style={{
                   padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-warning, #d97706)',
@@ -1107,6 +1108,20 @@ export default function IstatCatalog() {
 
       {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={() => setReloadKey(k => k + 1)} />}
       {showSdmx && <SdmxModal onClose={() => setShowSdmx(false)} onImported={() => setReloadKey(k => k + 1)} />}
+      {backfillConfirmOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 420, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Popola query mancanti</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
+              Popolare {seriesList.filter(s => !s.saved_query).length} query SDMX mancanti per il gruppo "{GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setBackfillConfirmOpen(false)} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
+              <button onClick={handleBackfill} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: backfilling ? 0.6 : 1 }}>{backfilling ? 'Popolamento...' : 'Popola'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {clearTarget && <ClearIndexModal series={clearTarget} onClose={() => setClearTarget(null)} onCleared={() => { setClearTarget(null); setReloadKey(k => k + 1) }} />}
       {manageTarget && (
         <SavedQueryModal
