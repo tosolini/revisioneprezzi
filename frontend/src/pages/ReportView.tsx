@@ -19,6 +19,8 @@ export default function ReportView() {
   const [approveName, setApproveName] = useState('')
   const [reopenModalOpen, setReopenModalOpen] = useState(false)
   const [reopenMotivation, setReopenMotivation] = useState('')
+  const [recalcModalOpen, setRecalcModalOpen] = useState(false)
+  const [recalcResult, setRecalcResult] = useState<{ calculated: number; waiting: number; skipped: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [pdfState, setPdfState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({ status: 'idle' })
@@ -159,7 +161,8 @@ export default function ReportView() {
                   })
                   const j = await res.json()
                   if (!res.ok) throw new Error(j.detail || 'Errore')
-                  alert(`Calcolati: ${j.calculated}, in attesa dati: ${j.waiting}, saltati: ${j.skipped}`)
+                  setRecalcResult({ calculated: j.calculated, waiting: j.waiting, skipped: j.skipped })
+                  setRecalcModalOpen(true)
                   await loadCycles()
                 } catch (e) {
                   setError(e instanceof Error ? e.message : 'Errore')
@@ -406,6 +409,22 @@ export default function ReportView() {
                 }}
                 style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', fontWeight: 600, opacity: (!reopenMotivation.trim() || cycleBusy) ? 0.6 : 1 }}
               >Riapri</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {recalcModalOpen && recalcResult && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Ricalcolo complessivo</h3>
+            <ul style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: 'var(--color-text-primary)' }}>
+              <li>Cicli calcolati: <strong>{recalcResult.calculated}</strong></li>
+              <li>In attesa dati: <strong>{recalcResult.waiting}</strong></li>
+              <li>Saltati: <strong>{recalcResult.skipped}</strong></li>
+            </ul>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setRecalcModalOpen(false)} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>OK</button>
             </div>
           </div>
         </div>
