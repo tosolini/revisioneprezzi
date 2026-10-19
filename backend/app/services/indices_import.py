@@ -412,6 +412,16 @@ def import_sdmx_content(
                     market_suffix = f"_{mkt_val}"
 
             series_id = f"ISTAT_{group_upper}_{code}{market_suffix}"
+            # TOL: salva le osservazioni sotto la serie FABABB usata dal calcolo
+            if group_key == "tol":
+                try:
+                    from app.services.sdmx_backfill import TOL_ISTAT_TO_FABABB
+
+                    override = TOL_ISTAT_TO_FABABB.get(code)
+                    if override:
+                        series_id = override
+                except Exception:
+                    pass
             ref_period = _parse_period(period_str, row_freq)
 
             try:
