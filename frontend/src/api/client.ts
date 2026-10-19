@@ -38,6 +38,7 @@ export interface CaseItem {
   current_step: number
   created_by: string | null
   created_at: string
+  has_revision_plan?: boolean
 }
 
 export interface CaseDetail extends CaseItem {
@@ -128,6 +129,11 @@ export const api = {
       request<CaseDetail>(`/cases/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/cases/${id}`, { method: 'DELETE' }),
+  },
+  revisionPlans: {
+    get: (caseId: string) => request<any>(`/cases/${caseId}/revision-plan`),
+    cycles: (caseId: string) => request<{ cycles: any[] }>(`/cases/${caseId}/cycles`),
+    readiness: (caseId: string) => request<any>(`/cases/${caseId}/revision-plan/readiness`),
   },
   wizard: {
     practiceMeta: {

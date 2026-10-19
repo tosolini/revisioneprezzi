@@ -20,6 +20,8 @@ from app.api.v1 import (
     tol,
     user_settings,
     wizard_v2,
+    revision_plans,
+    scheduler,
 )
 from app.core.config import settings
 from app.core.health import health_status
@@ -43,6 +45,8 @@ app.include_router(cpv.router, prefix="/api/v1")
 app.include_router(user_settings.router, prefix="/api/v1")
 app.include_router(tol.router, prefix="/api/v1")
 app.include_router(wizard_v2.router, prefix="/api/v1")
+app.include_router(revision_plans.router, prefix="/api/v1")
+app.include_router(scheduler.router, prefix="/api/v1")
 
 
 @app.on_event("startup")

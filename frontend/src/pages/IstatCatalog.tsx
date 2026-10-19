@@ -579,12 +579,14 @@ export default function IstatCatalog() {
   const [backfilling, setBackfilling] = useState(false)
   const [backfillMessage, setBackfillMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchHit[]>([])
   const [searching, setSearching] = useState(false)
   const [searchGroupCache, setSearchGroupCache] = useState<Record<string, Series[]>>({})
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sdmxDeepLinkOpened = useRef(false)
   const searchActive = searchQuery.trim().length > 0
+  const visibleSeriesList = showMissingOnly ? seriesList.filter(s => !s.saved_query) : seriesList
   const visibleGroups = groups.filter(g => g.observation_count > 0)
   const [searchParams] = useSearchParams()
   useEffect(() => { const q = searchParams.get("q"); if (q) setSearchQuery(q); if (searchParams.get("sdmxImport") === "1" && !sdmxDeepLinkOpened.current) { sdmxDeepLinkOpened.current = true; setShowSdmx(true) } }, [searchParams])
@@ -725,7 +727,17 @@ export default function IstatCatalog() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {/* Pulsante "Popola query mancanti" nascosto per ora — handler handleBackfill rimane disponibile */}
+            {selectedGroup && seriesList.some(s => !s.saved_query) && (
+              <button
+                onClick={handleBackfill}
+                disabled={backfilling}
+                style={{
+                  padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-warning, #d97706)',
+                  background: 'var(--color-bg-card)', color: 'var(--color-warning, #d97706)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                  opacity: backfilling ? 0.6 : 1,
+                }}
+              >{backfilling ? 'Popolamento...' : `Popola query mancanti (${seriesList.filter(s => !s.saved_query).length})`}</button>
+            )}
             <button onClick={() => setShowSdmx(true)} style={{
               padding: '10px 20px', borderRadius: 8, border: 'none',
               background: 'var(--color-primary)', color: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
@@ -971,7 +983,14 @@ export default function IstatCatalog() {
         ) : seriesList.length === 0 ? (
           <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Nessuna serie per questo gruppo.</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: 12 }}>
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showMissingOnly} onChange={e => setShowMissingOnly(e.target.checked)} />
+                Solo serie senza query SDMX ({seriesList.filter(s => !s.saved_query).length})
+              </label>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                 <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--color-text-muted)', fontWeight: 600, width: 24 }}></th>
@@ -983,7 +1002,7 @@ export default function IstatCatalog() {
               </tr>
             </thead>
             <tbody>
-              {seriesList.map(s => (
+              {visibleSeriesList.map(s => (
                 <React.Fragment key={s.id}>
                   <tr
                     onClick={() => setExpanded(expanded === s.id ? null : s.id)}
@@ -1004,6 +1023,16 @@ export default function IstatCatalog() {
                         <div style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontStyle: 'italic', fontSize: 12 }}>{s.ecoicop_label}</div>
                       )}
                       {s.saved_query && <SdmxChip query={s.saved_query} />}
+                      {!s.saved_query && (
+                        <span
+                          title="Nessuna query SDMX salvata: lo scheduler non può aggiornare questa serie"
+                          style={{
+                            fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6, marginLeft: 6,
+                            background: 'var(--color-bg-danger, #fee2e2)', color: 'var(--color-text-danger, #b91c1c)',
+                            whiteSpace: 'nowrap', verticalAlign: 'middle',
+                          }}
+                        >Senza query SDMX</span>
+                      )}
                     </td>
                     <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }} title={s.ateco_label ? `[${getAtecoCode(s.id, s.classification_ref)}] ${s.ateco_label}` : undefined}>{s.id}</td>
                     <td style={{ padding: '10px 12px', color: 'var(--color-text-muted)' }}>
@@ -1072,6 +1101,7 @@ export default function IstatCatalog() {
               ))}
             </tbody>
           </table>
+          </> 
         )}
       </div>
 

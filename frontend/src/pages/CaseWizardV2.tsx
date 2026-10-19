@@ -8,7 +8,7 @@ import CpvSearchModal from '../components/CpvSearchModal'
 import { SavedQueryModal } from '../components/SavedQueryModal'
 import type { SavedQueryRef } from '../components/SavedQueryModal'
 import WizardTimeline from '../components/WizardTimeline'
-import { asNullableString, asNumber, isRecord } from '../components/utils'
+import { asNullableString, asNumber, isRecord, cycleStatusLabel } from '../components/utils'
 import { printArea } from '../utils/printReport'
 interface TolSelection {
   code: string
@@ -101,6 +101,8 @@ interface WizardData {
   comparison_period: string
   indices_config?: IndicesConfig
   result?: CalcResultLike | null
+  recurrent_enabled?: boolean
+  recurrent_frequency?: string
 }
 
 interface PracticeMeta {
@@ -762,12 +764,19 @@ export default function CaseWizardV2() {
     ateco_selections: [],
     amount: 0,
     base_period: '',
-    comparison_period: ''
+    comparison_period: '',
+    recurrent_enabled: false,
+    recurrent_frequency: 'annual',
   })
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(false)
   const [error, setError] = useState('')
   const [reportData, setReportData] = useState<ReportViewProps | null>(null)
+  const [planData, setPlanData] = useState<any>(null)
+  const [cycles, setCycles] = useState<any[]>([])
+  const [selectedCycleId, setSelectedCycleId] = useState<string>('')
+  const [cycleAmount, setCycleAmount] = useState<number>(0)
+  const [cycleBusy, setCycleBusy] = useState(false)
   const [pdfState, setPdfState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({ status: 'idle' })
   const [mappings, setMappings] = useState<Record<string, CpvMapping>>({})
   const [mappingLoading, setMappingLoading] = useState(false)
@@ -785,6 +794,9 @@ export default function CaseWizardV2() {
   const [atecoInputs, setAtecoInputs] = useState<Record<string, string>>({})
   const dataRef = useRef(data)
   useEffect(() => { dataRef.current = data }, [data])
+  useEffect(() => {
+    if (id && currentStep === 5) void loadCycles()
+  }, [id, currentStep])
 
   const totalSteps = 5
 
@@ -848,6 +860,8 @@ export default function CaseWizardV2() {
           comparison_period: rawComparison || (endDate ? `${endDate.slice(0, 7)}-01` : (execStart ? `${execStart.slice(0, 7)}-01` : '')),
           indices_config: isRecord(s['indices_config']) ? s['indices_config'] as unknown as IndicesConfig : undefined,
           result: isRecord(s['result']) ? s['result'] as unknown as CalcResultLike : null,
+          recurrent_enabled: s['recurrent_enabled'] === true,
+          recurrent_frequency: typeof s['recurrent_frequency'] === 'string' ? s['recurrent_frequency'] : 'annual',
         })
         setCurrentStep(asNumber(s['current_step']) ?? 1)
         setInitialLoading(false)
@@ -1629,6 +1643,15 @@ export default function CaseWizardV2() {
       }
 
       const result = await response.json()
+      // Deriva l'elenco delle serie per il piano ricorrente (dal config calcolato)
+      const planSeriesList: Array<{ series_id: string; weight: number }> = []
+      try {
+        if (calcIndicesConfig?.type === 'single' && calcIndicesConfig.single_series_id) {
+          planSeriesList.push({ series_id: calcIndicesConfig.single_series_id, weight: 100 })
+        } else if (calcIndicesConfig?.type === 'composite' && calcIndicesConfig.components) {
+          for (const [sid, w] of Object.entries(calcIndicesConfig.components)) planSeriesList.push({ series_id: sid, weight: Number(w) || 0 })
+        }
+      } catch { /* ignore */ }
       setDataField('result', isRecord(result) ? result as unknown as CalcResultLike : { is_multi_component: true })
       // Aggiorna anche indices_config nello stato locale per evitare staleness al prossimo giro
       if (calcIndicesConfig) {
@@ -1659,8 +1682,42 @@ export default function CaseWizardV2() {
             comparison_period: data.comparison_period || null,
             indices_config: calcIndicesConfig,
             result,
+            recurrent_enabled: data.recurrent_enabled ?? false,
+            recurrent_frequency: data.recurrent_frequency ?? 'annual',
           })
         })
+      }
+      // Materializza il piano ricorrente se attivato
+      if (id && (data.recurrent_enabled === true) && planSeriesList.length > 0) {
+        try {
+          const anchor = (data.base_period || '').slice(0, 7) + '-01'
+          const freq = data.recurrent_frequency || 'annual'
+          const stepMonths = freq === 'monthly' ? 1 : freq === 'quarterly' ? 3 : freq === 'semiannual' ? 6 : 12
+          // primo periodo di confronto
+          const d = new Date(anchor)
+          d.setMonth(d.getMonth() + stepMonths)
+          const firstCmp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+          await fetch(`/api/v1/cases/${id}/revision-plan`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              frequency: freq,
+              anchor_period: anchor,
+              first_comparison_period: firstCmp,
+              amount_policy: 'period',
+              auto_generate: true,
+              lead_days: 0,
+              status: 'draft',
+              series: planSeriesList.map(s => ({ series_id: s.series_id, weight: s.weight })),
+            }),
+          })
+          // tenta attivazione (può fallire per readiness: resto in bozza)
+          try {
+            await fetch(`/api/v1/cases/${id}/revision-plan/activate`, { method: 'POST' })
+          } catch { /* ignore */ }
+        } catch (e) {
+          console.warn('Salvataggio piano ricorrente fallito', e)
+        }
       }
       // Salva anche su RevisionResult per report stabile dopo reopen (wizard state da solo non basta)
       if (id) {
@@ -1702,6 +1759,26 @@ export default function CaseWizardV2() {
       })
     )
     return results
+  }
+
+  const loadCycles = async () => {
+    if (!id) return
+    try {
+      const pr = await fetch(`/api/v1/cases/${id}/revision-plan`)
+      const pj = await pr.json()
+      setPlanData(pj.plan || null)
+      const cr = await fetch(`/api/v1/cases/${id}/cycles`)
+      const cj = await cr.json()
+      const list = cj.cycles || []
+      setCycles(list)
+      if (list.length > 0 && !selectedCycleId) {
+        const firstOpen = list.find((c: any) => c.status !== 'approved') || list[0]
+        setSelectedCycleId(firstOpen.id)
+        setCycleAmount(firstOpen.amount ?? 0)
+      }
+    } catch (e) {
+      console.warn('Caricamento cicli fallito', e)
+    }
   }
 
   const loadReport = async (calcResult?: unknown) => {
@@ -2804,6 +2881,36 @@ export default function CaseWizardV2() {
                   </div>
                 )}
               </div>
+
+              {/* Revisione ricorrente */}
+              <div style={{ padding: '14px 16px', borderRadius: 10, border: '1px solid var(--color-border-light)', background: 'var(--color-bg-muted)' }}>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={data.recurrent_enabled === true}
+                    onChange={e => setDataField('recurrent_enabled', e.target.checked)}
+                  />
+                  Revisione ricorrente (cicli periodici fino a fine contratto)
+                </label>
+                {data.recurrent_enabled && (
+                  <div style={{ marginTop: 10, display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Frequenza:</label>
+                    <select
+                      value={data.recurrent_frequency || 'annual'}
+                      onChange={e => setDataField('recurrent_frequency', e.target.value)}
+                      style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}
+                    >
+                      <option value="monthly">Mensile</option>
+                      <option value="quarterly">Trimestrale</option>
+                      <option value="semiannual">Semestrale</option>
+                      <option value="annual">Annuale</option>
+                    </select>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-light)' }}>
+                      Richiede data termine contratto e query SDMX su tutte le serie.
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )
@@ -2920,6 +3027,113 @@ export default function CaseWizardV2() {
       case 5:
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {planData && cycles.length > 0 && (
+              <div style={{ padding: '14px 16px', borderRadius: 10, border: '1px solid var(--color-border-light)', background: 'var(--color-bg-muted)' }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Cicli di revisione ({planData.frequency})</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+                  <select
+                    value={selectedCycleId}
+                    onChange={async e => {
+                      const c = cycles.find((x: any) => x.id === e.target.value)
+                      setSelectedCycleId(e.target.value)
+                      setCycleAmount(c?.amount ?? 0)
+                      try {
+                        const rr = await fetch(`/api/v1/report/v2/cases/${id}?cycle=${e.target.value}`)
+                        if (rr.ok) setReportData(await rr.json())
+                      } catch { /* ignore */ }
+                    }}
+                    style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}
+                  >
+                    {cycles.map((c: any) => (
+                      <option key={c.id} value={c.id}>#{c.sequence_no} — {c.comparison_period?.slice(0,7)} ({cycleStatusLabel(c.status)})</option>
+                    ))}
+                  </select>
+                  {(() => {
+                    const c = cycles.find((x: any) => x.id === selectedCycleId)
+                    if (!c) return null
+                    return (
+                      <>
+                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Stato: <strong>{cycleStatusLabel(c.status)}</strong></span>
+                        {c.status !== 'approved' && (
+                          <>
+                            <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Importo periodo €</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              value={cycleAmount || ''}
+                              onChange={e => setCycleAmount(parseFloat(e.target.value) || 0)}
+                              style={{ width: 120, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-primary)' }}
+                            />
+                            <button
+                              disabled={cycleBusy}
+                              onClick={async () => {
+                                setCycleBusy(true)
+                                try {
+                                  const res = await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/calculate`, {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ amount: cycleAmount }),
+                                  })
+                                  const j = await res.json()
+                                  if (!res.ok) throw new Error(j.detail || 'Errore calcolo')
+                                  await loadCycles()
+                                  // ricarica report del ciclo
+                                  const rr = await fetch(`/api/v1/report/v2/cases/${id}?cycle=${selectedCycleId}`)
+                                  if (rr.ok) setReportData(await rr.json())
+                                } catch (e) {
+                                  setError(e instanceof Error ? e.message : 'Errore')
+                                } finally {
+                                  setCycleBusy(false)
+                                }
+                              }}
+                              style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: cycleBusy ? 0.6 : 1 }}
+                            >Calcola</button>
+                          </>
+                        )}
+                        {c.status === 'calculated' && (
+                          <button
+                            disabled={cycleBusy}
+                            onClick={async () => {
+                              const name = window.prompt('Approvato da (nome):')
+                              if (!name) return
+                              setCycleBusy(true)
+                              try {
+                                await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/approve`, {
+                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ approved_by: name }),
+                                })
+                                await loadCycles()
+                              } catch (e) { setError(e instanceof Error ? e.message : 'Errore') }
+                              finally { setCycleBusy(false) }
+                            }}
+                            style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-success)', color: 'var(--color-text-success)', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                          >Approva</button>
+                        )}
+                        {c.status === 'approved' && (
+                          <button
+                            disabled={cycleBusy}
+                            onClick={async () => {
+                              const m = window.prompt('Motivazione riapertura:')
+                              if (!m) return
+                              setCycleBusy(true)
+                              try {
+                                await fetch(`/api/v1/cases/${id}/cycles/${selectedCycleId}/reopen`, {
+                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ motivation: m }),
+                                })
+                                await loadCycles()
+                              } catch (e) { setError(e instanceof Error ? e.message : 'Errore') }
+                              finally { setCycleBusy(false) }
+                            }}
+                            style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                          >Riapri</button>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
             {reportData ? (
               <div id="print-area-v2" ref={printRef}>
                 <ReportV2View reportData={reportData} />

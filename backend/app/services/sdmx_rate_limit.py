@@ -2,6 +2,7 @@
 
 Istat impone 5 query/minuto per IP, oltre il quale scatta un blocco di accesso
 di 1-2 giorni (https://www.istat.it/classificazioni-e-strumenti/web-services-sdmx/).
+Il pacing e' impostato a 3 query/minuto (20s) per margine di sicurezza.
 API FastAPI e script CLI (scripts/sync_indices.py) condividono lo stesso IP di
 uscita, quindi il pacing e' serializzato anche tra processi: l'ultimo timestamp
 di richiesta e' persistito su file sotto lock esclusivo (flock).
@@ -14,7 +15,7 @@ import threading
 import time
 from pathlib import Path
 
-MIN_INTERVAL = 12.0  # 60s / 5 query al minuto
+MIN_INTERVAL = 20.0  # 60s / 3 query al minuto (limite ISTAT 5/min, margine di sicurezza)
 JITTER_MAX = 2.0  # margine anti-jitter aggiunto al minimo
 DEFAULT_MAX_WAIT = 45.0
 
@@ -28,7 +29,7 @@ class RateLimitTimeout(Exception):
 
     def __init__(self, wait_seconds: float):
         self.wait_seconds = wait_seconds
-        super().__init__(f"Istat consente 5 query/minuto per IP: riprova tra {wait_seconds:.0f}s")
+        super().__init__(f"Pacing SDMX impostato a 3 query/minuto: riprova tra {wait_seconds:.0f}s")
 
 
 def wait_for_slot(max_wait: float = DEFAULT_MAX_WAIT) -> float:

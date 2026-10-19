@@ -27,6 +27,18 @@ export function statusLabel(status: string): string {
   return map[status] || status
 }
 
+export function cycleStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    planned: 'Pianificato',
+    waiting_data: 'In attesa dati',
+    ready: 'Pronto',
+    calculated: 'Calcolato',
+    approved: 'Approvato',
+    void: 'Annullato',
+  }
+  return map[status] || status
+}
+
 export function getDeviceId(): string {
   let id = localStorage.getItem('device_id')
   if (!id) {

@@ -351,6 +351,104 @@ export function buildReportDoc(report: ReportData, caseTitle?: string): TDocumen
   } as unknown as TDocumentDefinitions;
 }
 
+export function buildFascicoloDoc(caseTitle: string, cycles: Array<{ cycle: any; report: any }>): TDocumentDefinitions {
+  const content: AnyRecord[] = [
+    { text: 'Fascicolo Revisione Prezzi', style: 'h1', margin: [0, 0, 0, 2] },
+    { text: caseTitle || '', style: 'subtitle', margin: [0, 0, 0, 12] },
+  ];
+
+  // Tabella sinottica
+  content.push(...sectionHeader('Cicli di revisione'));
+  const rows = cycles.map(cy => {
+    const rep = cy.report?.report ?? cy.report;
+    const calcSection = rep?.sections?.find((s: any) => s.title === 'Risultato Calcolo');
+    const variation = calcSection?.data?.variation_percent;
+    const status = cy.cycle?.status ?? 'N/A';
+    return [
+      str(cy.cycle?.sequence_no),
+      cy.cycle?.comparison_period ? itDate(cy.cycle.comparison_period) : NA,
+      cy.cycle?.amount != null ? eur(cy.cycle.amount) : NA,
+      variation != null ? `${Number(variation).toFixed(2)}%` : NA,
+      status,
+    ];
+  });
+  content.push(pdfTable(['#', 'Periodo', 'Importo periodo €', 'Variazione %', 'Stato'], rows, ['auto', 'auto', 'auto', 'auto', 'auto']));
+  content.push({ text: '', margin: [0, 0, 0, 6] });
+
+  const sections: Array<[string, (d: AnyRecord) => AnyRecord[]]> = [
+    ['Dati Contratto', renderContract],
+    ['Classificazione', renderClassification],
+    ['Importi e Date', renderAmounts],
+    ['Indici ISTAT', renderIndices],
+    ['Parametri Normativi', renderNormative],
+    ['Risultato Calcolo', renderCalculation],
+  ];
+
+  for (const cy of cycles) {
+    const rep = cy.report?.report ?? cy.report;
+    const status = cy.cycle?.status ?? '';
+    const watermark = status !== 'approved' ? (status === 'calculated' ? 'BOZZA' : 'IN ATTESA DATI') : null;
+    content.push({ text: '', pageBreak: 'before' });
+    content.push({ text: `Ciclo ${str(cy.cycle?.sequence_no)} — ${cy.cycle?.comparison_period ? itDate(cy.cycle.comparison_period) : NA}`, style: 'h1', margin: [0, 0, 0, 4] });
+    if (watermark) {
+      content.push({ text: watermark, fontSize: 48, bold: true, color: '#d1d5db', alignment: 'center', margin: [0, 20, 0, 20] });
+    }
+    if (rep?.sections) {
+      for (const [title, render] of sections) {
+        const sec = rep.sections.find((s: any) => s.title === title);
+        if (!sec) continue;
+        content.push(...render(sec.data as AnyRecord));
+      }
+    } else if (rep?.error) {
+      content.push({ text: `Errore: ${rep.error}`, style: 'info' });
+    }
+  }
+
+  return {
+    pageSize: 'A4',
+    pageMargins: [40, 56, 40, 56],
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        { text: `Fascicolo generato il: ${new Date().toLocaleDateString('it-IT')}`, style: 'footer' },
+        { text: `Pagina ${currentPage} di ${pageCount}`, style: 'footer', alignment: 'right' },
+      ],
+      margin: [40, 0, 40, 0],
+    }),
+    content,
+    styles: {
+      h1: { fontSize: 20, bold: true },
+      subtitle: { fontSize: 11, color: '#6b7280' },
+      h2: { fontSize: 13, bold: true },
+      label: { fontSize: 8.5, color: '#6b7280', margin: [0, 0, 0, 1] },
+      value: { fontSize: 10 },
+      big: { fontSize: 17, bold: true },
+      med: { fontSize: 14, bold: true },
+      sub: { fontSize: 10, bold: true, color: '#374151' },
+      badge: { fontSize: 9, bold: true, color: '#1d4ed8' },
+      totals: { fontSize: 9, bold: true },
+      th: { fontSize: 8.5, bold: true, color: '#4b5563' },
+      td: { fontSize: 8.5 },
+      mono: { fontSize: 8, font: 'Roboto' },
+      box: { fontSize: 9, fillColor: '#f3f4f6', margin: [0, 4, 0, 4] },
+      info: { fontSize: 10, color: '#1d4ed8' },
+      footer: { fontSize: 8, color: '#9ca3af' },
+    },
+    defaultStyle: { fontSize: 9.5, lineHeight: 1.25 },
+  } as unknown as TDocumentDefinitions;
+}
+
+export async function downloadFascicoloPdf(caseTitle: string, cycles: Array<{ cycle: any; report: any }>, filename: string): Promise<void> {
+  const [pdfMakeMod, vfsMod] = await Promise.all([
+    import('pdfmake/build/pdfmake'),
+    import('pdfmake/build/vfs_fonts'),
+  ]);
+  const pdfMake = ((pdfMakeMod as AnyRecord).default ?? pdfMakeMod) as AnyRecord;
+  const vfs = ((vfsMod as AnyRecord).default ?? vfsMod) as AnyRecord;
+  pdfMake.vfs = (vfs.vfs ?? vfs) as unknown;
+  const doc = buildFascicoloDoc(caseTitle, cycles);
+  pdfMake.createPdf(doc).download(filename);
+}
+
 export async function downloadReportPdf(report: ReportData, filename: string, caseTitle?: string): Promise<void> {
   const [pdfMakeMod, vfsMod] = await Promise.all([
     import('pdfmake/build/pdfmake'),

@@ -121,6 +121,7 @@ class CaseResponse(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    has_revision_plan: bool = False
 
 
 class CaseListResponse(BaseModel):
@@ -132,6 +133,7 @@ class CaseListResponse(BaseModel):
     current_step: int
     created_by: str | None
     created_at: datetime
+    has_revision_plan: bool = False
 
 
 class CaseUpdate(BaseModel):

@@ -421,7 +421,10 @@ def import_sdmx_content(
                 continue
 
             # OBS_STATUS: P=provvisorio, E=stimato, M=manuale, T=provv. tendenza
-            is_def = status_raw not in ("P", "E", "M", "T")
+            # ISTAT emette i codici sia maiuscoli che minuscoli (es. 'p' per
+            # provvisorio nel NIC): normalizziamo prima del confronto.
+            _NON_DEFINITIVE = {"P", "E", "M", "T"}
+            is_def = (status_raw or "").strip().upper() not in _NON_DEFINITIVE
             name = _series_name(row, reader.fieldnames, code, series_names, group_key)
 
             with db.begin_nested():

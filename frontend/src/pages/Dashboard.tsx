@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, CaseItem } from '../api/client'
-import { formatDate, getDeviceId, statusLabel } from '../components/utils'
+import { formatDate, getDeviceId, statusLabel, cycleStatusLabel } from '../components/utils'
 import NotesEditor, { isEmptyHtml } from '../components/NotesEditor'
 
 type ExtractFields = Record<string, unknown>
@@ -32,6 +32,10 @@ function mapNatura(natura: unknown): string {
 export default function Dashboard() {
   const [cases, setCases] = useState<CaseItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedCase, setExpandedCase] = useState<string | null>(null)
+  const [cyclesByCase, setCyclesByCase] = useState<Record<string, any[]>>({})
+  const [deleteDraftsOpen, setDeleteDraftsOpen] = useState(false)
+  const [deleteDraftsBusy, setDeleteDraftsBusy] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
   const [createdBy, setCreatedBy] = useState('')
@@ -255,10 +259,21 @@ export default function Dashboard() {
   }
 
   return (
+    <>
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>Pratiche</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setDeleteDraftsOpen(true)}
+            style={{
+              padding: '10px 20px', background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 14, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Elimina bozze
+          </button>
           <button
             onClick={() => {
               setShowCreate(true)
@@ -547,8 +562,8 @@ export default function Dashboard() {
           {cases.map(c => {
             const isDraft = c.status === 'draft'
             return (
+            <div key={c.id}>
             <div
-              key={c.id}
               onClick={() => {
                 // Pratiche completate (o già al passo finale) → report visuale finale
                 if (!isDraft || c.current_step >= 5) {
@@ -569,7 +584,12 @@ export default function Dashboard() {
               }}
             >
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-text-primary)' }}>{c.title}</div>
+                <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {c.title}
+                  {c.has_revision_plan && (
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6, background: 'var(--color-bg-info)', color: 'var(--color-text-info)' }}>Ricorrente</span>
+                  )}
+                </div>
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
                   {c.created_by && `${c.created_by} · `}{formatDate(c.created_at)}
                 </div>
@@ -612,6 +632,27 @@ export default function Dashboard() {
                   </button>
                   )
                 ) : null}
+                {c.has_revision_plan && (
+                  <button
+                    onClick={async e => {
+                      e.stopPropagation()
+                      const next = expandedCase === c.id ? null : c.id
+                      setExpandedCase(next)
+                      if (next && !cyclesByCase[next]) {
+                        try {
+                          const res = await api.revisionPlans.cycles(next)
+                          setCyclesByCase(prev => ({ ...prev, [next]: res.cycles || [] }))
+                        } catch {
+                          setCyclesByCase(prev => ({ ...prev, [next]: [] }))
+                        }
+                      }
+                    }}
+                    title="Mostra cicli di revisione"
+                    style={{ padding: '4px 8px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg-card)', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                  >
+                    {expandedCase === c.id ? '▲' : '▼'} Cicli
+                  </button>
+                )}
                 <button
                   onClick={e => {
                     e.stopPropagation()
@@ -632,11 +673,89 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
+            {c.has_revision_plan && expandedCase === c.id && (
+              <div style={{ marginTop: 4, padding: '10px 16px', background: 'var(--color-bg-muted)', borderRadius: 8, fontSize: 12 }}>
+                <div style={{ marginBottom: 8 }}>
+                  <button
+                    onClick={async e => {
+                      e.stopPropagation()
+                      try {
+                        const f = await fetch(`/api/v1/report/v2/cases/${c.id}/fascicolo`)
+                        const data = await f.json()
+                        const { downloadFascicoloPdf } = await import('../utils/reportPdf')
+                        await downloadFascicoloPdf(c.title, data.cycles || [], `fascicolo-${c.id}.pdf`)
+                      } catch (err) {
+                        alert('Errore generazione fascicolo')
+                      }
+                    }}
+                    style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                  >Scarica fascicolo PDF</button>
+                </div>
+                {(cyclesByCase[c.id] || []).length === 0 ? (
+                  <div style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Nessun ciclo.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ color: 'var(--color-text-muted)' }}>
+                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>#</th>
+                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>Periodo</th>
+                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>Stato</th>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Var. %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(cyclesByCase[c.id] || []).map((cy: any) => (
+                        <tr key={cy.id} style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '4px 6px' }}>{cy.sequence_no}</td>
+                          <td style={{ padding: '4px 6px', fontFamily: 'monospace' }}>{cy.comparison_period?.slice(0,7)}</td>
+                          <td style={{ padding: '4px 6px' }}>{cycleStatusLabel(cy.status)}</td>
+                          <td style={{ padding: '4px 6px', textAlign: 'right' }}>{cy.variation_percent != null ? `${Number(cy.variation_percent).toFixed(2)}%` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+            </div>
             )
           })}
         </div>
       )}
     </div>
+
+    {deleteDraftsOpen && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Elimina bozze</h3>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
+            Eliminare tutte le pratiche in stato "Bozza"? L'operazione è irreversibile.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setDeleteDraftsOpen(false)} disabled={deleteDraftsBusy} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
+            <button
+              disabled={deleteDraftsBusy}
+              onClick={async () => {
+                setDeleteDraftsBusy(true)
+                try {
+                  const res = await fetch('/api/v1/cases/delete-drafts', { method: 'POST' })
+                  if (res.ok) {
+                    const j = await res.json()
+                    alert(`Eliminate ${j.deleted} bozze`)
+                    setDeleteDraftsOpen(false)
+                    load(searchQuery.trim() || undefined)
+                  }
+                } catch { /* ignore */ }
+                finally { setDeleteDraftsBusy(false) }
+              }}
+              style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-text-error)', color: 'var(--color-bg-card)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: deleteDraftsBusy ? 0.6 : 1 }}
+            >Elimina</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    </>
   )
 }
 

@@ -71,3 +71,25 @@ Alla fine, nell’ultimo passaggio conclusivo, viene chiusa la pratica con l’e
 Sul fondo della schermata sarà possibile stampare o creare un PDF. La scheda una volta chiusa **non è modificabile**, ma rimane consultabile nella sua forma del riepilogo conclusivo, sempre con la possibilità di poter stampare.
 
 Nella dashboard sarà inoltre possibile eliminare la pratica se lo riteniamo necessario.
+
+## Revisione prezzi ricorrente
+
+Per i contratti di durata è possibile attivare la **revisione prezzi ricorrente** (mensile, trimestrale, semestrale o annuale). I periodi sono ancorati al mese di aggiudicazione: ogni ciclo confronta il mese di aggiudicazione con il mese di rilevazione del periodo, applicando la variazione cumulata all'importo del periodo.
+
+### Attivazione
+
+Al passo 3 del wizard ("Importi e periodi") è presente il blocco **"Revisione ricorrente"**. Spuntando la casella e scegliendo la frequenza, il piano viene materializzato al salvataggio del calcolo. L'attivazione richiede che **ogni serie ISTAT coinvolta abbia una query SDMX salvata** (vedi sezione "Indici ISTAT"): in caso contrario il piano resta in bozza e viene segnalato in dashboard.
+
+### Cicli
+
+Ogni ciclo ha uno stato: **Pianificato → In attesa dati → Pronto → Calcolato → Approvato** (più **Annullato**). Il sistema crea la bozza alla scadenza; l'approvazione resta umana. Un ciclo approvato è immutabile (la riapertura richiede motivazione e viene tracciata nell'audit log).
+
+Il passo 5 del wizard e la pagina report mostrano il selettore dei cicli: è possibile calcolare un ciclo inserendo l'importo del periodo, approvarlo con il proprio nome, riaprirlo o annullarlo.
+
+### Fascicolo
+
+Dalla dashboard, per le pratiche ricorrenti, il pulsante **"Cicli"** espande la tabella dei cicli (con variazione %) e il pulsante **"Scarica fascicolo PDF"** genera un PDF unico con tutti i cicli; i non approvati portano la filigrana "BOZZA" o "IN ATTESA DATI".
+
+### Aggiornamento automatico degli indici
+
+Un container **scheduler** (avviato automaticamente con Docker Compose) aggiorna ogni giorno gli indici ISTAT per i piani attivi e genera le bozze dei cicli scaduti. L'aggiornamento automatico funziona solo se ogni serie ha una query SDMX salvata; in caso contrario il ciclo resta in "In attesa dati" con segnalazione in dashboard.
