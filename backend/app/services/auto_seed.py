@@ -220,6 +220,21 @@ def _seed_index_base_links(db: Session) -> None:
             ref_period = date.fromisoformat(row["reference_period"].strip())
             source = row.get("source", "").strip() or None
 
+            for sid in (from_id, to_id):
+                if not db.query(IndexSeries).filter_by(id=sid).first():
+                    suffix = sid.removeprefix("ISTAT_NIC_ECOICOP2_")
+                    db.add(
+                        IndexSeries(
+                            id=sid,
+                            name=f"Prezzi al consumo NIC - {suffix}",
+                            source="ISTAT",
+                            normative_category="services",
+                            classification_ref="nic_ecoicop2",
+                            frequency="monthly",
+                        )
+                    )
+                    db.flush()
+
             existing = (
                 db.query(IndexBaseLink)
                 .filter_by(from_series_id=from_id, to_series_id=to_id)
