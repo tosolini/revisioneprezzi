@@ -639,9 +639,10 @@ def calculate_price_revision(
         if base_link.applied:
             step_details["valore_confronto_omogeneizzato"] = effective_comp
             step_details["raccordo_base"] = base_link.to_dict()
+            c_val = base_link.coefficient
             res_text = (
                 f"Indice base: {base_value}, Indice confronto: {comp_value} "
-                f"(omogeneizzato a base 2015: {effective_comp}, coeff. raccordo {base_link.coefficient:.4f})"
+                f"(omogeneizzato a base 2015: {effective_comp}, coeff. {c_val:.4f})"
             )
         else:
             res_text = f"Indice base: {base_value}, Indice confronto: {comp_value}"
@@ -805,7 +806,10 @@ def calculate_price_revision(
             for d in (weighted_component_variations or [])
             if d.get("base_link_applied")
         ]
-        if (weighted_component_variations and any(d.get("base_link_applied") for d in weighted_component_variations))
+        if (
+            weighted_component_variations
+            and any(d.get("base_link_applied") for d in weighted_component_variations)
+        )
         else None
     )
 

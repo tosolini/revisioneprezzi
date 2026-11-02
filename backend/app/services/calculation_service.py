@@ -118,7 +118,9 @@ def calculate_single(
 
     base_link = resolve_base_link(db, series_id, base_period, comparison_period, comp_value)
     effective_comp = (
-        base_link.homogenized_comp_value if base_link.applied and base_link.homogenized_comp_value is not None else comp_value
+        base_link.homogenized_comp_value
+        if base_link.applied and base_link.homogenized_comp_value is not None
+        else comp_value
     )
     variation = ((effective_comp - base_value) / base_value) * 100
     variation = _round(variation, 4)

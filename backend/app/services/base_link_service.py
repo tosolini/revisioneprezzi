@@ -1,7 +1,7 @@
 """Servizio di raccordo indici su basi storiche contigue (IndexBaseLink).
 
-Gestisce il passaggio tra basi ISTAT (es. Base 2015=100 -> Base 2025=100 per NIC/PC ex Reg. UE 2025/1182)
-quando un contratto pubblico ha periodo base e periodo di confronto su basi di riferimento diverse.
+Gestisce il passaggio tra basi ISTAT (Base 2015 -> Base 2025 per NIC ex Reg. UE 2025/1182)
+quando un contratto pubblico ha periodo base e confronto su basi di riferimento diverse.
 """
 
 from dataclasses import dataclass
@@ -26,7 +26,9 @@ class BaseLinkInfo:
         return {
             "applied": self.applied,
             "coefficient": self.coefficient if self.applied else None,
-            "reference_period": self.reference_period.isoformat() if self.reference_period else None,
+            "reference_period": (
+                self.reference_period.isoformat() if self.reference_period else None
+            ),
             "source": self.source if self.applied else None,
             "note": self.note if self.applied else None,
             "homogenized_comp_value": self.homogenized_comp_value if self.applied else None,

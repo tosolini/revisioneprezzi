@@ -23,7 +23,7 @@ def db():
 
 
 def test_base_links_seeded(db):
-    """Verifica che la tabella index_base_link contenga i coefficienti ufficiali per le serie NIC."""
+    """Verifica che index_base_link contenga i coefficienti ufficiali per le serie NIC."""
     count = db.query(IndexBaseLink).count()
     assert count >= 200, f"Attesi almeno 200 link di raccordo, trovati {count}"
 
@@ -76,7 +76,7 @@ def test_resolve_base_link_not_applied_same_base(db):
 
 
 def test_calculate_price_revision_v2_crossing_boundary(db):
-    """Verifica che il calcolo v2 a cavallo del 2025/2026 produca una variazione fisiologica (+0.81%) e non -18%."""
+    """Verifica che il calcolo v2 a cavallo 2025/26 dia variazione coerente (+0.81%) e non -18%."""
     res = calculate_price_revision(
         db=db,
         contract_type="services",
@@ -138,7 +138,7 @@ def test_calculate_price_revision_v2_within_bases(db):
 
 
 def test_calculate_weighted_variation_composite(db):
-    """Verifica che in un indice composito (Tabella D) i componenti NIC a cavallo vengano raccordati."""
+    """Verifica che in un composito (Tabella D) i componenti NIC a cavallo vengano raccordati."""
     components = {
         "ISTAT_NIC_ECOICOP2_00": 50.0,
         "ISTAT_NIC_ECOICOP2_01": 50.0,
