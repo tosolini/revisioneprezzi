@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
 
+from app.services.base_link_service import BaseLinkInfo, resolve_base_link
 
 getcontext().prec = 28
 
@@ -398,11 +399,14 @@ def calculate_synthetic_index(
     db: Session,
     indices: dict[str, float],  # {series_id: weight_percent}
     period: date,
+    base_period: date | None = None,
 ) -> tuple[float | None, list[str]]:
     """
     Calcola indice sintetico ponderato (per LAVORI multi-TOL o SERVIZI/FORNITURE multi-indice)
 
-    Formula: Is = Σ(pi × ITOLi) dove pi è il peso percentuale
+    Formula: Is = Σ(pi × ITOLi) dove pi è il peso percentuale.
+    Se base_period è specificato, applica l'eventuale coefficiente di raccordo
+    per omogeneizzare componenti che hanno cambiato base di riferimento tra base_period e period.
 
     Returns:
         (indice_sintetico, errori)
@@ -421,6 +425,10 @@ def calculate_synthetic_index(
         if value is None:
             errors.append(f"Indice {series_id} non trovato per {period}")
             continue
+        if base_period is not None:
+            link = resolve_base_link(db, series_id, base_period, period, value)
+            if link.applied and link.homogenized_comp_value is not None:
+                value = link.homogenized_comp_value
         synthetic += (weight / 100.0) * value
 
     return _round(synthetic, 4), []
@@ -436,11 +444,12 @@ def calculate_weighted_variation(
     Variazione come media ponderata delle variazioni dei singoli indici
     (Tabella D punto 7): Vt = Σ(wi/100)·Vt(i), dove
     Vt(i) = ((I_confronto − I_base) / I_base) × 100 per ciascun componente.
+    Supporta coefficienti di raccordo tra basi ISTAT contigue (es. Base 2015 -> Base 2025).
 
     Returns:
         (variazione_totale, component_details, errori)
     component_details = [{series_id, weight, base_value, comparison_value,
-                        variation_percent}] per componente.
+                        variation_percent, ...}] per componente.
     """
     total_weight = sum(components.values())
     if abs(total_weight - 100.0) > 0.01:
@@ -467,7 +476,14 @@ def calculate_weighted_variation(
                 missing.append(f"periodo di confronto {comparison_period}")
             errors.append(f"Indice {series_id} non trovato per {', '.join(missing)}")
             continue
-        variation = ((comp_value - base_value) / base_value) * 100
+
+        base_link = resolve_base_link(
+            db, series_id, base_period, comparison_period, comp_value
+        )
+        effective_comp = (
+            base_link.homogenized_comp_value if base_link.applied else comp_value
+        )
+        variation = ((effective_comp - base_value) / base_value) * 100
         variation = _round(variation, 4)
         contribution = _round((weight / 100.0) * variation, 4)
         details.append(
@@ -476,6 +492,10 @@ def calculate_weighted_variation(
                 "weight": weight,
                 "base_value": base_value,
                 "comparison_value": comp_value,
+                "homogenized_comparison_value": effective_comp if base_link.applied else None,
+                "base_link_applied": base_link.applied,
+                "base_link_coefficient": base_link.coefficient if base_link.applied else None,
+                "base_link_note": base_link.note if base_link.applied else None,
                 "variation_percent": variation,
                 "contribution_percent": contribution,
                 "used_base_period": used_base.isoformat() if used_base else None,
@@ -500,6 +520,8 @@ def calculate_weighted_variation(
         return None, details, errors
 
     return _round(weighted_sum, 4), details, []
+
+
 
 
 def calculate_price_revision(
@@ -559,7 +581,8 @@ def calculate_price_revision(
     comp_details: list[dict] = []
     base_value: float | None = None
     comp_value: float | None = None
-
+    base_link = BaseLinkInfo(applied=False)
+    effective_comp: float | None = None
     if index_type == "single":
         series_id = indices_config["single_series_id"]
         freq_single = _resolve_series_frequency(db, series_id)
@@ -599,18 +622,37 @@ def calculate_price_revision(
                 "comparison_period": comparison_period.isoformat(),
             }
 
+        base_link = resolve_base_link(
+            db, series_id, base_period, comparison_period, comp_value
+        )
+        effective_comp = (
+            base_link.homogenized_comp_value if base_link.applied else comp_value
+        )
+
+        step_details: dict[str, Any] = {
+            "serie": series_id,
+            "periodo_base": base_period.isoformat(),
+            "valore_base": base_value,
+            "periodo_confronto": comparison_period.isoformat(),
+            "valore_confronto": comp_value,
+        }
+        if base_link.applied:
+            step_details["valore_confronto_omogeneizzato"] = effective_comp
+            step_details["raccordo_base"] = base_link.to_dict()
+            c_val = base_link.coefficient
+            res_text = (
+                f"Indice base: {base_value}, Indice confronto: {comp_value} "
+                f"(omogeneizzato a base 2015: {effective_comp}, coeff. {c_val:.4f})"
+            )
+        else:
+            res_text = f"Indice base: {base_value}, Indice confronto: {comp_value}"
+
         steps.append(
             {
                 "step": 1,
                 "description": "Recupero indici ISTAT",
-                "details": {
-                    "serie": series_id,
-                    "periodo_base": base_period.isoformat(),
-                    "valore_base": base_value,
-                    "periodo_confronto": comparison_period.isoformat(),
-                    "valore_confronto": comp_value,
-                },
-                "result": f"Indice base: {base_value}, Indice confronto: {comp_value}",
+                "details": step_details,
+                "result": res_text,
             }
         )
 
@@ -631,11 +673,15 @@ def calculate_price_revision(
                 }
             # Valori sintetici solo per display (media ponderata dei VALORI)
             base_value, base_errors = calculate_synthetic_index(db, components, base_period)
-            comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
+            comp_value, comp_errors = calculate_synthetic_index(
+                db, components, comparison_period, base_period=base_period
+            )
             weighted_component_variations = comp_details
         else:
             base_value, base_errors = calculate_synthetic_index(db, components, base_period)
-            comp_value, comp_errors = calculate_synthetic_index(db, components, comparison_period)
+            comp_value, comp_errors = calculate_synthetic_index(
+                db, components, comparison_period, base_period=base_period
+            )
         component_details = None
         calculation_display = None
         if method == "weighted_variations":
@@ -708,16 +754,31 @@ def calculate_price_revision(
         variation = variation_w
     else:
         assert base_value is not None and comp_value is not None and base_value != 0
-        variation = ((comp_value - base_value) / base_value) * 100
+        comp_calc = (
+            effective_comp
+            if index_type == "single" and base_link.applied and effective_comp is not None
+            else comp_value
+        )
+        variation = ((comp_calc - base_value) / base_value) * 100
         variation = _round(variation, 4)
 
+    formula_str = (
+        f"(({comp_calc} - {base_value}) / {base_value}) × 100"
+        if index_type == "single" and base_link.applied
+        else "((I_confronto - I_base) / I_base) × 100"
+    )
+    calc_str = (
+        f"(({comp_calc} - {base_value}) / {base_value}) × 100 = {variation}%"
+        if index_type == "single" and base_link.applied
+        else f"(({comp_value} - {base_value}) / {base_value}) × 100 = {variation}%"
+    )
     steps.append(
         {
             "step": 2,
             "description": "Calcolo variazione percentuale",
-            "formula": "((I_confronto - I_base) / I_base) × 100",
-            "calculation": f"(({comp_value} - {base_value}) / {base_value}) × 100",
-            "result": f"{variation}%",
+            "formula": formula_str,
+            "calculation": calc_str,
+            "result": f"Variazione: {variation}%",
         }
     )
     # 4. Verifica superamento soglia
@@ -732,6 +793,23 @@ def calculate_price_revision(
             "result": "SOGLIA SUPERATA" if is_threshold_exceeded else "SOGLIA NON SUPERATA",
         }
     )
+    if index_type == "single":
+        base_link_applied = base_link.applied
+        base_link_details = base_link.to_dict() if base_link.applied else None
+    else:
+        composite_notes: list[str] = []
+        if weighted_component_variations:
+            for d in weighted_component_variations:
+                if d.get("base_link_applied") and d.get("base_link_note"):
+                    composite_notes.append(d["base_link_note"])
+        else:
+            for sid in components.keys():
+                clink = resolve_base_link(db, sid, base_period, comparison_period)
+                if clink.applied and clink.note:
+                    composite_notes.append(clink.note)
+        base_link_applied = len(composite_notes) > 0
+        base_link_details = composite_notes if base_link_applied else None
+
 
     if not is_threshold_exceeded:
         return {
@@ -739,6 +817,11 @@ def calculate_price_revision(
             "indices_config": indices_config,
             "base_value": base_value,
             "comparison_value": comp_value,
+            "homogenized_comparison_value": (
+                effective_comp if index_type == "single" and base_link.applied else None
+            ),
+            "base_link_applied": base_link_applied,
+            "base_link_details": base_link_details,
             "variation_percent": variation,
             "weighted_component_variations": weighted_component_variations,
             "period_evidence": period_evidence,
@@ -811,6 +894,11 @@ def calculate_price_revision(
         "formula_detail": "\n".join(
             f"Passo {s['step']}: {s['description']} — {s['result']}" for s in steps
         ),
+        "homogenized_comparison_value": (
+            effective_comp if index_type == "single" and base_link.applied else None
+        ),
+        "base_link_applied": base_link_applied,
+        "base_link_details": base_link_details,
         "steps": steps,
         "is_applicable": True,
         "summary": (

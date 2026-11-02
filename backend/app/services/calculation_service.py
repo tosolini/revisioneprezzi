@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.index_observation import IndexObservation
 from app.models.normative_param import NormativeParam
 from app.models.revision_result import RevisionResult
+from app.services.base_link_service import resolve_base_link
 
 getcontext().prec = 28
 
@@ -115,15 +116,31 @@ def calculate_single(
             "comparison_period": comparison_period.isoformat(),
         }
 
-    variation = ((comp_value - base_value) / base_value) * 100
+    base_link = resolve_base_link(db, series_id, base_period, comparison_period, comp_value)
+    effective_comp = (
+        base_link.homogenized_comp_value
+        if base_link.applied and base_link.homogenized_comp_value is not None
+        else comp_value
+    )
+    variation = ((effective_comp - base_value) / base_value) * 100
     variation = _round(variation, 4)
 
     steps = []
+    formula_str = (
+        f"(({effective_comp} - {base_value}) / {base_value}) * 100"
+        if base_link.applied
+        else f"(({comp_value} - {base_value}) / {base_value}) * 100"
+    )
+    desc_str = (
+        f"Calcolo variazione percentuale (raccordo base ISTAT {base_link.coefficient:.4f})"
+        if base_link.applied
+        else "Calcolo variazione percentuale"
+    )
     steps.append(
         {
             "step": 1,
-            "description": "Calcolo variazione percentuale",
-            "formula": f"(({comp_value} - {base_value}) / {base_value}) * 100",
+            "description": desc_str,
+            "formula": formula_str,
             "result": f"{variation}%",
         }
     )
@@ -142,6 +159,10 @@ def calculate_single(
             "base_value": base_value,
             "comparison_value": comp_value,
             "variation_percent": variation,
+            "homogenized_comparison_value": effective_comp if base_link.applied else None,
+            "base_link_applied": base_link.applied,
+            "base_link_coefficient": base_link.coefficient if base_link.applied else None,
+            "base_link_note": base_link.note if base_link.applied else None,
             "threshold_percent": threshold,
             "excess_percent": 0.0,
             "recognition_percent": recognition_rate,
@@ -191,6 +212,10 @@ def calculate_single(
         "base_value": base_value,
         "comparison_value": comp_value,
         "variation_percent": variation,
+        "homogenized_comparison_value": effective_comp if base_link.applied else None,
+        "base_link_applied": base_link.applied,
+        "base_link_coefficient": base_link.coefficient if base_link.applied else None,
+        "base_link_note": base_link.note if base_link.applied else None,
         "threshold_percent": threshold,
         "excess_percent": excess,
         "recognition_percent": recognition_rate,

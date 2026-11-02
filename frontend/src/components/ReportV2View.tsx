@@ -669,6 +669,26 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
         </div>
         <hr style={hrStyle} />
 
+        {data.base_link_applied && (
+          <div style={{
+            marginBottom: 20,
+            padding: '10px 14px',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: 6,
+            fontSize: 13,
+            color: '#1e40af'
+          }}>
+            <strong>Raccordo Basi ISTAT:</strong> {
+              typeof data.base_link_details === 'object' && data.base_link_details?.note
+                ? data.base_link_details.note
+                : Array.isArray(data.base_link_details)
+                ? data.base_link_details.join('; ')
+                : 'Il calcolo attraversa il cambio di base ISTAT (Base 2015 -> Base 2025). È stato applicato il coefficiente di raccordo ufficiale ex Reg. UE 2025/1182.'
+            }
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 24, marginBottom: 24 }}>
           <div>
             <p style={labelStyle}>Variazione</p>
