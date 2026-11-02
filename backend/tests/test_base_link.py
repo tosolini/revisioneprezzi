@@ -21,6 +21,43 @@ def db():
     finally:
         session.close()
 
+@pytest.fixture(autouse=True)
+def seed_test_observations(db):
+    """Assicura la presenza delle osservazioni NIC necessarie ai test di calcolo."""
+    from app.models.index_observation import IndexObservation
+    from app.models.index_series import IndexSeries
+
+    for sid in ("ISTAT_NIC_ECOICOP2_00", "ISTAT_NIC_ECOICOP2_01"):
+        if not db.query(IndexSeries).filter_by(id=sid).first():
+            db.add(
+                IndexSeries(
+                    id=sid,
+                    name=sid,
+                    source="ISTAT",
+                    classification_ref="nic_ecoicop2",
+                    frequency="monthly",
+                )
+            )
+    db.flush()
+
+    obs_data = [
+        ("ISTAT_NIC_ECOICOP2_00", date(2025, 5, 1), 123.0),
+        ("ISTAT_NIC_ECOICOP2_00", date(2025, 10, 1), 123.2),
+        ("ISTAT_NIC_ECOICOP2_00", date(2026, 1, 1), 100.2),
+        ("ISTAT_NIC_ECOICOP2_00", date(2026, 2, 1), 100.7),
+        ("ISTAT_NIC_ECOICOP2_00", date(2026, 3, 1), 101.3),
+        ("ISTAT_NIC_ECOICOP2_01", date(2025, 10, 1), 138.1),
+        ("ISTAT_NIC_ECOICOP2_01", date(2026, 2, 1), 101.7),
+    ]
+    for sid, ref, val in obs_data:
+        existing = db.query(IndexObservation).filter_by(series_id=sid, ref_period=ref).first()
+        if not existing:
+            db.add(IndexObservation(series_id=sid, ref_period=ref, value=val, is_definitive=True))
+        else:
+            existing.value = val
+            existing.is_definitive = True
+    db.commit()
+
 
 def test_base_links_seeded(db):
     """Verifica che index_base_link contenga i coefficienti ufficiali per le serie NIC."""
