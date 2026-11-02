@@ -6,7 +6,7 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.6** — wizard a 5 passi + revisione prezzi ricorrente.
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.7** — wizard a 5 passi + revisione prezzi ricorrente.
 
 ### Funzionalità principali
 
@@ -240,6 +240,13 @@ L'"Aggiorna" salva solo URL e strategie: per ri-scaricare i dati si usa il pulsa
   segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
   `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
   puntuali, ma non è esposto in alcuna interfaccia.
+
+## Novità nella 1.2.7
+
+- **Raccordo basi ISTAT (Base 2015 → Base 2025 per PC/NIC)**: risolto il disallineamento di ~20 punti tra 12/2025 e 01/2026 derivante dal ribasamento decennale europeo (Reg. UE 2024/3159 e 2025/1182). Attivata la tabella `index_base_link` popolata con i 221 coefficienti ufficiali ISTAT per tutte le serie ECOICOP 2.
+- **Calcolo a cavallo 2025/2026 continuo e coerente**: quando il periodo base è nel 2025 (Base 2015) e il confronto nel 2026 (Base 2025), il calcolatore applica automaticamente il coefficiente di raccordo ($I_{T1}^{(\text{omog})} = I_{T1} \times C_{\text{raccordo}}$), eliminando la falsa variazione negativa (-18%) e garantendo variazioni continue e positive (+0,8%) conformi ai bollettini ISTAT sia su serie singole che su indici compositi e multi-componente.
+- **Evidenza nei report e PDF**: banner informativo in ReportView e nota metodologica formale nell'export PDF per gli atti di liquidazione del RUP e revisori dei conti.
+- **Analisi metodologica documentata**: analisi statistica e normativa dettagliata disponibile in `docs/analisi_disallineamento_nic_2025_2026.md`.
 
 ## Novità nella 1.2.5
 

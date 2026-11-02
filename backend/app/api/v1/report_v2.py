@@ -385,6 +385,9 @@ def generate_report_v2(
             ),
             "formula_steps": formula_steps,
             "components": _multi_component_rows(saved_result),
+            "base_link_applied": saved_result.get("base_link_applied", False) if saved_result else False,
+            "base_link_details": saved_result.get("base_link_details") if saved_result else None,
+            "homogenized_comparison_value": saved_result.get("homogenized_comparison_value") if saved_result else None,
         }
     else:
         calc_data = {

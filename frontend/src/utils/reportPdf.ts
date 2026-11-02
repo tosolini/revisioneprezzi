@@ -269,6 +269,20 @@ function renderCalculation(d: AnyRecord): AnyRecord[] {
     columnGap: 16,
     margin: [0, 0, 0, 8],
   });
+  if (d.base_link_applied) {
+    const note =
+      typeof d.base_link_details === 'object' && d.base_link_details?.note
+        ? str(d.base_link_details.note)
+        : Array.isArray(d.base_link_details)
+        ? d.base_link_details.map(str).join('; ')
+        : 'Applicato coefficiente di raccordo ISTAT base 2015 -> base 2025 (Reg. UE 2025/1182).';
+    out.push({
+      text: `Raccordo Basi ISTAT: ${note}`,
+      fontSize: 9,
+      color: '#1e40af',
+      margin: [0, 0, 0, 6],
+    });
+  }
   if (Array.isArray(d.formula_steps) && d.formula_steps.length > 0) {
     out.push({ text: 'Dettaglio Calcolo Passo-Passo', style: 'sub', margin: [0, 4, 0, 4] });
     const rows = (d.formula_steps as AnyRecord[]).map(s => [

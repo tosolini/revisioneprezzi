@@ -11,6 +11,7 @@ from app.core.database import SessionLocal
 from app.models import (
     FamilyDefinition,
     FamilyMapping,
+    IndexBaseLink,
     IndexObservation,
     IndexSeries,
     NormativeParam,
@@ -204,6 +205,52 @@ def _seed_observations(db: Session) -> None:
         _log(f"observations: {changes} inserted")
 
 
+def _seed_index_base_links(db: Session) -> None:
+    path = _SEEDS_DIR / "index_base_links.csv"
+    if not path.exists():
+        _log(f"SKIP index_base_links: {path} not found")
+        return
+    changes = 0
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            from_id = row["from_series_id"].strip()
+            to_id = row["to_series_id"].strip()
+            coeff = float(row["coefficient"].strip())
+            ref_period = date.fromisoformat(row["reference_period"].strip())
+            source = row.get("source", "").strip() or None
+
+            existing = (
+                db.query(IndexBaseLink)
+                .filter_by(from_series_id=from_id, to_series_id=to_id)
+                .first()
+            )
+            if existing:
+                if (
+                    abs(float(existing.coefficient) - coeff) > 0.0001
+                    or existing.reference_period != ref_period
+                    or existing.source != source
+                ):
+                    existing.coefficient = coeff
+                    existing.reference_period = ref_period
+                    existing.source = source
+                    changes += 1
+            else:
+                db.add(
+                    IndexBaseLink(
+                        from_series_id=from_id,
+                        to_series_id=to_id,
+                        coefficient=coeff,
+                        reference_period=ref_period,
+                        source=source,
+                    )
+                )
+                changes += 1
+    if changes:
+        db.commit()
+        _log(f"index_base_links: {changes} upserted")
+
+
 def auto_seed() -> None:
     """Idempotent seed of all catalog data. Safe to call on every startup."""
     _log("starting…")
@@ -214,6 +261,7 @@ def auto_seed() -> None:
         _seed_normative_params(db)
         _seed_index_series(db)
         _seed_observations(db)
+        _seed_index_base_links(db)
         _log("done")
     except Exception as exc:
         _log(f"ERROR: {exc}")

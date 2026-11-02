@@ -3,14 +3,16 @@ services:
     build: ./backend
     # Bind to localhost only — this is a local-only app, do not expose to the LAN.
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-revuser}:${POSTGRES_PASSWORD:-changeme-local-only}@db:5432/${POSTGRES_DB:-revision_db}
+      - SCHEDULER_TOKEN=${SCHEDULER_TOKEN:-dev-scheduler-token}
       - DEBUG=${DEBUG:-false}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -22,9 +24,11 @@ services:
   scheduler:
     build: ./backend
     entrypoint: ["python", "-m", "app.scheduler"]
+    healthcheck:
+      disable: true
     environment:
       - SCHEDULER_BACKEND_URL=http://backend:8000
-      - SCHEDULER_TOKEN=${SCHEDULER_TOKEN:-}
+      - SCHEDULER_TOKEN=${SCHEDULER_TOKEN:-dev-scheduler-token}
       - SCHEDULER_TZ=Europe/Rome
     depends_on:
       backend:
@@ -52,7 +56,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-revuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme-local-only}
       POSTGRES_DB: ${POSTGRES_DB:-revision_db}
-    # Bind DB to localhost only so it is never reachable from the network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-revuser} -d ${POSTGRES_DB:-revision_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
