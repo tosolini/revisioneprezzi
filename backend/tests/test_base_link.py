@@ -208,3 +208,27 @@ def test_calculate_single_v1_crossing_boundary(db):
     assert "error" not in res_v1
     assert res_v1["base_link_applied"] is True
     assert 0.0 < res_v1["variation_percent"] < 2.0
+
+
+def test_calculate_price_revision_v2_composite_weighted_values_discloses_base_link(db):
+    """Verifica che nel metodo predefinito weighted_values il raccordo venga esposto."""
+    res = calculate_price_revision(
+        db=db,
+        contract_type="services",
+        amount=100000.0,
+        base_period=date(2025, 10, 1),
+        comparison_period=date(2026, 2, 1),
+        indices_config={
+            "type": "composite",
+            "method": "weighted_values",
+            "components": {
+                "ISTAT_NIC_ECOICOP2_00": 60.0,
+                "ISTAT_NIC_ECOICOP2_01": 40.0,
+            },
+        },
+    )
+    assert "error" not in res
+    assert res["base_link_applied"] is True
+    assert isinstance(res["base_link_details"], list)
+    assert len(res["base_link_details"]) >= 1
+    assert 0.0 < res["variation_percent"] < 2.0

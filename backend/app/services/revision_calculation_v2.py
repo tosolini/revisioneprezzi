@@ -793,25 +793,22 @@ def calculate_price_revision(
             "result": "SOGLIA SUPERATA" if is_threshold_exceeded else "SOGLIA NON SUPERATA",
         }
     )
-    base_link_applied = (
-        base_link.applied
-        if index_type == "single"
-        else any(d.get("base_link_applied") for d in (weighted_component_variations or []))
-    )
-    base_link_details = (
-        base_link.to_dict()
-        if index_type == "single" and base_link.applied
-        else [
-            d["base_link_note"]
-            for d in (weighted_component_variations or [])
-            if d.get("base_link_applied")
-        ]
-        if (
-            weighted_component_variations
-            and any(d.get("base_link_applied") for d in weighted_component_variations)
-        )
-        else None
-    )
+    if index_type == "single":
+        base_link_applied = base_link.applied
+        base_link_details = base_link.to_dict() if base_link.applied else None
+    else:
+        composite_notes: list[str] = []
+        if weighted_component_variations:
+            for d in weighted_component_variations:
+                if d.get("base_link_applied") and d.get("base_link_note"):
+                    composite_notes.append(d["base_link_note"])
+        else:
+            for sid in components.keys():
+                clink = resolve_base_link(db, sid, base_period, comparison_period)
+                if clink.applied and clink.note:
+                    composite_notes.append(clink.note)
+        base_link_applied = len(composite_notes) > 0
+        base_link_details = composite_notes if base_link_applied else None
 
 
     if not is_threshold_exceeded:
