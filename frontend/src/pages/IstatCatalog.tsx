@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { SavedQueryModal } from "../components/SavedQueryModal"
 import { DATAFLOW_BY_TYPE, EXPLORER_LABELS, EXPLORER_LEAF_URLS, sdmxTemplateFor, extractCodeForTemplate } from "../constants/istatExplorer"
@@ -591,6 +591,8 @@ export default function IstatCatalog() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sdmxDeepLinkOpened = useRef(false)
   const searchActive = searchQuery.trim().length > 0
+  const missingQueriesCount = useMemo(() => seriesList.filter(s => !s.saved_query).length, [seriesList])
+  const noMissingAndNoOverwrite = missingQueriesCount === 0 && !backfillOverwrite
   const visibleSeriesList = showMissingOnly ? seriesList.filter(s => !s.saved_query) : seriesList
   const visibleGroups = groups.filter(g => g.observation_count > 0)
   const [searchParams] = useSearchParams()
@@ -635,8 +637,7 @@ export default function IstatCatalog() {
 
   const handleBackfill = async () => {
     if (!selectedGroup || backfilling) return
-    const missing = seriesList.filter(s => !s.saved_query).length
-    if (missing === 0 && !backfillOverwrite) {
+    if (noMissingAndNoOverwrite) {
       setBackfillConfirmOpen(false)
       setBackfillMessage('Nessuna query mancante da popolare nel gruppo selezionato.')
       return
@@ -738,7 +739,7 @@ export default function IstatCatalog() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {selectedGroup && (
-              seriesList.some(s => !s.saved_query) ? (
+              missingQueriesCount > 0 ? (
                 <button
                   onClick={() => { setBackfillOverwrite(false); setBackfillConfirmOpen(true) }}
                   disabled={backfilling}
@@ -747,7 +748,7 @@ export default function IstatCatalog() {
                     background: 'var(--color-bg-card)', color: 'var(--color-warning, #d97706)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                     opacity: backfilling ? 0.6 : 1,
                   }}
-                >{backfilling ? 'Popolamento...' : `Popola query mancanti (${seriesList.filter(s => !s.saved_query).length})`}</button>
+                >{backfilling ? 'Popolamento...' : `Popola query mancanti (${missingQueriesCount})`}</button>
               ) : seriesList.length > 0 ? (
                 <button
                   onClick={() => { setBackfillOverwrite(true); setBackfillConfirmOpen(true) }}
@@ -1065,7 +1066,7 @@ export default function IstatCatalog() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: 12 }}>
               <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
                 <input type="checkbox" checked={showMissingOnly} onChange={e => setShowMissingOnly(e.target.checked)} />
-                Solo serie senza query SDMX ({seriesList.filter(s => !s.saved_query).length})
+                Solo serie senza query SDMX ({missingQueriesCount})
               </label>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -1218,7 +1219,7 @@ export default function IstatCatalog() {
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
               {backfillOverwrite
                 ? `Rigenerare le query SDMX per tutte le ${seriesList.length} serie del gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Le query esistenti verranno aggiornate con il formato template corrente.`
-                : `Popolare ${seriesList.filter(s => !s.saved_query).length} query SDMX mancanti per il gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.`}
+                : `Popolare ${missingQueriesCount} query SDMX mancanti per il gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.`}
             </p>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
@@ -1230,7 +1231,7 @@ export default function IstatCatalog() {
                 <span>Sovrascrivi query esistenti con i template correnti</span>
               </label>
             </div>
-            {seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite && (
+            {noMissingAndNoOverwrite && (
               <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-warning, #d97706)' }}>
                 Tutte le serie hanno già una query salvata. Seleziona &quot;Sovrascrivi query esistenti&quot; per rigenerarle.
               </p>
@@ -1239,12 +1240,12 @@ export default function IstatCatalog() {
               <button onClick={() => setBackfillConfirmOpen(false)} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
               <button
                 onClick={handleBackfill}
-                disabled={backfilling || (seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite)}
+                disabled={backfilling || noMissingAndNoOverwrite}
                 style={{
                   padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none',
-                  cursor: (seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite) ? 'not-allowed' : 'pointer',
+                  cursor: noMissingAndNoOverwrite ? 'not-allowed' : 'pointer',
                   fontWeight: 600,
-                  opacity: (backfilling || (seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite)) ? 0.5 : 1,
+                  opacity: (backfilling || noMissingAndNoOverwrite) ? 0.5 : 1,
                 }}
               >{backfilling ? 'Operazione in corso...' : backfillOverwrite ? 'Rigenera' : 'Popola'}</button>
             </div>
