@@ -1,16 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { SavedQueryModal } from "../components/SavedQueryModal"
-import { DATAFLOW_BY_TYPE, EXPLORER_LABELS, EXPLORER_LEAF_URLS, sdmxTemplateFor } from "../constants/istatExplorer"
+import { DATAFLOW_BY_TYPE, EXPLORER_LABELS, EXPLORER_LEAF_URLS, sdmxTemplateFor, extractCodeForTemplate } from "../constants/istatExplorer"
 import type { ExplorerIndexType } from "../constants/istatExplorer"
 
-function extractCodeForTemplate(query: string): string {
-  const q = query.trim()
-  if (!q) return ''
-  const match = q.match(/_([0-9]{2,6}[A-Za-z]?)_?/) || q.match(/([0-9]{2,6})/)
-  if (match) return match[1]
-  return q.replace(/[^0-9A-Za-z]/g, '').slice(0, 6)
-}
+export { extractCodeForTemplate }
+
 
 interface Group {
   key: string
