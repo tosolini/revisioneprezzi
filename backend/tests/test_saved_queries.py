@@ -152,6 +152,7 @@ def test_import_sdmx_saves_query_and_links_series(client, db, monkeypatch, tmp_p
     details = job["result"]["details"]
     assert details["series_ids"] == ["ISTAT_TEST_SDMX_49", "ISTAT_TEST_SDMX_50"]
 
+    q = None
     try:
         normalized, dataflow_id, key_part = indices._validate_sdmx_url(SDMX_DATA_URL)
         q = db.query(IndexImportQuery).filter(IndexImportQuery.url == normalized).first()
@@ -177,14 +178,17 @@ def test_import_sdmx_saves_query_and_links_series(client, db, monkeypatch, tmp_p
             assert by_id[sid]["saved_query"]["dataflow_id"] == dataflow_id
     finally:
         _cleanup(db, "test_sdmx")
-        db.query(IndexImportQuery).delete(synchronize_session=False)
-        db.commit()
+        if q is not None:
+            db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).delete(synchronize_session=False)
+            db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).delete(synchronize_session=False)
+            db.commit()
 
 
 def test_import_csv_does_not_save_query(client, db, monkeypatch, tmp_path):
     _point_import_config(monkeypatch, tmp_path)
     import io
 
+    initial_count = db.query(IndexImportQuery).count()
     resp = client.post(
         "/api/v1/indices/import-csv?group_key=test_csv&freq_param=quarterly",
         files={"file": ("test.csv", io.BytesIO(UNKNOWN_CSV.encode("utf-8")), "text/csv")},
@@ -192,10 +196,9 @@ def test_import_csv_does_not_save_query(client, db, monkeypatch, tmp_path):
     assert resp.status_code == 200
     assert resp.json()["details"]["added"] == 2
     try:
-        assert db.query(IndexImportQuery).count() == 0
+        assert db.query(IndexImportQuery).count() == initial_count
     finally:
         _cleanup(db, "test_csv")
-
 
 # ── CRUD query salvata ──────────────────────────────────────────────────────
 
@@ -208,6 +211,7 @@ def test_saved_query_run_reenrols(client, db, monkeypatch, tmp_path):
 
     job = _start_and_poll(client, SDMX_DATA_URL)
     assert job["status"] == "done", job.get("error")
+    q = None
     try:
         normalized, _, _ = indices._validate_sdmx_url(SDMX_DATA_URL)
         q = db.query(IndexImportQuery).filter(IndexImportQuery.url == normalized).first()
@@ -231,9 +235,10 @@ def test_saved_query_run_reenrols(client, db, monkeypatch, tmp_path):
         assert {link.series_id for link in links} == {"ISTAT_TEST_SDMX_49", "ISTAT_TEST_SDMX_50"}
     finally:
         _cleanup(db, "test_sdmx")
-        db.query(IndexImportQuery).delete(synchronize_session=False)
-        db.commit()
-
+        if q is not None:
+            db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).delete(synchronize_session=False)
+            db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).delete(synchronize_session=False)
+            db.commit()
 
 def test_saved_query_update(client, db):
     q = _seed_query(db, SDMX_DATA_URL)

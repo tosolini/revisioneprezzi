@@ -786,6 +786,8 @@ export default function CaseWizardV2() {
   const [mappingLoading, setMappingLoading] = useState(false)
   const [periodCoverage, setPeriodCoverage] = useState<Record<string, PeriodCoverage> | null>(null)
   const [coverageLoading, setCoverageLoading] = useState(false)
+  const [indicesRefreshing, setIndicesRefreshing] = useState(false)
+  const [indicesRefreshFeedback, setIndicesRefreshFeedback] = useState<string | null>(null)
   const [sdmxReloading, setSdmxReloading] = useState<Record<string, boolean>>({})
   const [sdmxReloadMsg, setSdmxReloadMsg] = useState<Record<string, { status: 'done' | 'error'; msg: string }>>({})
   const [editSdmxQuery, setEditSdmxQuery] = useState<SavedQueryRef | null>(null)
@@ -1264,20 +1266,24 @@ export default function CaseWizardV2() {
   }, [currentStep, data.cpv_selections, data.ateco_selections, fetchMappings])
   // Copertura periodi: mostra chiaramente se i periodi richiesti esistono
   // nelle serie selezionate o vengono soddisfatti per fallback.
-  const fetchPeriodCoverage = useCallback(async () => {
+  const fetchPeriodCoverage = useCallback(async (mappingsOverride?: Record<string, CpvMapping>) => {
     if (currentStep !== 4) return
     if (!data.base_period || !data.comparison_period) {
       setPeriodCoverage(null)
       return
     }
+    const currentMappings = mappingsOverride || mappings
     const series: Record<string, number> = {}
     for (const sel of data.cpv_selections) {
-      const m = mappings[sel.cpv_code]
+      const m = currentMappings[sel.cpv_code]
       if (!m) continue
       for (const a of m.associations) {
         if (a.series_id && !(a.series_id in series)) {
           series[a.series_id] = m.weights[a.series_id] ?? 0
         }
+      }
+      if (m.manualSingle && !(m.manualSingle in series)) {
+        series[m.manualSingle] = 100
       }
     }
     const ids = Object.keys(series)
@@ -1287,7 +1293,7 @@ export default function CaseWizardV2() {
     }
     // PPS quarterly: backend atteso Q-start, UI resta mensile — normalizza solo il payload se almeno un CPV è PPS
     const hasPpsQuarterly = data.cpv_selections.some(sel => {
-      const m = mappings[sel.cpv_code]
+      const m = currentMappings[sel.cpv_code]
       return !!m?.associations.some(a => a.index_type === 'PPS' && !!a.series_id)
     })
     const payloadBase = hasPpsQuarterly ? normalizeToQuarterStart(data.base_period) : data.base_period
@@ -1329,6 +1335,60 @@ export default function CaseWizardV2() {
   useEffect(() => {
     void fetchPeriodCoverage()
   }, [fetchPeriodCoverage])
+
+  const refreshIndicesState = useCallback(async () => {
+    if (indicesRefreshing) return
+    setIndicesRefreshing(true)
+    setIndicesRefreshFeedback(null)
+    try {
+      const nextMappings: Record<string, CpvMapping> = { ...mappings }
+      if (data.cpv_selections.length > 0) {
+        await Promise.all(
+          data.cpv_selections.map(async sel => {
+            try {
+              const res = await fetch('/api/v1/classify/cpv-index-mapping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cpv_code: sel.cpv_code }),
+              })
+              if (!res.ok) return
+              const body: unknown = await res.json()
+              if (!isRecord(body)) return
+              const rawAssocs = Array.isArray(body['associations']) ? body['associations'] : []
+              const currentM = nextMappings[sel.cpv_code]
+              if (currentM) {
+                const updatedAssocs = currentM.associations.map(oldA => {
+                  const fresh = rawAssocs.find((ra: unknown) => isRecord(ra) && ra['series_id'] === oldA.series_id)
+                  if (fresh && isRecord(fresh)) {
+                    return {
+                      ...oldA,
+                      available: fresh['available'] === true,
+                      series_name: asNullableString(fresh['series_name']) || oldA.series_name,
+                      ecoicop_label: asNullableString(fresh['ecoicop_label']) || oldA.ecoicop_label,
+                    }
+                  }
+                  return oldA
+                })
+                nextMappings[sel.cpv_code] = {
+                  ...currentM,
+                  associations: updatedAssocs,
+                }
+              }
+            } catch { /* ignora errore singolo cpv */ }
+          })
+        )
+        setMappings(nextMappings)
+      }
+      await fetchPeriodCoverage(nextMappings)
+      setIndicesRefreshFeedback('Stato indici e copertura aggiornati con successo.')
+      setTimeout(() => setIndicesRefreshFeedback(null), 4000)
+    } catch {
+      setIndicesRefreshFeedback('Errore durante l\'aggiornamento degli indici.')
+      setTimeout(() => setIndicesRefreshFeedback(null), 4000)
+    } finally {
+      setIndicesRefreshing(false)
+    }
+  }, [indicesRefreshing, mappings, data.cpv_selections, fetchPeriodCoverage])
 
   const pollImportJob = async (jobId: string): Promise<unknown> => {
     const deadline = Date.now() + 15 * 60 * 1000
@@ -1886,8 +1946,127 @@ export default function CaseWizardV2() {
       return (
         <span style={{ color: 'var(--color-text-error)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
           <span>Nessun dato definitivo nei periodi richiesti: il calcolo fallirebbe per questa serie.</span>
-          {cov.saved_query && (
+          {cov.saved_query ? (
             <>
+              <button
+                type="button"
+                onClick={() => seriesId && handleReloadSdmx(seriesId)}
+                disabled={reloading}
+                title={`Riscarica ${cov.saved_query.dataflow_id} — end:${cov.saved_query.end_period_strategy} start:${cov.saved_query.start_period_strategy}`}
+                style={{
+                  marginLeft: 8,
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  lineHeight: 1,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-card)',
+                  color: 'var(--color-text-secondary)',
+                  cursor: reloading ? 'not-allowed' : 'pointer',
+                  opacity: reloading ? 0.6 : 1,
+                  verticalAlign: 'middle',
+                }}
+              >
+                {reloading ? 'Ricarica…' : '⟳ Ricarica dati'}
+              </button>
+              <button
+                type="button"
+                onClick={() => seriesId && openEditSdmx(seriesId)}
+                disabled={reloading}
+                title="Modifica query SDMX (URL e strategie date)"
+                style={{
+                  marginLeft: 8,
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  lineHeight: 1,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-card)',
+                  color: 'var(--color-text-secondary)',
+                  cursor: reloading ? 'not-allowed' : 'pointer',
+                  opacity: reloading ? 0.6 : 1,
+                  verticalAlign: 'middle',
+                }}
+              >
+                ✎
+              </button>
+            </>
+          ) : (
+            <span style={{ display: 'block', marginTop: 4, color: 'var(--color-text-muted)', fontSize: 11.5 }}>
+              Nessuna query SDMX registrata per questa serie. Consulta ISTAT EsploraDati per configurare la query, poi usa "Aggiorna indici".
+            </span>
+          )}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: cov.saved_query ? 0 : 6, marginLeft: cov.saved_query ? 8 : 0 }}>
+            <button
+              type="button"
+              onClick={() => seriesId && window.open(`/catalogs/istat?q=${encodeURIComponent(seriesId)}`, '_blank')}
+              title="Apri la scheda dell'indice nel Catalogo ISTAT per consultare i dati ed accedere a EsploraDati"
+              style={{
+                padding: '4px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                lineHeight: 1,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg-card)',
+                color: 'var(--color-text-primary)',
+                cursor: 'pointer',
+                verticalAlign: 'middle',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <span>Scheda Indice ISTAT</span>
+              <span aria-hidden style={{ fontSize: 11 }}>↗</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void refreshIndicesState()}
+              disabled={indicesRefreshing}
+              title="Verifica se sono state importate nuove osservazioni per questo indice"
+              style={{
+                padding: '4px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                lineHeight: 1,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg-card)',
+                color: 'var(--color-text-secondary)',
+                cursor: indicesRefreshing ? 'not-allowed' : 'pointer',
+                opacity: indicesRefreshing ? 0.6 : 1,
+                verticalAlign: 'middle',
+              }}
+            >
+              {indicesRefreshing ? 'Verifica…' : '⟳ Verifica dati'}
+            </button>
+          </span>
+          {reloadMsg && (
+            <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
+              {reloadMsg.msg}
+            </span>
+          )}
+        </span>
+      )
+    }
+    const notes: string[] = []
+    if (!cov.base.exact) {
+      notes.push(`periodo base ${cov.base.requested}: non registrato${cov.base.missing_months?.length ? ` (${fmtCovMonths(cov.base.missing_months)})` : ''} — usata osservazione ${cov.base.used}`)
+    }
+    if (!cov.comparison.exact) {
+      notes.push(`periodo confronto ${cov.comparison.requested}: non registrato${cov.comparison.missing_months?.length ? ` (${fmtCovMonths(cov.comparison.missing_months)})` : ''} — usata osservazione ${cov.comparison.used}`)
+    }
+    if (notes.length === 0) {
+      return (
+        <span style={{ color: 'var(--color-text-success)', display: 'block', fontSize: 12, marginTop: 2 }}>
+          Periodi richiesti soddisfatti (osservazioni definitive).
+        </span>
+      )
+    }
+    return (
+      <span style={{ color: 'var(--color-text-warning)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+        <span>I periodi richiesti non esistono in questa serie: {notes.join(' · ')}.</span>
+        {cov.saved_query ? (
+          <>
             <button
               type="button"
               onClick={() => seriesId && handleReloadSdmx(seriesId)}
@@ -1930,61 +2109,41 @@ export default function CaseWizardV2() {
             >
               ✎
             </button>
-            </>
-          )}
+          </>
+        ) : (
+          <span style={{ display: 'block', marginTop: 4, color: 'var(--color-text-muted)', fontSize: 11.5 }}>
+            Nessuna query SDMX registrata per questa serie. Consulta ISTAT EsploraDati per configurare la query, poi usa "Aggiorna indici".
+          </span>
+        )}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: cov.saved_query ? 0 : 6, marginLeft: cov.saved_query ? 8 : 0 }}>
           <button
             type="button"
-            onClick={() => seriesId && window.open(`/catalogs/istat?q=${encodeURIComponent(seriesId)}&sdmxImport=1`, '_blank')}
-            title="Apri Indici ISTAT con questa serie precaricata"
+            onClick={() => seriesId && window.open(`/catalogs/istat?q=${encodeURIComponent(seriesId)}`, '_blank')}
+            title="Apri la scheda dell'indice nel Catalogo ISTAT per consultare i dati ed accedere a EsploraDati"
             style={{
-              marginLeft: 8,
               padding: '4px 10px',
               borderRadius: 8,
               fontSize: 12,
               lineHeight: 1,
               border: '1px solid var(--color-border)',
               background: 'var(--color-bg-card)',
-              color: 'var(--color-text-secondary)',
+              color: 'var(--color-text-primary)',
               cursor: 'pointer',
               verticalAlign: 'middle',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
             }}
           >
-            ISTAT ↗
+            <span>Scheda Indice ISTAT</span>
+            <span aria-hidden style={{ fontSize: 11 }}>↗</span>
           </button>
-          {reloadMsg && (
-            <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
-              {reloadMsg.msg}
-            </span>
-          )}
-        </span>
-      )
-    }
-    const notes: string[] = []
-    if (!cov.base.exact) {
-      notes.push(`periodo base ${cov.base.requested}: non registrato${cov.base.missing_months?.length ? ` (${fmtCovMonths(cov.base.missing_months)})` : ''} — usata osservazione ${cov.base.used}`)
-    }
-    if (!cov.comparison.exact) {
-      notes.push(`periodo confronto ${cov.comparison.requested}: non registrato${cov.comparison.missing_months?.length ? ` (${fmtCovMonths(cov.comparison.missing_months)})` : ''} — usata osservazione ${cov.comparison.used}`)
-    }
-    if (notes.length === 0) {
-      return (
-        <span style={{ color: 'var(--color-text-success)', display: 'block', fontSize: 12, marginTop: 2 }}>
-          Periodi richiesti soddisfatti (osservazioni definitive).
-        </span>
-      )
-    }
-    return (
-      <span style={{ color: 'var(--color-text-warning)', display: 'block', fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
-        <span>I periodi richiesti non esistono in questa serie: {notes.join(' · ')}.</span>
-        {cov.saved_query && (
-            <>
           <button
             type="button"
-            onClick={() => seriesId && handleReloadSdmx(seriesId)}
-            disabled={reloading}
-            title={`Riscarica ${cov.saved_query.dataflow_id} — end:${cov.saved_query.end_period_strategy} start:${cov.saved_query.start_period_strategy}`}
+            onClick={() => void refreshIndicesState()}
+            disabled={indicesRefreshing}
+            title="Verifica se sono state importate nuove osservazioni per questo indice"
             style={{
-              marginLeft: 8,
               padding: '4px 10px',
               borderRadius: 8,
               fontSize: 12,
@@ -1992,55 +2151,14 @@ export default function CaseWizardV2() {
               border: '1px solid var(--color-border)',
               background: 'var(--color-bg-card)',
               color: 'var(--color-text-secondary)',
-              cursor: reloading ? 'not-allowed' : 'pointer',
-              opacity: reloading ? 0.6 : 1,
+              cursor: indicesRefreshing ? 'not-allowed' : 'pointer',
+              opacity: indicesRefreshing ? 0.6 : 1,
               verticalAlign: 'middle',
             }}
           >
-            {reloading ? 'Ricarica…' : '⟳ Ricarica dati'}
+            {indicesRefreshing ? 'Verifica…' : '⟳ Verifica dati'}
           </button>
-          <button
-            type="button"
-            onClick={() => seriesId && openEditSdmx(seriesId)}
-            disabled={reloading}
-            title="Modifica query SDMX (URL e strategie date)"
-            style={{
-              marginLeft: 8,
-              padding: '4px 10px',
-              borderRadius: 8,
-              fontSize: 12,
-              lineHeight: 1,
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-bg-card)',
-              color: 'var(--color-text-secondary)',
-              cursor: reloading ? 'not-allowed' : 'pointer',
-              opacity: reloading ? 0.6 : 1,
-              verticalAlign: 'middle',
-            }}
-          >
-            ✎
-          </button>
-            </>
-        )}
-        <button
-          type="button"
-          onClick={() => seriesId && window.open(`/catalogs/istat?q=${encodeURIComponent(seriesId)}&sdmxImport=1`, '_blank')}
-          title="Apri Indici ISTAT con questa serie precaricata"
-          style={{
-            marginLeft: 8,
-            padding: '4px 10px',
-            borderRadius: 8,
-            fontSize: 12,
-            lineHeight: 1,
-            border: '1px solid var(--color-border)',
-            background: 'var(--color-bg-card)',
-            color: 'var(--color-text-secondary)',
-            cursor: 'pointer',
-            verticalAlign: 'middle',
-          }}
-        >
-          ISTAT ↗
-        </button>
+        </span>
         {reloadMsg && (
           <span style={{ display: 'block', marginTop: 4, color: reloadMsg.status === 'done' ? 'var(--color-text-success)' : 'var(--color-text-error)', fontSize: 11, lineHeight: 1.4 }}>
             {reloadMsg.msg}
@@ -2922,30 +3040,72 @@ export default function CaseWizardV2() {
       case 4:
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 999,
+                    background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)',
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-muted)',
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--color-primary)' }} aria-hidden />
+                  Passo 4 di 5
+                  <span style={{ opacity: 0.45 }}>·</span>
+                  Indici ISTAT
+                </div>
+                <h2
+                  style={{
+                    margin: '14px 0 8px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--color-text-primary)',
+                  }}
+                >
+                  Pesi e serie ISTAT
+                </h2>
+                <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', maxWidth: 580 }}>
+                  Associazione CPV → indici secondo Tabella D (All. II.2-bis). Verifica i pesi e la disponibilità dei dati prima di calcolare.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => void refreshIndicesState()}
+                  disabled={indicesRefreshing || coverageLoading || mappingLoading}
+                  title="Ricarica la disponibilità dei dati e la copertura per tutti gli indici senza toccare i pesi"
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-bg-card)',
+                    color: 'var(--color-text-primary)',
+                    cursor: indicesRefreshing || coverageLoading || mappingLoading ? 'not-allowed' : 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 1px 2px var(--color-shadow)',
+                    opacity: indicesRefreshing || coverageLoading || mappingLoading ? 0.6 : 1,
+                  }}
+                >
+                  <span style={{ display: 'inline-block', transform: indicesRefreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>⟳</span>
+                  <span>{indicesRefreshing ? 'Aggiornamento…' : 'Aggiorna indici'}</span>
+                </button>
+              </div>
+            </div>
+            {indicesRefreshFeedback && (
               <div
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 999,
-                  background: 'var(--color-bg-muted)', border: '1px solid var(--color-border-light)',
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-muted)',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  fontSize: 12.5,
+                  background: indicesRefreshFeedback.includes('successo') ? 'var(--color-bg-success)' : 'var(--color-bg-error)',
+                  color: indicesRefreshFeedback.includes('successo') ? 'var(--color-text-success)' : 'var(--color-text-error)',
+                  border: '1px solid var(--color-border-light)',
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--color-primary)' }} aria-hidden />
-                Passo 4 di 5
-                <span style={{ opacity: 0.45 }}>·</span>
-                Indici ISTAT
+                {indicesRefreshFeedback}
               </div>
-              <h2
-                style={{
-                  margin: '14px 0 8px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--color-text-primary)',
-                }}
-              >
-                Pesi e serie ISTAT
-              </h2>
-              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', maxWidth: 580 }}>
-                Associazione CPV → indici secondo Tabella D (All. II.2-bis). Verifica i pesi e la disponibilità dei dati prima di calcolare.
-              </p>
-            </div>
+            )}
 
             {data.cpv_selections.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

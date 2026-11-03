@@ -4,6 +4,14 @@ import { SavedQueryModal } from "../components/SavedQueryModal"
 import { DATAFLOW_BY_TYPE, EXPLORER_LABELS, EXPLORER_LEAF_URLS, sdmxTemplateFor } from "../constants/istatExplorer"
 import type { ExplorerIndexType } from "../constants/istatExplorer"
 
+function extractCodeForTemplate(query: string): string {
+  const q = query.trim()
+  if (!q) return ''
+  const match = q.match(/_([0-9]{2,6}[A-Za-z]?)_?/) || q.match(/([0-9]{2,6})/)
+  if (match) return match[1]
+  return q.replace(/[^0-9A-Za-z]/g, '').slice(0, 6)
+}
+
 interface Group {
   key: string
   series_count: number
@@ -758,7 +766,8 @@ export default function IstatCatalog() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 8 }}>
             {(["PPI", "PPS", "IR", "PC"] as ExplorerIndexType[]).map(t => {
               const leaf = EXPLORER_LEAF_URLS[t]
-              const code = (searchQuery.trim() || "").replace(/[^0-9A-Za-z]/g, "").slice(0, 6)
+              const rawCode = extractCodeForTemplate(searchQuery)
+              const code = rawCode || ""
               const sdmx = code ? sdmxTemplateFor(t, code) : sdmxTemplateFor(t, "263")
               return (
                 <div key={t} style={{ padding: "10px 12px", borderRadius: 10, background: "var(--color-bg-card)", border: "1px solid var(--color-border-light)" }}>
@@ -910,13 +919,67 @@ export default function IstatCatalog() {
                           {full ? full.observation_count : '—'}
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                          {hit.saved_query && (
+                          {hit.saved_query ? (
                             <QueryActions
                               query={hit.saved_query}
                               running={runState?.status === 'running' && runState.query.id === hit.saved_query.id}
                               onRun={handleRunQuery}
                               onManage={setManageTarget}
                             />
+                          ) : (
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {(() => {
+                                const detectedType: ExplorerIndexType | null = hit.id.includes('_PPI_') ? 'PPI'
+                                  : hit.id.includes('_PPS_') ? 'PPS'
+                                  : hit.id.includes('_RCO_') || hit.id.includes('_IR_') ? 'IR'
+                                  : hit.id.includes('_NIC_') || hit.id.includes('_PC_') ? 'PC'
+                                  : null
+                                const leaf = detectedType ? EXPLORER_LEAF_URLS[detectedType] : null
+                                return leaf ? (
+                                  <a
+                                    href={leaf}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    title="Apri tabella EsploraDati ISTAT per trovare la query"
+                                    style={{
+                                      padding: '3px 8px',
+                                      borderRadius: 6,
+                                      border: '1px solid var(--color-border)',
+                                      background: 'var(--color-bg-muted)',
+                                      fontSize: 11,
+                                      color: 'var(--color-text-secondary)',
+                                      textDecoration: 'none',
+                                      fontWeight: 500,
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    EsploraDati ↗
+                                  </a>
+                                ) : null
+                              })()}
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  setShowSdmx(true)
+                                }}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  border: '1px solid var(--color-primary)',
+                                  background: 'var(--color-bg-card)',
+                                  color: 'var(--color-primary)',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title="Importa e associa la query SDMX per questo indice"
+                              >
+                                + Importa Query SDMX
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -1041,13 +1104,37 @@ export default function IstatCatalog() {
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-text-muted)' }}>{s.observation_count}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                      {s.saved_query && (
+                      {s.saved_query ? (
                         <QueryActions
                           query={s.saved_query}
                           running={runState?.status === 'running' && runState.query.id === s.saved_query.id}
                           onRun={handleRunQuery}
                           onManage={setManageTarget}
                         />
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setShowSdmx(true)
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: '1px solid var(--color-primary)',
+                              background: 'var(--color-bg-card)',
+                              color: 'var(--color-primary)',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title="Importa e associa la query SDMX per questo indice"
+                          >
+                            + Importa Query SDMX
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
