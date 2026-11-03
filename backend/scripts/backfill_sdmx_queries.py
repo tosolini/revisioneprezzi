@@ -23,6 +23,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Backfill IndexImportQuery per serie senza query")
     parser.add_argument("--dry-run", action="store_true", help="Simula senza scrivere")
     parser.add_argument("--group", dest="group", help="classification_ref (es. ppi)")
+    parser.add_argument("--overwrite", action="store_true", help="Sovrascrive query esistenti")
     args = parser.parse_args()
 
     db = SessionLocal()
@@ -57,8 +58,8 @@ def main() -> None:
             print("Nessuna serie trovata")
             return
         latest = _latest_saved_queries(db, [s.id for s in series_list])
-        to_backfill = [s for s in series_list if s.id not in latest]
-        print(f"Totale: {total}, da popolare: {len(to_backfill)}, dry_run={args.dry_run}")
+        to_backfill = series_list if args.overwrite else [s for s in series_list if s.id not in latest]
+        print(f"Totale: {total}, da popolare: {len(to_backfill)}, dry_run={args.dry_run}, overwrite={args.overwrite}")
 
         backfilled = 0
         skipped: list[dict] = []
@@ -121,6 +122,10 @@ def main() -> None:
 
             for norm_url, grp in groups.items():
                 try:
+                    if args.overwrite:
+                        db.query(IndexImportQuerySeries).filter(
+                            IndexImportQuerySeries.series_id.in_(grp["series_ids"])
+                        ).delete(synchronize_session=False)
                     existing = (
                         db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
                     )
@@ -145,6 +150,13 @@ def main() -> None:
                     for sid in grp["series_ids"]:
                         skipped.append({"id": sid, "reason": str(e)[:200]})
                     print(f"  [err] {norm_url[:60]}... {e}")
+            if args.overwrite:
+                db.query(IndexImportQuery).filter(
+                    ~IndexImportQuery.id.in_(
+                        db.query(IndexImportQuerySeries.query_id).distinct()
+                    )
+                ).delete(synchronize_session=False)
+                db.commit()
 
         print(
             f"\nRisultato: total={total} backfilled={backfilled} "

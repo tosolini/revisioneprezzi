@@ -582,6 +582,7 @@ export default function IstatCatalog() {
   const [backfilling, setBackfilling] = useState(false)
   const [backfillMessage, setBackfillMessage] = useState<string | null>(null)
   const [backfillConfirmOpen, setBackfillConfirmOpen] = useState(false)
+  const [backfillOverwrite, setBackfillOverwrite] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchHit[]>([])
@@ -635,15 +636,16 @@ export default function IstatCatalog() {
   const handleBackfill = async () => {
     if (!selectedGroup || backfilling) return
     const missing = seriesList.filter(s => !s.saved_query).length
-    if (missing === 0) return
+    if (missing === 0 && !backfillOverwrite) return
     setBackfillConfirmOpen(false)
     setBackfilling(true)
     setBackfillMessage(null)
     try {
-      const res = await fetch(`/api/v1/indices/backfill-queries?classification_ref=${encodeURIComponent(selectedGroup)}`, { method: 'POST' })
+      const q = `/api/v1/indices/backfill-queries?classification_ref=${encodeURIComponent(selectedGroup)}${backfillOverwrite ? '&overwrite=true' : ''}`
+      const res = await fetch(q, { method: 'POST' })
       if (!res.ok) throw new Error(await parseErrorDetail(res))
       const j = await res.json() as { total: number; backfilled: number; skipped: Array<{id:string;reason:string}> }
-      setBackfillMessage(`Popolate ${j.backfilled}/${j.total} query (skipped ${j.skipped.length}).`)
+      setBackfillMessage(`${backfillOverwrite ? 'Aggiornate' : 'Popolate'} ${j.backfilled}/${j.total} query (skipped ${j.skipped.length}).`)
       setReloadKey(k => k + 1)
       // ricarica cache ricerca se presente
       setSearchGroupCache(c => { const n={...c}; delete n[selectedGroup]; return n })
@@ -731,16 +733,29 @@ export default function IstatCatalog() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {selectedGroup && seriesList.some(s => !s.saved_query) && (
-              <button
-                onClick={() => setBackfillConfirmOpen(true)}
-                disabled={backfilling}
-                style={{
-                  padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-warning, #d97706)',
-                  background: 'var(--color-bg-card)', color: 'var(--color-warning, #d97706)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-                  opacity: backfilling ? 0.6 : 1,
-                }}
-              >{backfilling ? 'Popolamento...' : `Popola query mancanti (${seriesList.filter(s => !s.saved_query).length})`}</button>
+            {selectedGroup && (
+              seriesList.some(s => !s.saved_query) ? (
+                <button
+                  onClick={() => { setBackfillOverwrite(false); setBackfillConfirmOpen(true) }}
+                  disabled={backfilling}
+                  style={{
+                    padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-warning, #d97706)',
+                    background: 'var(--color-bg-card)', color: 'var(--color-warning, #d97706)', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                    opacity: backfilling ? 0.6 : 1,
+                  }}
+                >{backfilling ? 'Popolamento...' : `Popola query mancanti (${seriesList.filter(s => !s.saved_query).length})`}</button>
+              ) : seriesList.length > 0 ? (
+                <button
+                  onClick={() => { setBackfillOverwrite(true); setBackfillConfirmOpen(true) }}
+                  disabled={backfilling}
+                  style={{
+                    padding: '10px 20px', borderRadius: 8, border: '1px solid var(--color-border)',
+                    background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: 14, fontWeight: 500,
+                    opacity: backfilling ? 0.6 : 1,
+                  }}
+                  title="Rigenera le query SDMX del gruppo secondo i template attuali"
+                >{backfilling ? 'Aggiornamento...' : 'Rigenera query SDMX'}</button>
+              ) : null
             )}
             <button onClick={() => setShowSdmx(true)} style={{
               padding: '10px 20px', borderRadius: 8, border: 'none',
@@ -756,7 +771,7 @@ export default function IstatCatalog() {
         <div style={{ padding: "14px 16px", borderRadius: 12, border: "1px solid var(--color-border-light)", background: "var(--color-bg-muted)", display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>Dove cercare per tabelle D2/D3</div>
           <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--color-text-secondary)" }}>
-            Parti da queste 4 tabelle EsploraDati e filtra per il codice della tabella (ATECO/ECOICOP). Copia il template SDMX per evitare 422 <code style={{ fontFamily: "monospace", fontSize: 11 }}>unfiltered_dimensions</code> (IR richiede <code style={{ fontFamily: "monospace", fontSize: 11 }}>DATA_TYPE=N</code>).
+            Parti da queste 4 tabelle EsploraDati e filtra per il codice della tabella (ATECO/ECOICOP). Copia il template SDMX per evitare 422 <code style={{ fontFamily: "monospace", fontSize: 11 }}>unfiltered_dimensions</code> (IR usa <code style={{ fontFamily: "monospace", fontSize: 11 }}>WAGE_E_2021.N.10</code>).
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 8 }}>
             {(["PPI", "PPS", "IR", "PC"] as ExplorerIndexType[]).map(t => {
@@ -772,7 +787,7 @@ export default function IstatCatalog() {
                     <a href={leaf} target="_blank" rel="noopener noreferrer" title="Apri tabella su EsploraDati" style={{ display: "inline-block", padding: "2px 6px", borderRadius: 6, border: "1px solid var(--color-border-light)", background: "var(--color-bg-muted)", fontSize: 10, cursor: "pointer", color: "var(--color-text-primary)", textDecoration: "none", fontWeight: 600 }}>Apri EsploraDati ↗</a>
                   </div>
                   <div style={{ fontSize: 10, color: "var(--color-text-light)", marginTop: 4, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sdmx}>{sdmx}</div>
-                  {t === "IR" && <div style={{ fontSize: 10, color: "var(--color-text-warning)", marginTop: 2 }}>Filtra DATA_TYPE=N</div>}
+                  {t === "IR" && <div style={{ fontSize: 10, color: "var(--color-text-warning)", marginTop: 2 }}>WAGE_E_2021, grezzo (N), dipendenti (10)</div>}
                   {t === "PC" && <div style={{ fontSize: 10, color: "var(--color-text-warning)", marginTop: 2 }}>Filtra MISURA=4 (numero indice), base 2025 dal 2026-01</div>}
                   {t === "PPI" && <div style={{ fontSize: 10, color: "var(--color-text-light)" }}>Tabella diretta: 145_360…</div>}
                   {t === "PPS" && <div style={{ fontSize: 10, color: "var(--color-text-light)" }}>Tabella diretta: 145_376… trimestrale Q</div>}
@@ -1192,14 +1207,28 @@ export default function IstatCatalog() {
       {showSdmx && <SdmxModal onClose={() => setShowSdmx(false)} onImported={() => setReloadKey(k => k + 1)} />}
       {backfillConfirmOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 420, boxShadow: '0 4px 20px var(--color-shadow)' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Popola query mancanti</h3>
+          <div style={{ background: 'var(--color-bg-card)', padding: 24, borderRadius: 12, width: 440, boxShadow: '0 4px 20px var(--color-shadow)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>
+              {backfillOverwrite ? 'Rigenera query SDMX' : 'Popola query mancanti'}
+            </h3>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
-              Popolare {seriesList.filter(s => !s.saved_query).length} query SDMX mancanti per il gruppo "{GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.
+              {backfillOverwrite
+                ? `Rigenerare le query SDMX per tutte le ${seriesList.length} serie del gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Le query esistenti verranno aggiornate con il formato template corrente.`
+                : `Popolare ${seriesList.filter(s => !s.saved_query).length} query SDMX mancanti per il gruppo "${GROUP_LABELS[selectedGroup] || selectedGroup}"? Verranno create le query senza scaricare dati.`}
             </p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={backfillOverwrite}
+                  onChange={e => setBackfillOverwrite(e.target.checked)}
+                />
+                <span>Sovrascrivi query esistenti con i template correnti</span>
+              </label>
+            </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setBackfillConfirmOpen(false)} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
-              <button onClick={handleBackfill} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: backfilling ? 0.6 : 1 }}>{backfilling ? 'Popolamento...' : 'Popola'}</button>
+              <button onClick={handleBackfill} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: backfilling ? 0.6 : 1 }}>{backfilling ? 'Operazione in corso...' : backfillOverwrite ? 'Rigenera' : 'Popola'}</button>
             </div>
           </div>
         </div>

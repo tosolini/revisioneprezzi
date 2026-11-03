@@ -176,7 +176,11 @@ def build_sdmx_url(s: IndexSeries) -> str | None:
     else:
         prefix = "M"
 
-    if explorer in ("IR", "PPS"):
+    if explorer == "IR":
+        # Dataflow 155_358: FREQ.REF_AREA.DATA_TYPE.ADJUSTMENT.PROF_STATUS_EMP.NACE
+        # WAGE_E_2021 = retribuzione oraria base 2021, N = grezzo, 10 = totale dipendenti
+        key = f"{prefix}.IT.WAGE_E_2021.N.10.{code}"
+    elif explorer == "PPS":
         key = f"{prefix}.IT.N.{code}"
     elif explorer == "PC":
         # NIC/PC: set nuovo base 2025 (ECOICOP 2) dal 2026-01 —

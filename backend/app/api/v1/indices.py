@@ -1247,12 +1247,14 @@ def get_by_group(classification_ref: str, db: Session = Depends(get_db)):
 def backfill_sdmx_queries(
     dry_run: bool = False,
     classification_ref: str | None = None,
+    overwrite: bool = False,
     db: Session = Depends(get_db),
 ):
     """Popola IndexImportQuery per serie esistenti senza query salvata.
+    Se overwrite=True sovrascrive anche le query già esistenti.
 
-    Solo scrittura query (nessun fetch SDMX, nessun rate-limit). Idempotente:
-    serie già con query vengono saltate. Ritorna total/backfilled/skipped.
+    Solo scrittura query (nessun fetch SDMX, nessun rate-limit). Idempotente.
+    Ritorna total/backfilled/skipped/dry_run/overwrite.
     """
     # valida classification_ref se fornito
     if classification_ref is not None:
@@ -1290,7 +1292,7 @@ def backfill_sdmx_queries(
         return {"total": 0, "backfilled": 0, "skipped": [], "dry_run": dry_run}
 
     latest = _latest_saved_queries(db, [s.id for s in series_list])
-    to_backfill = [s for s in series_list if s.id not in latest]
+    to_backfill = series_list if overwrite else [s for s in series_list if s.id not in latest]
 
     backfilled = 0
     skipped: list[dict] = []
@@ -1357,6 +1359,12 @@ def backfill_sdmx_queries(
 
         for norm_url, grp in groups.items():
             try:
+                # se overwrite, stacca preventivamente queste serie da query precedenti
+                if overwrite:
+                    db.query(IndexImportQuerySeries).filter(
+                        IndexImportQuerySeries.series_id.in_(grp["series_ids"])
+                    ).delete(synchronize_session=False)
+
                 # merge con eventuali link già esistenti per questo URL (evita sovrascrittura)
                 existing = (
                     db.query(IndexImportQuery).filter(IndexImportQuery.url == norm_url).first()
@@ -1383,10 +1391,14 @@ def backfill_sdmx_queries(
                 )
                 for sid in grp["series_ids"]:
                     skipped.append({"id": sid, "reason": "errore durante il salvataggio"})
-        # backfilled già contato per gruppi; se dry_run era true, backfilled già contato sopra
-    elif dry_run:
-        # backfilled già contato nel loop
-        pass
+        if overwrite:
+            # ripulisci query orfane senza più serie associate
+            db.query(IndexImportQuery).filter(
+                ~IndexImportQuery.id.in_(
+                    db.query(IndexImportQuerySeries.query_id).distinct()
+                )
+            ).delete(synchronize_session=False)
+            db.commit()
 
     if not dry_run and backfilled > 0:
         log_event(
@@ -1401,7 +1413,13 @@ def backfill_sdmx_queries(
             motivation="Backfill query SDMX per serie esistenti",
         )
 
-    return {"total": total, "backfilled": backfilled, "skipped": skipped, "dry_run": dry_run}
+    return {
+        "total": total,
+        "backfilled": backfilled,
+        "skipped": skipped,
+        "dry_run": dry_run,
+        "overwrite": overwrite,
+    }
 
 
 @router.delete("/{series_id}/observations", status_code=200)
