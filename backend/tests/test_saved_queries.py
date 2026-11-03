@@ -179,8 +179,16 @@ def test_import_sdmx_saves_query_and_links_series(client, db, monkeypatch, tmp_p
     finally:
         _cleanup(db, "test_sdmx")
         if q is not None:
-            db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).delete(synchronize_session=False)
-            db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).delete(synchronize_session=False)
+            (
+                db.query(IndexImportQuerySeries)
+                .filter(IndexImportQuerySeries.query_id == q.id)
+                .delete(synchronize_session=False)
+            )
+            (
+                db.query(IndexImportQuery)
+                .filter(IndexImportQuery.id == q.id)
+                .delete(synchronize_session=False)
+            )
             db.commit()
 
 
@@ -236,8 +244,16 @@ def test_saved_query_run_reenrols(client, db, monkeypatch, tmp_path):
     finally:
         _cleanup(db, "test_sdmx")
         if q is not None:
-            db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).delete(synchronize_session=False)
-            db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).delete(synchronize_session=False)
+            (
+                db.query(IndexImportQuerySeries)
+                .filter(IndexImportQuerySeries.query_id == q.id)
+                .delete(synchronize_session=False)
+            )
+            (
+                db.query(IndexImportQuery)
+                .filter(IndexImportQuery.id == q.id)
+                .delete(synchronize_session=False)
+            )
             db.commit()
 
 def test_saved_query_update(client, db):
