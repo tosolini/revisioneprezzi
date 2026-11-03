@@ -591,7 +591,7 @@ export default function IstatCatalog() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sdmxDeepLinkOpened = useRef(false)
   const searchActive = searchQuery.trim().length > 0
-  const missingQueriesCount = useMemo(() => seriesList.filter(s => !s.saved_query).length, [seriesList])
+  const missingQueriesCount = useMemo(() => seriesList.reduce((acc, s) => acc + (s.saved_query ? 0 : 1), 0), [seriesList])
   const noMissingAndNoOverwrite = missingQueriesCount === 0 && !backfillOverwrite
   const visibleSeriesList = showMissingOnly ? seriesList.filter(s => !s.saved_query) : seriesList
   const visibleGroups = groups.filter(g => g.observation_count > 0)
