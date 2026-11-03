@@ -23,18 +23,31 @@ export const DATAFLOW_BY_TYPE: Record<ExplorerIndexType, string> = {
   IR: "155_358_DF_DCSC_RETRATECO1_7",
   PC: "167_745_DF_DCSP_NIC1B2025_6",
 }
+export function extractCodeForTemplate(query: string): string {
+  const q = query.trim()
+  if (!q) return ''
+  // Se la query include pattern tipo ISTAT_PPI_263_D o ISTAT_NIC_ECOICOP2_0117,
+  // estrai il blocco numerico di 2-6 cifre preceduto da underscore
+  const match = q.match(/_([0-9]{2,6})(?:[^0-9]|$)/)
+  if (match) return match[1].slice(0, 6)
+  // Altrimenti normalizza a sole cifre e limita a massimo 6 caratteri, preservando zeri iniziali
+  return q.replace(/\D/g, '').slice(0, 6)
+}
+
 export function sdmxTemplateFor(indexType: ExplorerIndexType, code: string, freq: "M" | "Q" = indexType === "PPS" ? "Q" : "M"): string {
   const df = DATAFLOW_BY_TYPE[indexType]
   const prefix = indexType === "PPS" ? "Q" : "M"
   // NIC/PC: set nuovo base 2025 (ECOICOP 2) dal 2026-01 — DATA_TYPE 85, MEASURE 4
   const start = indexType === "PC" ? "2026-01-01" : "2024-01-01"
+  const sanitized = code.replace(/\D/g, '').slice(0, 6)
+  const safeCode = sanitized || (indexType === "PC" ? "01111" : "263")
   const key =
     indexType === "IR"
-      ? `${prefix}.IT.N.${code.trim()}`
+      ? `${prefix}.IT.N.${safeCode}`
       : indexType === "PPS"
-        ? `${prefix}.IT.N.${code.trim()}`
+        ? `${prefix}.IT.N.${safeCode}`
         : indexType === "PC"
-          ? `${prefix}.IT.85.4.${code.trim()}`
-          : `${prefix}.IT.${code.trim()}`
+          ? `${prefix}.IT.85.4.${safeCode}`
+          : `${prefix}.IT.${safeCode}`
   return `https://esploradati.istat.it/SDMXWS/rest/data/IT1,${df},1.0/${key}/ALL/?detail=full&startPeriod=${start}&endPeriod=2026-03-31&dimensionAtObservation=TIME_PERIOD`
 }

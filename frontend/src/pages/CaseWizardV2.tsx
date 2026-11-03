@@ -800,6 +800,18 @@ export default function CaseWizardV2() {
   const [atecoInputs, setAtecoInputs] = useState<Record<string, string>>({})
   const dataRef = useRef(data)
   useEffect(() => { dataRef.current = data }, [data])
+  const refreshFeedbackTimerRef = useRef<number | null>(null)
+  const atecoBlurTimerRef = useRef<number | null>(null)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      clearTimeout(refreshFeedbackTimerRef.current ?? undefined)
+      clearTimeout(atecoBlurTimerRef.current ?? undefined)
+    }
+  }, [])
   useEffect(() => {
     if (id && currentStep === 5) void loadCycles()
   }, [id, currentStep])
@@ -1338,6 +1350,7 @@ export default function CaseWizardV2() {
 
   const refreshIndicesState = useCallback(async () => {
     if (indicesRefreshing) return
+    clearTimeout(refreshFeedbackTimerRef.current ?? undefined)
     setIndicesRefreshing(true)
     setIndicesRefreshFeedback(null)
     try {
@@ -1377,16 +1390,27 @@ export default function CaseWizardV2() {
             } catch { /* ignora errore singolo cpv */ }
           })
         )
+        if (!isMountedRef.current) return
         setMappings(nextMappings)
       }
       await fetchPeriodCoverage(nextMappings)
+      if (!isMountedRef.current) return
       setIndicesRefreshFeedback('Stato indici e copertura aggiornati con successo.')
-      setTimeout(() => setIndicesRefreshFeedback(null), 4000)
+      clearTimeout(refreshFeedbackTimerRef.current ?? undefined)
+      refreshFeedbackTimerRef.current = window.setTimeout(() => {
+        if (isMountedRef.current) setIndicesRefreshFeedback(null)
+      }, 4000)
     } catch {
+      if (!isMountedRef.current) return
       setIndicesRefreshFeedback('Errore durante l\'aggiornamento degli indici.')
-      setTimeout(() => setIndicesRefreshFeedback(null), 4000)
+      clearTimeout(refreshFeedbackTimerRef.current ?? undefined)
+      refreshFeedbackTimerRef.current = window.setTimeout(() => {
+        if (isMountedRef.current) setIndicesRefreshFeedback(null)
+      }, 4000)
     } finally {
-      setIndicesRefreshing(false)
+      if (isMountedRef.current) {
+        setIndicesRefreshing(false)
+      }
     }
   }, [indicesRefreshing, mappings, data.cpv_selections, fetchPeriodCoverage])
 
@@ -2731,8 +2755,11 @@ export default function CaseWizardV2() {
                               }}
                               onBlur={() => {
                                 // ritarda per permettere click sulla tendina prima di chiudere
-                                setTimeout(() => {
-                                  setActiveAtecoIndex(prev => (prev === i ? null : prev))
+                                clearTimeout(atecoBlurTimerRef.current ?? undefined)
+                                atecoBlurTimerRef.current = window.setTimeout(() => {
+                                  if (isMountedRef.current) {
+                                    setActiveAtecoIndex(prev => (prev === i ? null : prev))
+                                  }
                                 }, 180)
                               }}
                               placeholder="es. 26.3 — fabbricazione computer"
