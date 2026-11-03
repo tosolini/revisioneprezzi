@@ -158,3 +158,51 @@ def test_backfill_endpoint_overwrite(client, db):
         ).delete(synchronize_session=False)
         db.query(IndexSeries).filter(IndexSeries.id == series_id).delete(synchronize_session=False)
         db.commit()
+
+
+def test_backfill_endpoint_empty_group_returns_overwrite(client):
+    """Verifica che quando total == 0 la risposta includa comunque il campo overwrite."""
+    res = client.post("/api/v1/indices/backfill-queries?classification_ref=nic&overwrite=true")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 0
+    assert "overwrite" in data
+    assert data["overwrite"] is True
+
+
+def test_backfill_endpoint_rollback_on_save_error(client, db, monkeypatch):
+    """Verifica che un errore di salvataggio esegua il rollback e non corrompa la sessione."""
+    from app.api.v1 import indices
+
+    def faulty_save(*args, **kwargs):
+        raise RuntimeError("Simulated DB failure")
+
+    series_id = "ISTAT_WAGES_ATECO_ROLLBACK_TEST"
+    test_series = IndexSeries(
+        id=series_id,
+        name="Test Wages Rollback",
+        source="ISTAT",
+        classification_ref="wages_ateco",
+        frequency="monthly",
+    )
+    db.add(test_series)
+    db.commit()
+
+    monkeypatch.setattr(indices, "_save_import_query", faulty_save)
+    try:
+        res = client.post(
+            "/api/v1/indices/backfill-queries?classification_ref=wages_ateco&overwrite=true"
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["backfilled"] == 0
+        assert len(data["skipped"]) > 0
+        # Verifica che la sessione sia utilizzabile dopo il rollback
+        assert db.query(IndexSeries).filter(IndexSeries.id == series_id).first() is not None
+    finally:
+        db.rollback()
+        db.query(IndexImportQuerySeries).filter(
+            IndexImportQuerySeries.series_id == series_id
+        ).delete(synchronize_session=False)
+        db.query(IndexSeries).filter(IndexSeries.id == series_id).delete(synchronize_session=False)
+        db.commit()

@@ -147,6 +147,7 @@ def main() -> None:
                     backfilled += len(grp["series_ids"])
                     print(f"  [ok] {norm_url[:90]}... -> {len(grp['series_ids'])} serie")
                 except Exception as e:
+                    db.rollback()
                     for sid in grp["series_ids"]:
                         skipped.append({"id": sid, "reason": str(e)[:200]})
                     print(f"  [err] {norm_url[:60]}... {e}")
