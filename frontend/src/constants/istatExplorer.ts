@@ -26,12 +26,14 @@ export const DATAFLOW_BY_TYPE: Record<ExplorerIndexType, string> = {
 export function extractCodeForTemplate(query: string): string {
   const q = query.trim()
   if (!q) return ''
-  // Se la query include pattern tipo ISTAT_PPI_263_D o ISTAT_NIC_ECOICOP2_0117,
-  // estrai il blocco numerico di 2-6 cifre preceduto da underscore
-  const match = q.match(/_([0-9]{2,6})(?:[^0-9]|$)/)
-  if (match) return match[1].slice(0, 6)
-  // Altrimenti normalizza a sole cifre e limita a massimo 6 caratteri, preservando zeri iniziali
-  return q.replace(/\D/g, '').slice(0, 6)
+  // Per pattern PPI con suffisso mercato (es. ISTAT_PPI_263_D), estrai il codice numerico base
+  const ppiMatch = q.match(/_([0-9]{2,6})(?:_[A-Z])?(?:[^0-9A-Za-z]|$)/)
+  if (ppiMatch) return ppiMatch[1].slice(0, 6).toUpperCase()
+  // Per altre serie ISTAT (es. ISTAT_WAGES_ATECO_A, ISTAT_WAGES_ATECO_QB, ISTAT_NIC_ECOICOP2_01111)
+  const alphaMatch = q.match(/_([0-9A-Za-z]{1,6})(?:[^0-9A-Za-z]|$)/)
+  if (alphaMatch) return alphaMatch[1].slice(0, 6).toUpperCase()
+  // Altrimenti normalizza a soli caratteri alfanumerici (uppercase)
+  return q.replace(/[^0-9A-Za-z]/g, '').slice(0, 6).toUpperCase()
 }
 
 export function sdmxTemplateFor(indexType: ExplorerIndexType, code: string, freq: "M" | "Q" = indexType === "PPS" ? "Q" : "M"): string {
@@ -39,7 +41,7 @@ export function sdmxTemplateFor(indexType: ExplorerIndexType, code: string, freq
   const prefix = indexType === "PPS" ? "Q" : "M"
   // NIC/PC: set nuovo base 2025 (ECOICOP 2) dal 2026-01 — DATA_TYPE 85, MEASURE 4
   const start = indexType === "PC" ? "2026-01-01" : "2024-01-01"
-  const sanitized = code.replace(/[^0-9A-Za-z]/g, '').slice(0, 6)
+  const sanitized = code.replace(/[^0-9A-Za-z]/g, '').slice(0, 6).toUpperCase()
   const safeCode = sanitized || (indexType === "PC" ? "01111" : indexType === "IR" ? "0011" : "263")
   const key =
     indexType === "IR"

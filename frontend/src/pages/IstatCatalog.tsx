@@ -636,7 +636,11 @@ export default function IstatCatalog() {
   const handleBackfill = async () => {
     if (!selectedGroup || backfilling) return
     const missing = seriesList.filter(s => !s.saved_query).length
-    if (missing === 0 && !backfillOverwrite) return
+    if (missing === 0 && !backfillOverwrite) {
+      setBackfillConfirmOpen(false)
+      setBackfillMessage('Nessuna query mancante da popolare nel gruppo selezionato.')
+      return
+    }
     setBackfillConfirmOpen(false)
     setBackfilling(true)
     setBackfillMessage(null)
@@ -1226,9 +1230,23 @@ export default function IstatCatalog() {
                 <span>Sovrascrivi query esistenti con i template correnti</span>
               </label>
             </div>
+            {seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite && (
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-warning, #d97706)' }}>
+                Tutte le serie hanno già una query salvata. Seleziona &quot;Sovrascrivi query esistenti&quot; per rigenerarle.
+              </p>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setBackfillConfirmOpen(false)} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', cursor: 'pointer' }}>Annulla</button>
-              <button onClick={handleBackfill} disabled={backfilling} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none', cursor: 'pointer', fontWeight: 600, opacity: backfilling ? 0.6 : 1 }}>{backfilling ? 'Operazione in corso...' : backfillOverwrite ? 'Rigenera' : 'Popola'}</button>
+              <button
+                onClick={handleBackfill}
+                disabled={backfilling || (seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite)}
+                style={{
+                  padding: '6px 12px', borderRadius: 8, background: 'var(--color-primary)', color: 'var(--color-primary-text)', border: 'none',
+                  cursor: (seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite) ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  opacity: (backfilling || (seriesList.filter(s => !s.saved_query).length === 0 && !backfillOverwrite)) ? 0.5 : 1,
+                }}
+              >{backfilling ? 'Operazione in corso...' : backfillOverwrite ? 'Rigenera' : 'Popola'}</button>
             </div>
           </div>
         </div>

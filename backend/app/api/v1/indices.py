@@ -1289,7 +1289,13 @@ def backfill_sdmx_queries(
     series_list = q.order_by(IndexSeries.id).all()
     total = len(series_list)
     if total == 0:
-        return {"total": 0, "backfilled": 0, "skipped": [], "dry_run": dry_run}
+        return {
+            "total": 0,
+            "backfilled": 0,
+            "skipped": [],
+            "dry_run": dry_run,
+            "overwrite": overwrite,
+        }
 
     latest = _latest_saved_queries(db, [s.id for s in series_list])
     to_backfill = series_list if overwrite else [s for s in series_list if s.id not in latest]
@@ -1384,7 +1390,7 @@ def backfill_sdmx_queries(
                     )
                 backfilled += len(grp["series_ids"])
             except Exception as e:
-                # Non esporre il dettaglio dell'eccezione (possibile stack trace)
+                db.rollback()
                 # nel body della risposta: loggare server-side e rispondere neutro.
                 logging.getLogger("indices").warning(
                     "backfill-queries: salvataggio fallito per %s: %s", norm_url, e
