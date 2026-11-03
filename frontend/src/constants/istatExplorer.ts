@@ -26,16 +26,21 @@ export const DATAFLOW_BY_TYPE: Record<ExplorerIndexType, string> = {
 export function extractCodeForTemplate(query: string): string {
   const q = query.trim()
   if (!q) return ''
-  // Se la query include underscore (es. ID di serie ISTAT_*), estrai il segmento finale significativo
+  // Se la query include underscore (es. ID di serie ISTAT_*), estrai i segmenti fermandosi al primo separatore
   if (q.includes('_')) {
     const parts = q.split('_').filter(Boolean)
     if (parts.length > 0) {
-      const last = parts[parts.length - 1]
-      // Caso speciale PPI: suffisso mercato _D, _T, _E dopo il codice (es. ISTAT_PPI_263_D)
-      if (['D', 'T', 'E'].includes(last.toUpperCase()) && parts.length >= 3 && /^[0-9]+$/.test(parts[parts.length - 2])) {
-        return parts[parts.length - 2].slice(0, 6).toUpperCase()
+      const tokens = parts
+        .map(p => p.match(/^[0-9A-Za-z]+/)?.[0]?.toUpperCase() || '')
+        .filter(Boolean)
+      if (tokens.length > 0) {
+        const last = tokens[tokens.length - 1]
+        // Caso speciale PPI: suffisso mercato D, T, E dopo il codice numerico (es. ISTAT_PPI_263_D?x)
+        if (['D', 'T', 'E'].includes(last) && tokens.length >= 3 && /^[0-9]+$/.test(tokens[tokens.length - 2])) {
+          return tokens[tokens.length - 2].slice(0, 6)
+        }
+        return last.slice(0, 6)
       }
-      return last.replace(/[^0-9A-Za-z]/g, '').slice(0, 6).toUpperCase()
     }
   }
   // Altrimenti normalizza la stringa digitata a soli caratteri alfanumerici (uppercase)
