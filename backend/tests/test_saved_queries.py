@@ -208,6 +208,7 @@ def test_import_csv_does_not_save_query(client, db, monkeypatch, tmp_path):
     finally:
         _cleanup(db, "test_csv")
 
+
 # ── CRUD query salvata ──────────────────────────────────────────────────────
 
 
@@ -255,6 +256,7 @@ def test_saved_query_run_reenrols(client, db, monkeypatch, tmp_path):
                 .delete(synchronize_session=False)
             )
             db.commit()
+
 
 def test_saved_query_update(client, db):
     q = _seed_query(db, SDMX_DATA_URL)
@@ -328,9 +330,7 @@ def test_saved_query_404(client, db):
     missing = str(uuid.uuid4())
     resp = client.get(f"/api/v1/indices/saved-queries/{missing}")
     assert resp.status_code == 404
-    resp = client.put(
-        f"/api/v1/indices/saved-queries/{missing}", json={"url": SDMX_DATA_URL}
-    )
+    resp = client.put(f"/api/v1/indices/saved-queries/{missing}", json={"url": SDMX_DATA_URL})
     assert resp.status_code == 404
     resp = client.delete(f"/api/v1/indices/saved-queries/{missing}")
     assert resp.status_code == 404
@@ -380,13 +380,11 @@ def test_saved_query_series(client, db):
             )
             db.commit()
     finally:
-        db.query(IndexImportQuerySeries).filter(
-            IndexImportQuerySeries.query_id == q.id
-        ).delete(synchronize_session=False)
+        db.query(IndexImportQuerySeries).filter(IndexImportQuerySeries.query_id == q.id).delete(
+            synchronize_session=False
+        )
         db.query(IndexImportQuery).filter(IndexImportQuery.id == q.id).delete(
             synchronize_session=False
         )
-        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(
-            synchronize_session=False
-        )
+        db.query(IndexSeries).filter(IndexSeries.id == sid).delete(synchronize_session=False)
         db.commit()
