@@ -6,7 +6,7 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.7** — wizard a 5 passi + revisione prezzi ricorrente.
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.8** — wizard a 5 passi + revisione prezzi ricorrente.
 
 ### Funzionalità principali
 
@@ -240,6 +240,12 @@ L'"Aggiorna" salva solo URL e strategie: per ri-scaricare i dati si usa il pulsa
   segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
   `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
   puntuali, ma non è esposto in alcuna interfaccia.
+
+## Novità nella 1.2.8
+
+- **Correzione query SDMX per le retribuzioni contrattuali ISTAT (IR / Wages ATECO)**: corretto il formato della chiave dimensionale del dataflow `155_358_DF_DCSC_RETRATECO1_7` conformemente al DSD ufficiale ISTAT. La chiave include ora tutte le 6 dimensioni obbligatorie `M.IT.WAGE_E_2021.N.10.{code}`, risolvendo l'errore HTTP 422 ("Not enough key values in query, expecting 6 got 4").
+- **Migrazione e allineamento Registro SDMX**: aggiornate automaticamente tramite migrazione Alembic (`c3d4e5f6a7b8`) tutte le 382 query preesistenti nel database per le serie ATECO retribuzioni.
+- **Estensione "Popola query mancanti"**: aggiunta la possibilità di rigenerare e sovrascrivere le query salvate (`overwrite=True`) da interfaccia e CLI script, con pulizia automatica delle query orfane non più collegate ad alcuna serie.
 
 ## Novità nella 1.2.7
 

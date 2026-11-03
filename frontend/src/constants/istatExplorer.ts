@@ -39,11 +39,11 @@ export function sdmxTemplateFor(indexType: ExplorerIndexType, code: string, freq
   const prefix = indexType === "PPS" ? "Q" : "M"
   // NIC/PC: set nuovo base 2025 (ECOICOP 2) dal 2026-01 — DATA_TYPE 85, MEASURE 4
   const start = indexType === "PC" ? "2026-01-01" : "2024-01-01"
-  const sanitized = code.replace(/\D/g, '').slice(0, 6)
-  const safeCode = sanitized || (indexType === "PC" ? "01111" : "263")
+  const sanitized = code.replace(/[^0-9A-Za-z]/g, '').slice(0, 6)
+  const safeCode = sanitized || (indexType === "PC" ? "01111" : indexType === "IR" ? "0011" : "263")
   const key =
     indexType === "IR"
-      ? `${prefix}.IT.N.${safeCode}`
+      ? `${prefix}.IT.WAGE_E_2021.N.10.${safeCode}`
       : indexType === "PPS"
         ? `${prefix}.IT.N.${safeCode}`
         : indexType === "PC"
