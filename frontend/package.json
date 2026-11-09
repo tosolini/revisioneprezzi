@@ -11,7 +11,7 @@
   "dependencies": {
     "@tiptap/extension-placeholder": "^3.32.1",
     "@tiptap/extension-underline": "^3.32.1",
-    "@tiptap/react": "^3.32.1",
+    "@tiptap/react": "^3.33.0",
     "@tiptap/starter-kit": "^3.32.1",
     "pdfmake": "^0.3.13",
     "react": "^19.3.1",
