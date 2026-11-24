@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tiptap/extension-placeholder": "^3.33.1",
-    "@tiptap/extension-underline": "^3.33.1",
+    "@tiptap/extension-underline": "^3.34.0",
     "@tiptap/react": "^3.33.1",
     "@tiptap/starter-kit": "^3.33.1",
     "pdfmake": "^0.3.14",
