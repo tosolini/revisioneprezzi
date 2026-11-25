@@ -7,6 +7,21 @@ export interface FormatNumberOptions {
 }
 
 const DEFAULT_FALLBACK = '—';
+const numberFormatCache = new Map<string, Intl.NumberFormat>();
+
+function getItNumberFormatter(minDecimals: number, maxDecimals: number): Intl.NumberFormat {
+  const key = `${minDecimals}:${maxDecimals}`;
+  let formatter = numberFormatCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('it-IT', {
+      useGrouping: 'always',
+      minimumFractionDigits: minDecimals,
+      maximumFractionDigits: maxDecimals,
+    });
+    numberFormatCache.set(key, formatter);
+  }
+  return formatter;
+}
 
 function toFiniteNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') {
@@ -29,17 +44,9 @@ export function formatItNumber(value: unknown, options: FormatNumberOptions = {}
   const maximumFractionDigits =
     options.decimals ?? options.maxDecimals ?? Math.max(minimumFractionDigits, 6);
 
-  const absFormatted = new Intl.NumberFormat('it-IT', {
-    useGrouping: 'always',
-    minimumFractionDigits,
-    maximumFractionDigits,
-  }).format(Math.abs(n));
-
-  const zeroFormatted = new Intl.NumberFormat('it-IT', {
-    useGrouping: 'always',
-    minimumFractionDigits,
-    maximumFractionDigits,
-  }).format(0);
+  const formatter = getItNumberFormatter(minimumFractionDigits, maximumFractionDigits);
+  const absFormatted = formatter.format(Math.abs(n));
+  const zeroFormatted = formatter.format(0);
 
   if (absFormatted === zeroFormatted) {
     return options.signed ? `+${absFormatted}` : absFormatted;
@@ -100,9 +107,10 @@ export function normalizeLegacyItNumbers(text: string): string {
     (_m, num: string) => `€ ${usNumberToIt(num)}`,
   );
   // 2. Numeri con decimali col punto (o migliaia con virgola + punto) non già in formato IT
+  // Evita regex lookbehind per compatibilità con tutti i runtime JS catturando il confine iniziale.
   out = out.replace(
-    /(?<![A-Za-z0-9._/,-])(-?(?:\d{1,3}(?:,\d{3})+\.\d+|\d+\.\d+))(?![A-Za-z0-9._/,-])/g,
-    (_m, num: string) => usNumberToIt(num),
+    /(^|[^A-Za-z0-9._/,-])(-?(?:\d{1,3}(?:,\d{3})+\.\d+|\d+\.\d+))(?![A-Za-z0-9._/,-])/g,
+    (_m, prefix: string, num: string) => `${prefix}${usNumberToIt(num)}`,
   );
   return out;
 }
