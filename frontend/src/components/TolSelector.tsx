@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatItPercent } from '../utils/formatters'
 
 interface TolOption {
   code: string
@@ -340,7 +341,7 @@ export default function TolSelector({
             {value.map(sel => (
               <div key={sel.code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                 <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600, color: 'var(--color-text-primary)' }}>{sel.code}</span>
-                {multiSelect && <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>{sel.weight.toFixed(1)}%</span>}
+                {multiSelect && <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>{formatItPercent(sel.weight, { decimals: 1 })}</span>}
               </div>
             ))}
           </div>
@@ -360,7 +361,7 @@ export default function TolSelector({
                     borderRadius: 999,
                   }}
                 >
-                  {totalWeight.toFixed(1)}%
+                  {formatItPercent(totalWeight, { decimals: 1 })}
                 </span>
               </div>
               <p

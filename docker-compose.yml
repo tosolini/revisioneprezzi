@@ -23,10 +23,13 @@ services:
 
   scheduler:
     build: ./backend
-    entrypoint: ["python", "-m", "app.scheduler"]
+    entrypoint: ["python", "-u", "-m", "app.scheduler"]
+    volumes:
+      - ./backend:/app
     healthcheck:
       disable: true
     environment:
+      - PYTHONUNBUFFERED=1
       - SCHEDULER_BACKEND_URL=http://backend:8000
       - SCHEDULER_TOKEN=${SCHEDULER_TOKEN:-dev-scheduler-token}
       - SCHEDULER_TZ=Europe/Rome

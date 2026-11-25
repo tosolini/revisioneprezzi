@@ -1,3 +1,5 @@
+import { formatItCurrency, formatItNumber, formatItPercent } from '../utils/formatters'
+
 interface RevisionResultProps {
   result: {
     contract_type: string
@@ -16,17 +18,9 @@ interface RevisionResultProps {
 }
 
 export default function RevisionResultCard({ result, onExport, onNew }: RevisionResultProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2
-    }).format(value)
-  }
+  const formatCurrency = (value: number) => formatItCurrency(value)
 
-  const formatPercent = (value: number) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
-  }
+  const formatPercent = (value: number) => formatItPercent(value, { decimals: 2, signed: value > 0 })
 
   const contractTypeLabel = {
     works: 'Lavori',
@@ -105,18 +99,18 @@ export default function RevisionResultCard({ result, onExport, onNew }: Revision
           {/* Soglia applicabile */}
           <div className="flex justify-between py-2 border-b">
             <span className="text-gray-600">Soglia applicabile:</span>
-            <span className="font-medium">{result.threshold_percent.toFixed(0)}%</span>
+            <span className="font-medium">{formatItPercent(result.threshold_percent, { decimals: 0 })}</span>
           </div>
 
           {/* Indici */}
           <div className="flex justify-between py-2 border-b">
             <span className="text-gray-600">Indice riferimento:</span>
-            <span className="font-medium">{result.base_index.toFixed(2)}</span>
+            <span className="font-medium">{formatItNumber(result.base_index, { decimals: 2 })}</span>
           </div>
 
           <div className="flex justify-between py-2 border-b">
             <span className="text-gray-600">Indice corrente:</span>
-            <span className="font-medium">{result.comparison_index.toFixed(2)}</span>
+            <span className="font-medium">{formatItNumber(result.comparison_index, { decimals: 2 })}</span>
           </div>
 
           {/* Variazione */}
@@ -143,7 +137,7 @@ export default function RevisionResultCard({ result, onExport, onNew }: Revision
 
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Coefficiente riconoscimento:</span>
-                <span className="font-medium">{result.recognition_rate_percent.toFixed(0)}%</span>
+                <span className="font-medium">{formatItPercent(result.recognition_rate_percent, { decimals: 0 })}</span>
               </div>
             </>
           )}
@@ -154,7 +148,7 @@ export default function RevisionResultCard({ result, onExport, onNew }: Revision
           <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
             <p className="text-xs text-gray-600 mb-1 font-medium">Formula applicata:</p>
             <code className="text-xs text-blue-900 block">
-              {formatCurrency(result.amount)} × {formatPercent(result.net_variation_percent)} × {result.recognition_rate_percent.toFixed(0)}% = {formatCurrency(result.revision_amount)}
+              {formatCurrency(result.amount)} × {formatPercent(result.net_variation_percent)} × {formatItPercent(result.recognition_rate_percent, { decimals: 0 })} = {formatCurrency(result.revision_amount)}
             </code>
           </div>
         )}

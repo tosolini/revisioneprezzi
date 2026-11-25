@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatItPercent } from '../utils/formatters'
 
 interface IndexWeightsSeries {
   id: string
@@ -110,7 +111,7 @@ export default function IndexWeightsEditor({ series, value, onChange }: IndexWei
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: valid ? 'var(--color-text-success)' : 'var(--color-text-warning)' }}>
-          Totale: {total.toFixed(2)}% {valid ? '✓' : '— deve essere 100.00%'}
+          Totale: {formatItPercent(total, { decimals: 2 })} {valid ? '✓' : '— deve essere 100,00%'}
         </span>
         <button
           type="button"

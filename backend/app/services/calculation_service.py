@@ -9,6 +9,7 @@ from app.models.index_observation import IndexObservation
 from app.models.normative_param import NormativeParam
 from app.models.revision_result import RevisionResult
 from app.services.base_link_service import resolve_base_link
+from app.utils.format_it import format_it_currency, format_it_number
 
 getcontext().prec = 28
 
@@ -16,6 +17,10 @@ getcontext().prec = 28
 def _get_param(db: Session, param_id: str) -> float:
     param = db.query(NormativeParam).filter(NormativeParam.id == param_id).first()
     return param.value if param else 0.0
+
+
+def _fmt(val: float | int | None, decimals: int | None = None) -> str:
+    return format_it_number(val, decimals=decimals, trim_trailing_zeros=(decimals is None))
 
 
 def _round(val: float, decimals: int = 2) -> float:
@@ -127,12 +132,12 @@ def calculate_single(
 
     steps = []
     formula_str = (
-        f"(({effective_comp} - {base_value}) / {base_value}) * 100"
+        f"(({_fmt(effective_comp)} - {_fmt(base_value)}) / {_fmt(base_value)}) * 100"
         if base_link.applied
-        else f"(({comp_value} - {base_value}) / {base_value}) * 100"
+        else f"(({_fmt(comp_value)} - {_fmt(base_value)}) / {_fmt(base_value)}) * 100"
     )
     desc_str = (
-        f"Calcolo variazione percentuale (raccordo base ISTAT {base_link.coefficient:.4f})"
+        f"Calcolo variazione percentuale (raccordo base ISTAT {_fmt(base_link.coefficient, 4)})"
         if base_link.applied
         else "Calcolo variazione percentuale"
     )
@@ -141,7 +146,7 @@ def calculate_single(
             "step": 1,
             "description": desc_str,
             "formula": formula_str,
-            "result": f"{variation}%",
+            "result": f"{_fmt(variation)}%",
         }
     )
 
@@ -150,7 +155,7 @@ def calculate_single(
             {
                 "step": 2,
                 "description": "Verifica soglia di attivazione",
-                "formula": f"|{variation}%| <= {threshold}%",
+                "formula": f"|{_fmt(variation)}%| <= {_fmt(threshold)}%",
                 "result": "Nessuna revisione: variazione entro la soglia",
             }
         )
@@ -182,7 +187,7 @@ def calculate_single(
         {
             "step": 2,
             "description": "Verifica soglia di attivazione",
-            "formula": f"|{variation}%| > {threshold}%",
+            "formula": f"|{_fmt(variation)}%| > {_fmt(threshold)}%",
             "result": "Soglia superata",
         }
     )
@@ -190,8 +195,8 @@ def calculate_single(
         {
             "step": 3,
             "description": "Calcolo quota eccedente",
-            "formula": f"{variation}% - {threshold}% = {excess}%",
-            "result": f"{excess}%",
+            "formula": f"{_fmt(variation)}% - {_fmt(threshold)}% = {_fmt(excess)}%",
+            "result": f"{_fmt(excess)}%",
         }
     )
 
@@ -202,8 +207,11 @@ def calculate_single(
         {
             "step": 4,
             "description": "Applicazione coefficiente riconoscibile",
-            "formula": f"{amount} × ({excess} / 100) × ({recognition_rate} / 100)",
-            "result": f"€ {revision_amount:,.2f}",
+            "formula": (
+                f"{format_it_currency(amount)} × ({_fmt(excess)} / 100) "
+                f"× ({_fmt(recognition_rate)} / 100)"
+            ),
+            "result": format_it_currency(revision_amount),
         }
     )
 
@@ -275,7 +283,8 @@ def calculate_composite(
         "recognition_percent": recognition_rate or _get_param(db, "recognition_rate"),
         "formula_detail": "Indice composito pesato:\n"
         + "\n".join(
-            f"  - {c['series_id']} ({c['weight']}%): € {c['result']['revision_amount']:,.2f}"
+            f"  - {c['series_id']} ({_fmt(c['weight'])}%): "
+            f"{format_it_currency(c['result']['revision_amount'])}"
             for c in component_results
         ),
         "is_applicable": weighted_revision > 0,

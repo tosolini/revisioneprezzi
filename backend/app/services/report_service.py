@@ -15,9 +15,14 @@ from app.models.override_reason import OverrideReason
 from app.models.revision_input import RevisionInput
 from app.models.revision_result import RevisionResult
 from app.models.wizard_answer import WizardAnswer
+from app.utils.format_it import format_it_currency, format_it_number
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "reporting" / "templates"
 env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)))
+env.filters["it_num"] = lambda v, decimals=2, trim=False: format_it_number(
+    v, decimals=decimals, trim_trailing_zeros=trim
+)
+env.filters["it_eur"] = lambda v, decimals=2: format_it_currency(v, decimals=decimals)
 
 
 def generate_report(case_id: UUID, db: Session) -> str:

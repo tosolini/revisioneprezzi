@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.index_base_link import IndexBaseLink
+from app.utils.format_it import format_it_number
 
 
 @dataclass
@@ -92,8 +93,11 @@ def resolve_base_link(
     if base_period < ref <= comparison_period:
         homog_comp = round(comp_value * coeff, 4) if comp_value is not None else None
         note = (
-            f"Applicato coefficiente di raccordo ISTAT base 2015 -> 2025 pari a {coeff:.4f} "
-            f"(Reg. UE 2025/1182) sul valore di confronto ({comp_value} -> {homog_comp})."
+            "Applicato coefficiente di raccordo ISTAT base 2015 -> 2025 pari a "
+            f"{format_it_number(coeff, decimals=4)} "
+            "(Reg. UE 2025/1182) sul valore di confronto "
+            f"({format_it_number(comp_value, decimals=None, trim_trailing_zeros=True)} -> "
+            f"{format_it_number(homog_comp, decimals=None, trim_trailing_zeros=True)})."
         )
         return BaseLinkInfo(
             applied=True,
@@ -109,8 +113,8 @@ def resolve_base_link(
         # Nel caso inverso, comp_value è nella vecchia base e base_value è nella nuova
         homog_comp = round(comp_value / coeff, 4) if comp_value is not None else None
         note = (
-            f"Applicato coefficiente inverso di raccordo ISTAT ({coeff:.4f}) "
-            f"sul periodo di confronto."
+            "Applicato coefficiente inverso di raccordo ISTAT "
+            f"({format_it_number(coeff, decimals=4)}) sul periodo di confronto."
         )
         return BaseLinkInfo(
             applied=True,

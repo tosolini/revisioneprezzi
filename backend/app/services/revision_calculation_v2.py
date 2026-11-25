@@ -13,6 +13,7 @@ from app.models.index_observation import IndexObservation
 from app.models.index_series import IndexSeries
 
 from app.services.base_link_service import BaseLinkInfo, resolve_base_link
+from app.utils.format_it import format_it_currency, format_it_number
 
 getcontext().prec = 28
 
@@ -44,6 +45,11 @@ NORMATIVE_PARAMS = {
         "reference": "Art. 3 comma 2-3, Allegato II.2-bis - Misto servizi-forniture",
     },
 }
+
+
+def _fmt_num(val: float | int | None, decimals: int | None = None) -> str:
+    """Formatta numeri per i passaggi di calcolo senza zeri superflui se decimals è None."""
+    return format_it_number(val, decimals=decimals, trim_trailing_zeros=(decimals is None))
 
 
 def _round(val: float, decimals: int = 2) -> float:
@@ -561,11 +567,11 @@ def calculate_price_revision(
             "description": "Parametri normativi applicabili",
             "details": {
                 "tipo_contratto": contract_type,
-                "soglia_attivazione": f"{threshold}%",
-                "coefficiente_riconoscimento": f"{coefficient}%",
+                "soglia_attivazione": f"{_fmt_num(threshold)}%",
+                "coefficiente_riconoscimento": f"{_fmt_num(coefficient)}%",
                 "riferimento": params["reference"],
             },
-            "result": f"Soglia {threshold}%, Coefficiente {coefficient}%",
+            "result": f"Soglia {_fmt_num(threshold)}%, Coefficiente {_fmt_num(coefficient)}%",
         }
     )
 
@@ -641,11 +647,14 @@ def calculate_price_revision(
             step_details["raccordo_base"] = base_link.to_dict()
             c_val = base_link.coefficient
             res_text = (
-                f"Indice base: {base_value}, Indice confronto: {comp_value} "
-                f"(omogeneizzato a base 2015: {effective_comp}, coeff. {c_val:.4f})"
+                f"Indice base: {_fmt_num(base_value)}, Indice confronto: {_fmt_num(comp_value)} "
+                f"(omogeneizzato a base 2015: {_fmt_num(effective_comp)}, "
+                f"coeff. {_fmt_num(c_val, 4)})"
             )
         else:
-            res_text = f"Indice base: {base_value}, Indice confronto: {comp_value}"
+            res_text = (
+                f"Indice base: {_fmt_num(base_value)}, Indice confronto: {_fmt_num(comp_value)}"
+            )
 
         steps.append(
             {
@@ -703,9 +712,10 @@ def calculate_price_revision(
                 for d in comp_details
             ]
             terms = [
-                f"({d['weight'] / 100:.2f})×{d['variation_percent']:.4f}" for d in component_details
+                f"({_fmt_num(d['weight'] / 100, 2)})×{_fmt_num(d['variation_percent'], 4)}"
+                for d in component_details
             ]
-            calculation_display = "Vt = " + " + ".join(terms) + f" = {variation_w:.4f}%"
+            calculation_display = "Vt = " + " + ".join(terms) + f" = {_fmt_num(variation_w, 4)}%"
 
         steps.append(
             {
@@ -733,9 +743,12 @@ def calculate_price_revision(
                     ),
                 },
                 "result": (
-                    f"Vt = {variation_w}%"
+                    f"Vt = {_fmt_num(variation_w, 4)}%"
                     if method == "weighted_variations"
-                    else f"Is base: {base_value}, Is confronto: {comp_value}"
+                    else (
+                        f"Is base: {_fmt_num(base_value)}, "
+                        f"Is confronto: {_fmt_num(comp_value)}"
+                    )
                 ),
             }
         )
@@ -763,14 +776,18 @@ def calculate_price_revision(
         variation = _round(variation, 4)
 
     formula_str = (
-        f"(({comp_calc} - {base_value}) / {base_value}) × 100"
+        f"(({_fmt_num(comp_calc)} - {_fmt_num(base_value)}) / {_fmt_num(base_value)}) × 100"
         if index_type == "single" and base_link.applied
         else "((I_confronto - I_base) / I_base) × 100"
     )
     calc_str = (
-        f"(({comp_calc} - {base_value}) / {base_value}) × 100 = {variation}%"
+        f"(({_fmt_num(comp_calc)} - {_fmt_num(base_value)}) / {_fmt_num(base_value)}) × 100 "
+        f"= {_fmt_num(variation)}%"
         if index_type == "single" and base_link.applied
-        else f"(({comp_value} - {base_value}) / {base_value}) × 100 = {variation}%"
+        else (
+            f"(({_fmt_num(comp_value)} - {_fmt_num(base_value)}) / {_fmt_num(base_value)}) × 100 "
+            f"= {_fmt_num(variation)}%"
+        )
     )
     steps.append(
         {
@@ -778,7 +795,7 @@ def calculate_price_revision(
             "description": "Calcolo variazione percentuale",
             "formula": formula_str,
             "calculation": calc_str,
-            "result": f"Variazione: {variation}%",
+            "result": f"Variazione: {_fmt_num(variation)}%",
         }
     )
     # 4. Verifica superamento soglia
@@ -789,7 +806,7 @@ def calculate_price_revision(
             "step": 3,
             "description": "Verifica soglia di attivazione",
             "formula": "|Variazione%| > Soglia%",
-            "calculation": f"|{variation}%| > {threshold}%",
+            "calculation": f"|{_fmt_num(variation)}%| > {_fmt_num(threshold)}%",
             "result": "SOGLIA SUPERATA" if is_threshold_exceeded else "SOGLIA NON SUPERATA",
         }
     )
@@ -835,7 +852,10 @@ def calculate_price_revision(
             ),
             "steps": steps,
             "is_applicable": False,
-            "summary": f"Nessuna revisione: variazione {variation}% entro soglia {threshold}%",
+            "summary": (
+                f"Nessuna revisione: variazione {_fmt_num(variation)}% "
+                f"entro soglia {_fmt_num(threshold)}%"
+            ),
         }
 
     # 5. Calcola eccedenza rispetto alla soglia
@@ -852,8 +872,11 @@ def calculate_price_revision(
             "step": 4,
             "description": "Calcolo quota eccedente la soglia",
             "formula": "Variazione% - Soglia% (se positiva) o Variazione% + Soglia% (se negativa)",
-            "calculation": f"{variation}% {'−' if variation > 0 else '+'} {threshold}% = {excess}%",
-            "result": f"Eccedenza: {excess}%",
+            "calculation": (
+                f"{_fmt_num(variation)}% {'−' if variation > 0 else '+'} "
+                f"{_fmt_num(threshold)}% = {_fmt_num(excess)}%"
+            ),
+            "result": f"Eccedenza: {_fmt_num(excess)}%",
         }
     )
 
@@ -866,8 +889,11 @@ def calculate_price_revision(
             "step": 5,
             "description": "Applicazione coefficiente di riconoscimento",
             "formula": "Importo × (Eccedenza% / 100) × (Coefficiente% / 100)",
-            "calculation": f"€ {amount:,.2f} × ({excess} / 100) × ({coefficient} / 100)",
-            "result": f"€ {revision_amount:,.2f}",
+            "calculation": (
+                f"{format_it_currency(amount)} × ({_fmt_num(excess)} / 100) "
+                f"× ({_fmt_num(coefficient)} / 100)"
+            ),
+            "result": format_it_currency(revision_amount),
         }
     )
 
@@ -903,9 +929,9 @@ def calculate_price_revision(
         "is_applicable": True,
         "summary": (
             f"Revisione prezzi in {revision_type}: "
-            f"€ {abs(revision_amount):,.2f} "
-            f"(variazione {variation}%, eccedenza {excess}%, "
-            f"coefficiente {coefficient}%)"
+            f"{format_it_currency(abs(revision_amount))} "
+            f"(variazione {_fmt_num(variation)}%, eccedenza {_fmt_num(excess)}%, "
+            f"coefficiente {_fmt_num(coefficient)}%)"
         ),
         "normative_reference": params["reference"],
     }
@@ -970,6 +996,7 @@ def calculate_multi_component_revision(
 
     is_threshold_exceeded = abs(overall_variation) > threshold
 
+    rev_display = format_it_currency(abs(weighted_revision) if is_threshold_exceeded else 0)
     return {
         "is_multi_component": True,
         "contract_type": contract_type,
@@ -982,9 +1009,9 @@ def calculate_multi_component_revision(
         "is_applicable": is_threshold_exceeded,
         "summary": (
             f"Contratto multi-componente: {len(components)} componenti. "
-            f"Variazione complessiva {overall_variation}%. "
+            f"Variazione complessiva {_fmt_num(overall_variation)}%. "
             f"{'Soglia SUPERATA' if is_threshold_exceeded else 'Soglia NON superata'}. "
-            f"Revisione: € {abs(weighted_revision) if is_threshold_exceeded else 0:,.2f}"
+            f"Revisione: {rev_display}"
         ),
         "normative_reference": f"{params['reference']}, Art. 13 - Appalti multi-oggetto",
     }
