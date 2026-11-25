@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import { SavedQueryModal } from "../components/SavedQueryModal"
 import { DATAFLOW_BY_TYPE, EXPLORER_LABELS, EXPLORER_LEAF_URLS, sdmxTemplateFor, extractCodeForTemplate } from "../constants/istatExplorer"
 import type { ExplorerIndexType } from "../constants/istatExplorer"
+import { formatItNumber } from "../utils/formatters"
 
 export { extractCodeForTemplate }
 
@@ -1026,7 +1027,7 @@ export default function IstatCatalog() {
                                     <tr key={o.period} style={{ borderBottom: '1px solid #f9fafb' }}>
                                       <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, expandedSeries.frequency)}</td>
                                       <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
-                                        {o.value.toFixed(2)}
+                                        {formatItNumber(o.value, { decimals: 2 })}
                                         {!o.is_definitive && <span style={{ color: 'var(--color-text-warning)', marginLeft: 4, fontSize: 10 }}>provv.</span>}
                                       </td>
                                     </tr>
@@ -1177,7 +1178,7 @@ export default function IstatCatalog() {
                                 <tr key={o.period} style={{ borderBottom: '1px solid #f9fafb' }}>
                                   <td style={{ padding: '4px 8px' }}>{formatPeriod(o.period, s.frequency)}</td>
                                   <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
-                                    {o.value.toFixed(2)}
+                                    {formatItNumber(o.value, { decimals: 2 })}
                                     {!o.is_definitive && <span style={{ color: 'var(--color-text-warning)', marginLeft: 4, fontSize: 10 }}>provv.</span>}
                                   </td>
                                 </tr>

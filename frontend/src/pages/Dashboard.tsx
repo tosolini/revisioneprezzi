@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, CaseItem } from '../api/client'
 import { formatDate, getDeviceId, statusLabel, cycleStatusLabel } from '../components/utils'
+import { formatItCurrency, formatItPercent } from '../utils/formatters'
 import NotesEditor, { isEmptyHtml } from '../components/NotesEditor'
 
 type ExtractFields = Record<string, unknown>
@@ -255,7 +256,7 @@ export default function Dashboard() {
     if (v == null || v === '') return '— non trovato'
     if (typeof v === 'number') {
       // importo: format as euro
-      return `€ ${v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      return formatItCurrency(v)
     }
     return String(v)
   }
@@ -497,7 +498,7 @@ export default function Dashboard() {
                 ['Importo', (() => {
                   const v = extractPreview['importo_complessivo']
                   if (v == null || v === '') return '— non trovato'
-                  if (typeof v === 'number') return `€ ${v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  if (typeof v === 'number') return formatItCurrency(v)
                   return formatPreviewValue(v)
                 })()],
                 ['Durata', (() => {
@@ -709,7 +710,7 @@ export default function Dashboard() {
                           <td style={{ padding: '4px 6px' }}>{cy.sequence_no}</td>
                           <td style={{ padding: '4px 6px', fontFamily: 'monospace' }}>{cy.comparison_period?.slice(0,7)}</td>
                           <td style={{ padding: '4px 6px' }}>{cycleStatusLabel(cy.status)}</td>
-                          <td style={{ padding: '4px 6px', textAlign: 'right' }}>{cy.variation_percent != null ? `${Number(cy.variation_percent).toFixed(2)}%` : '—'}</td>
+                          <td style={{ padding: '4px 6px', textAlign: 'right' }}>{cy.variation_percent != null ? formatItPercent(cy.variation_percent, { decimals: 2 }) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>

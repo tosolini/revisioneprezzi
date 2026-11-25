@@ -10,6 +10,7 @@ import type { SavedQueryRef } from '../components/SavedQueryModal'
 import WizardTimeline from '../components/WizardTimeline'
 import { asNullableString, asNumber, isRecord, cycleStatusLabel } from '../components/utils'
 import { printArea } from '../utils/printReport'
+import { formatItCurrency, formatItPercent } from '../utils/formatters'
 interface TolSelection {
   code: string
   weight: number
@@ -1596,7 +1597,7 @@ export default function CaseWizardV2() {
         }
         const total = weights.reduce((sum, v) => sum + v, 0)
         if (Math.abs(total - 100) > 0.01) {
-          issues.push(`CPV ${sel.cpv_code}: i pesi devono sommarsi a 100% (attuale: ${total.toFixed(2)}%)`)
+          issues.push(`CPV ${sel.cpv_code}: i pesi devono sommarsi a 100% (attuale: ${formatItPercent(total, { decimals: 2 })})`)
         }
       }
 
@@ -2238,7 +2239,7 @@ export default function CaseWizardV2() {
           </div>
         ))}
         <div style={{ fontSize: 12, marginTop: 4, color: Math.abs(total - 100) <= 0.01 ? 'var(--color-text-success)' : 'var(--color-text-warning)' }}>
-          Totale pesi: {total.toFixed(2)}% {Math.abs(total - 100) <= 0.01 ? '✓' : '(deve essere 100%)'}
+          Totale pesi: {formatItPercent(total, { decimals: 2 })} {Math.abs(total - 100) <= 0.01 ? '✓' : '(deve essere 100%)'}
         </div>
       </div>
     )
@@ -3185,7 +3186,7 @@ export default function CaseWizardV2() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Importo</span>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>€ {data.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatItCurrency(data.amount)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Periodo</span>
