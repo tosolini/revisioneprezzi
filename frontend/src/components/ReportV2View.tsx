@@ -1,5 +1,11 @@
 import React from 'react';
 import { RichNotes } from './NotesEditor';
+import {
+  formatItCurrency,
+  formatItNumber,
+  formatItPercent,
+  normalizeLegacyItNumbers,
+} from '../utils/formatters';
 
 interface ReportSection {
   title: string;
@@ -49,7 +55,9 @@ interface CalcStepLike {
 
 const fmtDetailValue = (v: unknown): string => {
   if (v == null) return '—'
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v)
+  if (typeof v === 'number') return formatItNumber(v)
+  if (typeof v === 'string') return normalizeLegacyItNumbers(v)
+  if (typeof v === 'boolean') return String(v)
   return JSON.stringify(v)
 }
 
@@ -79,7 +87,7 @@ const renderCalcStepExtras = (step: CalcStepLike): React.ReactNode => {
         <div key={i} style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{line}</div>
       ))}
       {calc && (
-        <div style={{ fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{calc}</div>
+        <div style={{ fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{normalizeLegacyItNumbers(calc)}</div>
       )}
     </div>
   )
@@ -285,10 +293,10 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                       <td style={tdStyle}><strong>{item.code}</strong></td>
                       <td style={tdStyle}>{item.description}</td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        <span style={badgeStyle('blue')}>{item.weight_percent}%</span>
+                        <span style={badgeStyle('blue')}>{formatItPercent(item.weight_percent, { maxDecimals: 2 })}</span>
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
-                        {item.amount != null ? item.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                        {item.amount != null ? formatItNumber(item.amount, { decimals: 2 }) : '—'}
                       </td>
                       <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>{item.series_id || 'N/A'}</td>
                     </tr>
@@ -301,14 +309,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Peso Totale:</span>
                 <span style={badgeStyle(data.total_weight === 100 ? 'green' : 'red')}>
-                  {data.total_weight || 0}%
+                  {formatItPercent(data.total_weight || 0, { maxDecimals: 2 })}
                 </span>
               </div>
               {data.total_amount != null && (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Importo Totale:</span>
                   <span style={{ ...badgeStyle('blue'), fontFamily: 'monospace' }}>
-                    &euro; {Number(data.total_amount).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatItCurrency(data.total_amount)}
                   </span>
                 </div>
               )}
@@ -332,10 +340,10 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                       <td style={tdStyle}><strong>{item.code}</strong></td>
                       <td style={tdStyle}>{item.description}</td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        <span style={badgeStyle('green')}>{item.weight_percent}%</span>
+                        <span style={badgeStyle('green')}>{formatItPercent(item.weight_percent, { maxDecimals: 2 })}</span>
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
-                        {item.amount != null ? item.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                        {item.amount != null ? formatItNumber(item.amount, { decimals: 2 }) : '—'}
                       </td>
                     </tr>
                   ))}
@@ -346,14 +354,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Peso Totale:</span>
                 <span style={badgeStyle(data.total_weight === 100 ? 'green' : 'red')}>
-                  {data.total_weight || 0}%
+                  {formatItPercent(data.total_weight || 0, { maxDecimals: 2 })}
                 </span>
               </div>
               {data.total_amount != null && (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginRight: 8 }}>Importo Totale:</span>
                   <span style={{ ...badgeStyle('blue'), fontFamily: 'monospace' }}>
-                    &euro; {Number(data.total_amount).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatItCurrency(data.total_amount)}
                   </span>
                 </div>
               )}
@@ -384,8 +392,8 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div>
             <p style={labelStyle}>Importo Contratto</p>
             <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
-              {data.contract_amount 
-                ? `€ ${Number(data.contract_amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+              {data.contract_amount != null
+                ? formatItCurrency(data.contract_amount)
                 : 'N/A'
               }
             </p>
@@ -394,8 +402,8 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div>
             <p style={labelStyle}>Importo Assoggettabile</p>
             <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-info)', margin: 0 }}>
-              {data.revisable_amount 
-                ? `€ ${Number(data.revisable_amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+              {data.revisable_amount != null
+                ? formatItCurrency(data.revisable_amount)
                 : 'N/A'
               }
             </p>
@@ -479,8 +487,8 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div>
             <p style={labelStyle}>Indice Sintetico Base</p>
             <p style={{ fontSize: 36, fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
-              {data.synthetic_index_base 
-                ? Number(data.synthetic_index_base).toFixed(2)
+              {data.synthetic_index_base != null
+                ? formatItNumber(data.synthetic_index_base, { decimals: 2 })
                 : 'N/A'
               }
             </p>
@@ -489,8 +497,8 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div>
             <p style={labelStyle}>Indice Sintetico Confronto</p>
             <p style={{ fontSize: 36, fontWeight: 700, color: 'var(--color-text-info)', margin: 0 }}>
-              {data.synthetic_index_comparison 
-                ? Number(data.synthetic_index_comparison).toFixed(2)
+              {data.synthetic_index_comparison != null
+                ? formatItNumber(data.synthetic_index_comparison, { decimals: 2 })
                 : 'N/A'
               }
             </p>
@@ -531,19 +539,21 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                           <div style={{ fontSize: 11, fontStyle: 'italic', color: 'var(--color-text-muted)' }}>{data.series_labels[c.series_id || '']}</div>
                         )}
                       </td>
-                      <td style={tdStyle}>{c.weight}%</td>
+                      <td style={tdStyle}>{formatItPercent(c.weight, { maxDecimals: 2 })}</td>
                       <td style={tdStyle}>
-                        {Number(c.base_value ?? 0).toFixed(2)}
+                        {formatItNumber(c.base_value ?? 0, { decimals: 2 })}
                         {c.base_exact === false && ` (usato ${c.used_base_period})`}
                       </td>
                       <td style={tdStyle}>
-                        {Number(c.comparison_value ?? 0).toFixed(2)}
+                        {formatItNumber(c.comparison_value ?? 0, { decimals: 2 })}
                         {c.comparison_exact === false && ` (usato ${c.used_comparison_period})`}
                       </td>
-                      <td style={tdStyle}>{(c.variation_percent ?? 0) >= 0 ? '+' : ''}{Number(c.variation_percent ?? 0).toFixed(4)}%</td>
-                      <td style={tdStyle}>{(c.contribution_percent !== undefined && c.contribution_percent !== null)
-                        ? `${(c.contribution_percent >= 0 ? '+' : '')}${Number(c.contribution_percent).toFixed(4)}%`
-                        : `${(((c.weight ?? 0) / 100) * (c.variation_percent ?? 0) >= 0 ? '+' : '')}${Number(((c.weight ?? 0) / 100) * (c.variation_percent ?? 0)).toFixed(4)}%`}
+                      <td style={tdStyle}>{formatItPercent(c.variation_percent ?? 0, { decimals: 4, signed: true })}</td>
+                      <td style={tdStyle}>
+                        {formatItPercent(
+                          c.contribution_percent ?? ((c.weight ?? 0) / 100) * (c.variation_percent ?? 0),
+                          { decimals: 4, signed: true },
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -552,7 +562,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
             </div>
             {data.calc_math && (
               <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 8, background: 'var(--color-bg-offset)', padding: '8px 12px', borderRadius: 6 }}>
-                {data.calc_math}
+                {normalizeLegacyItNumbers(data.calc_math)}
               </p>
             )}
           </div>
@@ -566,7 +576,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               <div key={gi} style={{ marginBottom: 12, border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 16px' }}>
                 <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
                   {g.description || `Componente ${gi + 1}`}
-                  {g.amount != null ? ` — € ${Number(g.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : ''}
+                  {g.amount != null ? ` — ${formatItCurrency(g.amount)}` : ''}
                 </p>
                 {g.series_id && (
                   <p style={{ fontFamily: 'monospace', fontSize: 13, margin: 0 }}>Serie ISTAT: <strong>{g.series_id}</strong></p>
@@ -579,14 +589,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                     {g.components.map((c: ComponentRow, ci: number) => (
                       <div key={ci} style={{ display: 'flex', gap: 12, padding: '2px 0', fontFamily: 'monospace' }}>
                         <span style={{ minWidth: 190 }}>{c.series_id}</span>
-                        <span>{c.weight}%</span>
-                        <span>I0 {Number(c.base_value ?? 0).toFixed(2)}</span>
-                        <span>It {Number(c.comparison_value ?? 0).toFixed(2)}</span>
-                        <span>Vi {Number(c.variation_percent ?? 0).toFixed(4)}%</span>
+                        <span>{formatItPercent(c.weight, { maxDecimals: 2 })}</span>
+                        <span>I0 {formatItNumber(c.base_value ?? 0, { decimals: 2 })}</span>
+                        <span>It {formatItNumber(c.comparison_value ?? 0, { decimals: 2 })}</span>
+                        <span>Vi {formatItPercent(c.variation_percent ?? 0, { decimals: 4 })}</span>
                       </div>
                     ))}
                     {g.calc_math && (
-                      <div style={{ fontFamily: 'monospace', marginTop: 6 }}>{g.calc_math}</div>
+                      <div style={{ fontFamily: 'monospace', marginTop: 6 }}>{normalizeLegacyItNumbers(g.calc_math)}</div>
                     )}
                   </div>
                 )}
@@ -613,14 +623,14 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           <div>
             <p style={labelStyle}>Soglia di Attivazione</p>
             <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-warning)', margin: 0 }}>
-              {data.threshold_percent ? `${data.threshold_percent}%` : 'N/A'}
+              {data.threshold_percent != null ? formatItPercent(data.threshold_percent, { maxDecimals: 2 }) : 'N/A'}
             </p>
           </div>
 
           <div>
             <p style={labelStyle}>Coefficiente Riconoscimento</p>
             <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
-              {data.recognition_rate_percent ? `${data.recognition_rate_percent}%` : 'N/A'}
+              {data.recognition_rate_percent != null ? formatItPercent(data.recognition_rate_percent, { maxDecimals: 2 }) : 'N/A'}
             </p>
           </div>
 
@@ -681,9 +691,9 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
           }}>
             <strong>Raccordo Basi ISTAT:</strong> {
               typeof data.base_link_details === 'object' && data.base_link_details?.note
-                ? data.base_link_details.note
+                ? normalizeLegacyItNumbers(String(data.base_link_details.note))
                 : Array.isArray(data.base_link_details)
-                ? data.base_link_details.join('; ')
+                ? data.base_link_details.map((item: unknown) => normalizeLegacyItNumbers(String(item))).join('; ')
                 : 'Il calcolo attraversa il cambio di base ISTAT (Base 2015 -> Base 2025). È stato applicato il coefficiente di raccordo ufficiale ex Reg. UE 2025/1182.'
             }
           </div>
@@ -696,8 +706,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               fontSize: 36, fontWeight: 700, margin: 0,
               color: data.variation_percent >= 0 ? 'var(--color-text-revision-down)' : 'var(--color-text-revision-up)',
             }}>
-              {data.variation_percent >= 0 ? '+' : ''}
-              {Number(data.variation_percent).toFixed(2)}%
+              {formatItPercent(data.variation_percent, { decimals: 2, signed: true })}
             </p>
           </div>
 
@@ -723,8 +732,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               fontSize: 40, fontWeight: 700, margin: 0,
               color: data.revision_amount > 0 ? 'var(--color-text-revision-down)' : data.revision_amount < 0 ? 'var(--color-text-revision-up)' : 'var(--color-text-muted)',
             }}>
-              {data.revision_amount >= 0 ? '+' : ''}
-              € {Number(data.revision_amount || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+              {formatItCurrency(data.revision_amount || 0, { signed: true })}
             </p>
             {data.revision_type && (
               <span style={badgeStyle(data.revision_type === 'aumento' ? 'green' : 'red')}>
@@ -761,11 +769,11 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                             {step.details.component_details.map((c: ComponentRow, j: number) => (
                               <div key={j} style={{ display: 'flex', gap: 12, padding: '2px 0', fontFamily: 'monospace' }}>
                                 <span style={{ minWidth: 190 }}>{c.series_id}</span>
-                                <span>{c.weight}%</span>
-                                <span>I0 {c.base_value}{c.base_exact === false && c.used_base_period ? ` (usato ${c.used_base_period})` : ''}</span>
-                                <span>It {c.comparison_value}{c.comparison_exact === false && c.used_comparison_period ? ` (usato ${c.used_comparison_period})` : ''}</span>
-                                <span>Vi {c.variation_percent}%</span>
-                                <span>→ {c.contribution_percent}%</span>
+                                <span>{formatItPercent(c.weight, { maxDecimals: 2 })}</span>
+                                <span>I0 {formatItNumber(c.base_value)}{c.base_exact === false && c.used_base_period ? ` (usato ${c.used_base_period})` : ''}</span>
+                                <span>It {formatItNumber(c.comparison_value)}{c.comparison_exact === false && c.used_comparison_period ? ` (usato ${c.used_comparison_period})` : ''}</span>
+                                <span>Vi {formatItPercent(c.variation_percent, { maxDecimals: 4 })}</span>
+                                <span>→ {formatItPercent(c.contribution_percent, { maxDecimals: 4 })}</span>
                               </div>
                             ))}
                           </div>
@@ -776,7 +784,9 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                           ? step.details.formula
                           : (step.formula || '—')}
                       </td>
-                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>{step.result}</td>
+                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>
+                        {typeof step.result === 'string' ? normalizeLegacyItNumbers(step.result) : step.result}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -791,7 +801,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               <div>
                 <p style={labelStyle}>Quota eccedente</p>
                 <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-                  {Number(data.excess_percent).toFixed(4)}%
+                  {formatItPercent(data.excess_percent, { decimals: 4 })}
                 </p>
               </div>
             )}
@@ -799,7 +809,7 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
               <div>
                 <p style={labelStyle}>Coefficiente riconoscimento</p>
                 <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-                  {Number(data.recognition_percent).toFixed(2)}%
+                  {formatItPercent(data.recognition_percent, { decimals: 2 })}
                 </p>
               </div>
             )}
@@ -825,10 +835,10 @@ const ReportV2View: React.FC<ReportV2ViewProps> = ({ reportData }) => {
                     <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={tdStyle}>{comp.description || `Componente ${idx + 1}`}</td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
-                        {comp.variation_percent != null ? `${Number(comp.variation_percent) >= 0 ? '+' : ''}${Number(comp.variation_percent).toFixed(4)}%` : '—'}
+                        {comp.variation_percent != null ? formatItPercent(comp.variation_percent, { decimals: 4, signed: true }) : '—'}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
-                        {comp.revision_amount != null ? `€ ${Number(comp.revision_amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '—'}
+                        {comp.revision_amount != null ? formatItCurrency(comp.revision_amount) : '—'}
                       </td>
                     </tr>
                   ))}

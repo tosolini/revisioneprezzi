@@ -36,8 +36,8 @@
 | Data avvio esecuzione | {{ contract.execution_start_date.strftime('%d/%m/%Y') if contract.execution_start_date else "—" }} |
 | Data fine contratto | {{ contract.contract_end_date.strftime('%d/%m/%Y') if contract.contract_end_date else "—" }} |
 | Durata (mesi) | {{ contract.duration_months or "—" }} |
-| Importo complessivo (€) | {{ "%.2f"|format(contract.contract_amount_total) if contract.contract_amount_total else "—" }} |
-| Importo assoggettabile (€) | {{ "%.2f"|format(contract.amount_subject_to_revision) if contract.amount_subject_to_revision else "—" }} |
+| Importo complessivo (€) | {{ contract.contract_amount_total | it_num(2) if contract.contract_amount_total is not none else "—" }} |
+| Importo assoggettabile (€) | {{ contract.amount_subject_to_revision | it_num(2) if contract.amount_subject_to_revision is not none else "—" }} |
 {% else %}
 *Nessun dato contrattuale inserito.*
 {% endif %}
@@ -87,8 +87,8 @@
 |---|---|
 | Periodo base | {{ revision_input.base_period.strftime('%d/%m/%Y') if revision_input.base_period else "—" }} |
 | Periodo confronto | {{ revision_input.comparison_period.strftime('%d/%m/%Y') if revision_input.comparison_period else "—" }} |
-| Importo assoggettabile (€) | {{ "%.2f"|format(revision_input.amount_subject_to_revision) if revision_input.amount_subject_to_revision else "—" }} |
-| Quota esclusa (€) | {{ "%.2f"|format(revision_input.excluded_amount) if revision_input.excluded_amount else "—" }} |
+| Importo assoggettabile (€) | {{ revision_input.amount_subject_to_revision | it_num(2) if revision_input.amount_subject_to_revision is not none else "—" }} |
+| Quota esclusa (€) | {{ revision_input.excluded_amount | it_num(2) if revision_input.excluded_amount is not none else "—" }} |
 | Motivazione esclusione | {{ revision_input.exclusion_reason or "—" }} |
 {% endif %}
 
@@ -102,13 +102,13 @@
 
 | Passaggio | Valore |
 |---|---|
-| Valore indice base | {{ res.base_value or "—" }} |
-| Valore indice confronto | {{ res.comparison_value or "—" }} |
-| Variazione percentuale | {{ "%.4f"|format(res.variation_percent) if res.variation_percent else "—" }}% |
-| Soglia di attivazione | {{ res.threshold_percent or "—" }}% |
-| Quota eccedente | {{ "%.4f"|format(res.excess_percent) if res.excess_percent else "—" }}% |
-| Coefficiente riconoscibile | {{ res.recognition_percent or "—" }}% |
-| **Importo revisione** | **€ {{ "%.2f"|format(res.revision_amount) if res.revision_amount else "0.00" }}** |
+| Valore indice base | {{ res.base_value | it_num(none, true) if res.base_value is not none else "—" }} |
+| Valore indice confronto | {{ res.comparison_value | it_num(none, true) if res.comparison_value is not none else "—" }} |
+| Variazione percentuale | {{ res.variation_percent | it_num(4) if res.variation_percent is not none else "—" }}% |
+| Soglia di attivazione | {{ res.threshold_percent | it_num(none, true) if res.threshold_percent is not none else "—" }}% |
+| Quota eccedente | {{ res.excess_percent | it_num(4) if res.excess_percent is not none else "—" }}% |
+| Coefficiente riconoscibile | {{ res.recognition_percent | it_num(none, true) if res.recognition_percent is not none else "—" }}% |
+| **Importo revisione** | **{{ (res.revision_amount if res.revision_amount is not none else 0) | it_eur(2) }}** |
 
 **Dettaglio formula:**
 ```
@@ -127,7 +127,7 @@
 {% set latest = results|first if results else none %}
 {% if latest and latest.revision_amount and latest.revision_amount > 0 %}
 **Spettanza revisione prezzi:** SÌ
-**Importo riconosciuto:** € {{ "%.2f"|format(latest.revision_amount) }}
+**Importo riconosciuto:** {{ latest.revision_amount | it_eur(2) }}
 {% elif latest %}
 **Spettanza revisione prezzi:** NO — variazione entro la soglia di attivazione
 {% else %}

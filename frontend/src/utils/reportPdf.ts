@@ -1,5 +1,11 @@
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import type { ReportData } from '../components/ReportV2View';
+import {
+  formatItCurrency,
+  formatItNumber,
+  formatItPercent,
+  normalizeLegacyItNumbers,
+} from './formatters';
 
 // Builder pdfmake per il dossier "Report Revisione Prezzi".
 // Parità di contenuto con ReportV2View (6 sezioni + footer), layout
@@ -15,15 +21,14 @@ const NA = '—';
 
 function str(v: unknown): string {
   if (v == null) return NA;
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'number') return formatItNumber(v);
+  if (typeof v === 'string') return normalizeLegacyItNumbers(v);
+  if (typeof v === 'boolean') return String(v);
   return JSON.stringify(v);
 }
 
 function eur(v: unknown, decimals = 2): string {
-  if (v == null || v === '') return NA;
-  const n = Number(v);
-  if (Number.isNaN(n)) return NA;
-  return `€ ${n.toLocaleString('it-IT', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  return formatItCurrency(v, { decimals, fallback: NA });
 }
 
 function itDate(v: unknown): string {
@@ -110,15 +115,17 @@ function calcStepExtras(step: AnyRecord): string[] {
     }
   }
   const calc = typeof details.calculation === 'string' && details.calculation
-    ? details.calculation
-    : (typeof step.calculation === 'string' ? step.calculation : '');
+    ? normalizeLegacyItNumbers(details.calculation)
+    : (typeof step.calculation === 'string' ? normalizeLegacyItNumbers(step.calculation) : '');
   if (calc) lines.push(calc);
   if (Array.isArray(details.component_details)) {
     for (const c of details.component_details as AnyRecord[]) {
       lines.push(
-        `${c.series_id ?? ''}  ${c.weight ?? ''}%  I0 ${c.base_value ?? ''}${c.base_exact === false && c.used_base_period ? ` (usato ${c.used_base_period})` : ''}  ` +
-        `It ${c.comparison_value ?? ''}${c.comparison_exact === false && c.used_comparison_period ? ` (usato ${c.used_comparison_period})` : ''}  ` +
-        `Vi ${c.variation_percent ?? ''}%  → ${c.contribution_percent ?? ''}%`,
+        `${c.series_id ?? ''}  ${c.weight != null ? formatItPercent(c.weight, { maxDecimals: 2 }) : ''}  ` +
+        `I0 ${c.base_value != null ? formatItNumber(c.base_value) : ''}${c.base_exact === false && c.used_base_period ? ` (usato ${c.used_base_period})` : ''}  ` +
+        `It ${c.comparison_value != null ? formatItNumber(c.comparison_value) : ''}${c.comparison_exact === false && c.used_comparison_period ? ` (usato ${c.used_comparison_period})` : ''}  ` +
+        `Vi ${c.variation_percent != null ? formatItPercent(c.variation_percent, { maxDecimals: 4 }) : ''}  ` +
+        `→ ${c.contribution_percent != null ? formatItPercent(c.contribution_percent, { maxDecimals: 4 }) : ''}`,
       );
     }
   }
@@ -156,15 +163,15 @@ function renderClassification(d: AnyRecord): AnyRecord[] {
     : ['Codice CPV', 'Descrizione', 'Peso %', 'Importo €'];
   const rows = ((d.items ?? []) as AnyRecord[]).map(it => {
     const base = [
-      str(it.code),
+      String(it.code ?? NA),
       str(it.description),
-      `${str(it.weight_percent)}%`,
+      formatItPercent(it.weight_percent, { maxDecimals: 2 }),
       it.amount != null ? eur(it.amount) : NA,
     ];
-    return isTol ? [...base, str(it.series_id ?? 'N/A')] : base;
+    return isTol ? [...base, String(it.series_id ?? 'N/A')] : base;
   });
   out.push(pdfTable(header, rows, isTol ? ['auto', '*', 'auto', 'auto', 'auto'] : ['auto', '*', 'auto', 'auto']));
-  const totals: string[] = [`Peso Totale: ${str(d.total_weight ?? 0)}%`];
+  const totals: string[] = [`Peso Totale: ${formatItPercent(d.total_weight ?? 0, { maxDecimals: 2 })}`];
   if (d.total_amount != null) totals.push(`Importo Totale: ${eur(d.total_amount)}`);
   out.push({ text: totals.join('    ·    '), style: 'totals', margin: [0, 2, 0, 4] });
   return out;
@@ -190,8 +197,8 @@ function renderIndices(d: AnyRecord): AnyRecord[] {
   const out = sectionHeader('Indici ISTAT');
   out.push({
     columns: [
-      { stack: [{ text: 'Indice Sintetico Base', style: 'label' }, { text: d.synthetic_index_base ? Number(d.synthetic_index_base).toFixed(2) : 'N/A', style: 'big' }] },
-      { stack: [{ text: 'Indice Sintetico Confronto', style: 'label' }, { text: d.synthetic_index_comparison ? Number(d.synthetic_index_comparison).toFixed(2) : 'N/A', style: 'big' }] },
+      { stack: [{ text: 'Indice Sintetico Base', style: 'label' }, { text: d.synthetic_index_base != null ? formatItNumber(d.synthetic_index_base, { decimals: 2 }) : 'N/A', style: 'big' }] },
+      { stack: [{ text: 'Indice Sintetico Confronto', style: 'label' }, { text: d.synthetic_index_comparison != null ? formatItNumber(d.synthetic_index_comparison, { decimals: 2 }) : 'N/A', style: 'big' }] },
     ],
     columnGap: 16,
     margin: [0, 0, 0, 8],
@@ -205,20 +212,20 @@ function renderIndices(d: AnyRecord): AnyRecord[] {
   if (Array.isArray(d.components) && d.components.length > 0) {
     out.push({ text: 'Calcolo ponderato per componente (Tabella D punto 7)', style: 'sub', margin: [0, 4, 0, 4] });
     const rows = (d.components as AnyRecord[]).map(c => {
-      const contrib = c.contribution_percent !== undefined && c.contribution_percent !== null
-        ? `${(Number(c.contribution_percent) >= 0 ? '+' : '')}${Number(c.contribution_percent).toFixed(4)}%`
-        : `${((((c.weight ?? 0) as number) / 100) * ((c.variation_percent ?? 0) as number) >= 0 ? '+' : '')}${Number((((c.weight ?? 0) as number) / 100) * ((c.variation_percent ?? 0) as number)).toFixed(4)}%`;
+      const contribVal = c.contribution_percent !== undefined && c.contribution_percent !== null
+        ? c.contribution_percent
+        : (((c.weight ?? 0) as number) / 100) * ((c.variation_percent ?? 0) as number);
       return [
-        seriesCell(str(c.series_id), d.series_labels),
-        `${str(c.weight)}%`,
-        `${Number(c.base_value ?? 0).toFixed(2)}${c.base_exact === false ? ` (usato ${c.used_base_period})` : ''}`,
-        `${Number(c.comparison_value ?? 0).toFixed(2)}${c.comparison_exact === false ? ` (usato ${c.used_comparison_period})` : ''}`,
-        `${(Number(c.variation_percent ?? 0) >= 0 ? '+' : '')}${Number(c.variation_percent ?? 0).toFixed(4)}%`,
-        contrib,
+        seriesCell(String(c.series_id ?? NA), d.series_labels),
+        formatItPercent(c.weight, { maxDecimals: 2 }),
+        `${formatItNumber(c.base_value ?? 0, { decimals: 2 })}${c.base_exact === false ? ` (usato ${c.used_base_period})` : ''}`,
+        `${formatItNumber(c.comparison_value ?? 0, { decimals: 2 })}${c.comparison_exact === false ? ` (usato ${c.used_comparison_period})` : ''}`,
+        formatItPercent(c.variation_percent ?? 0, { decimals: 4, signed: true }),
+        formatItPercent(contribVal, { decimals: 4, signed: true }),
       ];
     });
     out.push(pdfTable(['Serie ISTAT', 'Peso %', 'Indice base', 'Indice confronto', 'Variazione Vi %', 'Contributo %'], rows));
-    if (d.calc_math) out.push({ text: str(d.calc_math), style: 'mono', margin: [0, 0, 0, 8] });
+    if (d.calc_math) out.push({ text: normalizeLegacyItNumbers(String(d.calc_math)), style: 'mono', margin: [0, 0, 0, 8] });
   }
   if (Array.isArray(d.multi_components) && d.multi_components.length > 0) {
     out.push({ text: 'Serie ISTAT per componente (Art. 13 multi-oggetto)', style: 'sub', margin: [0, 4, 0, 4] });
@@ -227,9 +234,9 @@ function renderIndices(d: AnyRecord): AnyRecord[] {
         `${str(g.description ?? `Componente ${gi + 1}`)}${g.amount != null ? ` — ${eur(g.amount)}` : ''}`,
         ...(g.series_id ? [`Serie ISTAT: ${str(g.series_id)}`] : []),
         ...((Array.isArray(g.components) ? g.components : []) as AnyRecord[]).map(
-          c => `${str(c.series_id)}  ${str(c.weight)}%  I0 ${Number(c.base_value ?? 0).toFixed(2)}  It ${Number(c.comparison_value ?? 0).toFixed(2)}  Vi ${Number(c.variation_percent ?? 0).toFixed(4)}%`,
+          c => `${String(c.series_id ?? '')}  ${formatItPercent(c.weight, { maxDecimals: 2 })}  I0 ${formatItNumber(c.base_value ?? 0, { decimals: 2 })}  It ${formatItNumber(c.comparison_value ?? 0, { decimals: 2 })}  Vi ${formatItPercent(c.variation_percent ?? 0, { decimals: 4 })}`,
         ),
-        ...(g.calc_math ? [str(g.calc_math)] : []),
+        ...(g.calc_math ? [normalizeLegacyItNumbers(String(g.calc_math))] : []),
       ];
       out.push({ text: lines.join('\n'), style: 'mono', margin: [0, 0, 0, g.series_id && d.series_labels?.[g.series_id] ? 0 : 6] });
       if (g.series_id && d.series_labels?.[g.series_id]) {
@@ -244,8 +251,8 @@ function renderNormative(d: AnyRecord): AnyRecord[] {
   const out = sectionHeader('Parametri Normativi');
   out.push({
     columns: [
-      { stack: [{ text: 'Soglia di Attivazione', style: 'label' }, { text: d.threshold_percent ? `${d.threshold_percent}%` : 'N/A', style: 'med' }] },
-      { stack: [{ text: 'Coefficiente Riconoscimento', style: 'label' }, { text: d.recognition_rate_percent ? `${d.recognition_rate_percent}%` : 'N/A', style: 'med' }] },
+      { stack: [{ text: 'Soglia di Attivazione', style: 'label' }, { text: d.threshold_percent != null ? formatItPercent(d.threshold_percent, { maxDecimals: 2 }) : 'N/A', style: 'med' }] },
+      { stack: [{ text: 'Coefficiente Riconoscimento', style: 'label' }, { text: d.recognition_rate_percent != null ? formatItPercent(d.recognition_rate_percent, { maxDecimals: 2 }) : 'N/A', style: 'med' }] },
       { stack: [{ text: 'Riferimento Normativo', style: 'label' }, { text: str(d.reference ?? 'N/A'), fontSize: 9 }] },
     ],
     columnGap: 16,
@@ -262,9 +269,9 @@ function renderCalculation(d: AnyRecord): AnyRecord[] {
   }
   out.push({
     columns: [
-      { stack: [{ text: 'Variazione', style: 'label' }, { text: `${(Number(d.variation_percent) >= 0 ? '+' : '')}${Number(d.variation_percent).toFixed(2)}%`, style: 'big' }] },
+      { stack: [{ text: 'Variazione', style: 'label' }, { text: formatItPercent(d.variation_percent, { decimals: 2, signed: true }), style: 'big' }] },
       { stack: [{ text: 'Soglia', style: 'label' }, { text: d.threshold_exceeded ? 'Superata' : 'Non Superata', style: 'med' }] },
-      { stack: [{ text: 'Importo Revisionale', style: 'label' }, { text: `${(Number(d.revision_amount || 0) >= 0 ? '+' : '')}${eur(d.revision_amount || 0)}`, style: 'big' }, ...((d.revision_type ? [{ text: d.revision_type === 'aumento' ? 'AUMENTO' : 'DECURTAZIONE', style: 'badge' }] : []) as AnyRecord[])] },
+      { stack: [{ text: 'Importo Revisionale', style: 'label' }, { text: formatItCurrency(d.revision_amount || 0, { signed: true }), style: 'big' }, ...((d.revision_type ? [{ text: d.revision_type === 'aumento' ? 'AUMENTO' : 'DECURTAZIONE', style: 'badge' }] : []) as AnyRecord[])] },
     ],
     columnGap: 16,
     margin: [0, 0, 0, 8],
@@ -286,24 +293,24 @@ function renderCalculation(d: AnyRecord): AnyRecord[] {
   if (Array.isArray(d.formula_steps) && d.formula_steps.length > 0) {
     out.push({ text: 'Dettaglio Calcolo Passo-Passo', style: 'sub', margin: [0, 4, 0, 4] });
     const rows = (d.formula_steps as AnyRecord[]).map(s => [
-      str(s.step),
-      [str(s.description), ...calcStepExtras(s)].join('\n'),
-      typeof s.details?.formula === 'string' && s.details.formula ? str(s.details.formula) : str(s.formula ?? '—'),
+      String(s.step ?? NA),
+      [String(s.description ?? NA), ...calcStepExtras(s)].join('\n'),
+      typeof s.details?.formula === 'string' && s.details.formula ? String(s.details.formula) : String(s.formula ?? '—'),
       str(s.result),
     ]);
     out.push(pdfTable(['Step', 'Descrizione', 'Formula', 'Risultato'], rows, ['auto', '*', 'auto', 'auto']));
   }
   if (d.excess_percent != null || d.recognition_percent != null) {
     const cols = [];
-    if (d.excess_percent != null) cols.push({ stack: [{ text: 'Quota eccedente', style: 'label' }, { text: `${Number(d.excess_percent).toFixed(4)}%`, style: 'med' }] });
-    if (d.recognition_percent != null) cols.push({ stack: [{ text: 'Coefficiente riconoscimento', style: 'label' }, { text: `${Number(d.recognition_percent).toFixed(2)}%`, style: 'med' }] });
+    if (d.excess_percent != null) cols.push({ stack: [{ text: 'Quota eccedente', style: 'label' }, { text: formatItPercent(d.excess_percent, { decimals: 4 }), style: 'med' }] });
+    if (d.recognition_percent != null) cols.push({ stack: [{ text: 'Coefficiente riconoscimento', style: 'label' }, { text: formatItPercent(d.recognition_percent, { decimals: 2 }), style: 'med' }] });
     out.push({ columns: cols, columnGap: 16, margin: [0, 0, 0, 4] });
   }
   if (Array.isArray(d.components) && d.components.length > 0) {
     out.push({ text: 'Dettaglio per componente (Art. 13 multi-oggetto)', style: 'sub', margin: [0, 4, 0, 4] });
     const rows = (d.components as AnyRecord[]).map((c, idx) => [
       str(c.description ?? `Componente ${idx + 1}`),
-      c.variation_percent != null ? `${(Number(c.variation_percent) >= 0 ? '+' : '')}${Number(c.variation_percent).toFixed(4)}%` : NA,
+      c.variation_percent != null ? formatItPercent(c.variation_percent, { decimals: 4, signed: true }) : NA,
       c.revision_amount != null ? eur(c.revision_amount) : NA,
     ]);
     out.push(pdfTable(['Descrizione', 'Variazione %', 'Importo €'], rows, ['*', 'auto', 'auto']));
@@ -382,7 +389,7 @@ export function buildFascicoloDoc(caseTitle: string, cycles: Array<{ cycle: any;
       str(cy.cycle?.sequence_no),
       cy.cycle?.comparison_period ? itDate(cy.cycle.comparison_period) : NA,
       cy.cycle?.amount != null ? eur(cy.cycle.amount) : NA,
-      variation != null ? `${Number(variation).toFixed(2)}%` : NA,
+      variation != null ? formatItPercent(variation, { decimals: 2 }) : NA,
       status,
     ];
   });

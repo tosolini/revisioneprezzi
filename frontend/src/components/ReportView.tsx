@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { formatItCurrency, formatItPercent } from '../utils/formatters'
 
 interface CalcResult {
   series_id?: string
@@ -90,7 +91,7 @@ function ReportView({ report, calcResult }: Props) {
           </div>
           {latestCalc && (
             <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-              Variazione {latestCalc.variation_percent?.toFixed(2)}% · Soglia {latestCalc.threshold_percent?.toFixed(1)}%
+              Variazione {formatItPercent(latestCalc.variation_percent, { decimals: 2 })} · Soglia {formatItPercent(latestCalc.threshold_percent, { decimals: 1 })}
             </div>
           )}
         </div>
@@ -101,7 +102,7 @@ function ReportView({ report, calcResult }: Props) {
               fontSize: 28, fontWeight: 700,
               color: isApplicable ? 'var(--color-text-revision-up)' : 'var(--color-text-revision-down)',
             }}>
-              € {revisionAmount.toFixed(2)}
+              {formatItCurrency(revisionAmount)}
             </div>
           </div>
         )}
