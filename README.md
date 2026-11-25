@@ -6,7 +6,7 @@ This project is an MVP web application for calculating **price revision (revisio
 
 ## Panoramica
 
-Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.8** — wizard a 5 passi + revisione prezzi ricorrente.
+Il sistema guida l'utente nella compilazione di un dossier di revisione prezzi per appalti pubblici di **servizi, forniture, lavori e misti**, seguendo le regole dell'Allegato II.2-bis del D.Lgs. 36/2023. Versione corrente: **1.2.9** — wizard a 5 passi + revisione prezzi ricorrente.
 
 ### Funzionalità principali
 
@@ -240,6 +240,12 @@ L'"Aggiorna" salva solo URL e strategie: per ri-scaricare i dati si usa il pulsa
   segno errato. Il wizard blocca il passaggio con un messaggio esplicativo e le API rispondono
   `422`. Esiste un override esplicito di richiesta (`force_inverted_periods`) per allineamenti
   puntuali, ma non è esposto in alcuna interfaccia.
+
+## Novità nella 1.2.9
+
+- **Formattazione numerica e valutaria italiana uniforme**: corretti tutti i formati numerici americani (`,` per le migliaia e `.` per i decimali) nei passaggi di calcolo (`revision_calculation_v2`, `calculation_service`, `base_link_service`), nel report Markdown (`report.md.j2`), nel report visuale V2, nell'export PDF/Fascicolo (`reportPdf.ts`), nelle card risultato, nella dashboard cicli e nelle viste wizard/catalogo, tramite helper condivisi (`format_it.py` e `formatters.ts`) con normalizzazione retrocompatibile in lettura per le pratiche già salvate nel database.
+- **Scheduler sidecar in sviluppo locale**: aggiunto il bind-mount `./backend:/app` e i log unbuffered (`-u` / `PYTHONUNBUFFERED=1`) per il servizio `scheduler` in `docker-compose.yml` e `docker-compose-build.yml`.
+- **Aggiornamento dipendenze**: allineamento librerie backend e frontend (FastAPI `0.165.0`, SQLAlchemy `2.0.58`, Pydantic `2.14.4`, `react-router 8.5.2`, Tiptap `3.34.0`, `pdfmake 0.3.14`).
 
 ## Novità nella 1.2.8
 
